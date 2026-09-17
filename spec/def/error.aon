@@ -1,0 +1,36 @@
+# likeness: the error and exit code registry shape.
+#
+# Error codes are part of the public interface: renaming one is a breaking
+# change, and `aontu breaking --against` will say so. Every code carries the
+# exit status it produces and whether it may carry data, so a caller never has
+# to infer either.
+
+@"./base.aon"
+
+# A code is kebab-case and stable.
+Code: type(string & re("^[a-z][a-z0-9-]{0,31}$"))
+
+ErrorDef: type(close({
+  code: $.Code
+  exit: $.Exit
+
+  # One line, in the present tense, saying what happened.
+  means: string
+
+  # WHETHER THIS CODE MAY CARRY RESULTS ON FAILURE.
+  #
+  # Almost every failure sets `data` to null. Two do not: a budget ceiling
+  # reached mid-pagination and a fan-out halted part way have already done work
+  # the caller paid for, and discarding it to keep a tidy rule is the wrong
+  # trade. The set is CLOSED and is marked here, so `describe` can publish it
+  # and a caller never has to guess whether to look in `data`. A caller that
+  # branches on `ok` alone stays correct; it just discards results it could
+  # have kept.
+  partial: boolean
+
+  # Whether retrying the same command unchanged could plausibly succeed. An
+  # agent reads this instead of guessing from the message text.
+  retryable: boolean
+}))
+
+error: { &: $.ErrorDef }

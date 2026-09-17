@@ -1,0 +1,149 @@
+# likeness: the source registry shape.
+#
+# A "source" is a notes application likeness speaks to. Every source is reached
+# through a GENERATED SDK from github.com/voxgig-sdk - never a hand-written HTTP
+# client - and this file is where that binding is declared rather than assumed.
+#
+# Three things live here that used to live in people's heads:
+#
+#   1. WHICH SDK, AT WHICH REVISION. The SDK repositories publish no packages to
+#      npm, PyPI, RubyGems or Go's proxy yet, and carry no git tags, so a commit
+#      sha is the only pin that actually pins. `rev` is therefore required and
+#      `semver` alone is not sufficient.
+#
+#   2. THE OFFLINE TEST CONTRACT. Every generated SDK ships a `test` feature
+#      that swaps its HTTP transport for an in-memory mock, seeded from a map of
+#      records. likeness unit-tests against that feature rather than against a
+#      live server or a hand-rolled fake, so the seeding shape is part of the
+#      source declaration and is checked here.
+#
+#   3. THE ENTITY AND OPERATION SURFACE, as the SDK actually exposes it. This is
+#      the raw material the capability matrix is checked against: a capability
+#      likeness claims for a source must correspond to an operation the SDK has.
+
+@"./base.aon"
+
+# One language target of a generated SDK, and how a port depends on it.
+#
+# `pin` is the literal dependency line a port writes down. It is a string rather
+# than a structure because each ecosystem spells a git pin differently and
+# inventing a common form here would only have to be un-invented per port.
+SdkTarget: type(close({
+  # Path within the SDK repository holding this target's source.
+  dir: string & re("^[a-z-]+$")
+
+  # The package name in that ecosystem, once it is published. Declared before
+  # publication on purpose: the name is decided now, the registry entry is not.
+  package: string & re("^[@A-Za-z0-9_./-]+$")
+
+  # True once the package resolves from that ecosystem's registry. While this is
+  # false, `pin` is the only way in, and a port must not claim a registry
+  # dependency it cannot install.
+  published: boolean
+
+  # The exact dependency line, pinned by revision.
+  pin: string & re("^.+$")
+}))
+
+# The offline unit-test contract for one source.
+#
+# The SDK's `test` feature is seeded with a map of records per entity, keyed by
+# the record's own identifier: `{entity: {<entity>: {<id>: <record>}}}`. The SDK
+# stamps the key onto the record's id field, which is NOT always `id` - it is
+# whichever parameter the entity's own route ends in. Declaring `idfield` here
+# means a seed that would silently never match is caught before a test is
+# written against it.
+SdkTest: type(close({
+  # How a test client is constructed, per port. Recorded because the five ports
+  # spell it differently and a port that guesses gets a live client.
+  construct: close({ ts:string go:string py:string rb:string c:string })
+
+  # The seed key path, per entity: the field the seeding walk stamps.
+  idfield: { &: $.Ident }
+
+  # Whether the mock mints an identifier when a create supplies none. Where this
+  # is true, likeness MUST supply an explicit id on every seeded create, because
+  # a minted identifier is not reproducible and byte-identical output across
+  # five ports is the whole claim of this project.
+  mints_id: boolean
+
+  # Network-condition simulation the `test` feature offers over the mock
+  # transport, used for the retry, timeout and rate-limit paths.
+  netsim: close({ available:boolean option: [&: $.Ident] })
+}))
+
+# One operation of one entity, as the SDK exposes it.
+SdkOp: type(close({
+  name: $.Ident
+  method: $.Method
+  # The route, or the GraphQL field name for a GraphQL source.
+  route: string
+  # Whether the SDK's paging feature follows pages for this operation, or
+  # whether one call returns one page. likeness pages explicitly where this is
+  # false, and its call budget depends on knowing which.
+  pages: boolean
+}))
+
+# One entity of one source, as the SDK exposes it.
+SdkEntity: type(close({
+  # The SDK's accessor name, e.g. `Folder` in `client.Folder()`.
+  accessor: string & re("^[A-Z][A-Za-z0-9]*$")
+  # The model's own name for it, e.g. `folder`.
+  name: $.Ident
+  # The record's own identifier field.
+  idfield: $.Ident
+  op: { &: $.SdkOp }
+}))
+
+# How a source authenticates on the wire. Recorded as the WIRE FORM, because
+# three of the four sources disagree with their own definitions about it, and an
+# adapter written from the definition rather than from the generated client
+# sends a credential the server ignores.
+SdkAuth: type(close({
+  kind: "bearer"|"raw-header"|"query"|"none"
+  # The header or query parameter carrying the credential.
+  carrier: string
+  # Any scheme prefix, empty where there is none.
+  prefix: string
+}))
+
+# A source: one notes application, one generated SDK, one adapter.
+Source: type(close({
+  name: $.Ident
+
+  # The SDK repository, e.g. 'voxgig-sdk/joplin-sdk'.
+  repo: $.RepoRef
+
+  # The API definition inside that repository, under `.sdk/def/`. An OpenAPI
+  # document or a GraphQL SDL - sdkgen consumes both, so a GraphQL source needs
+  # no hand-written wrapper.
+  def: string & re("^[A-Za-z0-9_.-]+$")
+  defkind: "openapi"|"graphql"
+
+  # The version the SDK declares, and the revision that version was read at.
+  # Both, because the declared version does not move between revisions yet.
+  semver: $.Semver
+  rev: $.Sha
+
+  protocol: "http"|"graphql"|"file"
+  auth: $.SdkAuth
+
+  target: close({
+    ts: $.SdkTarget
+    go: $.SdkTarget
+    py: $.SdkTarget
+    rb: $.SdkTarget
+    c: $.SdkTarget
+  })
+
+  entity: { &: $.SdkEntity }
+  test: $.SdkTest
+
+  # A source reached without the network at all - an Obsidian vault is files -
+  # declares it here, and the confinement rules apply to it instead of the
+  # capability gate's network refusals.
+  local: boolean
+}))
+
+# The registry itself: every source likeness knows, keyed by name.
+source: { &: $.Source }

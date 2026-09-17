@@ -1,0 +1,27 @@
+# An example project file: what `likeness project init` produces, filled in.
+#
+# Validated in CI against ../def/project.aon, so the example in the
+# documentation cannot drift from the shape the tool enforces.
+
+project: {
+  name: "launch"
+
+  source: plan: { instance:"plan" space:"CORE" }
+  source: docs: { instance:"docs" space:"Engineering" }
+  source: vault: { instance:"vault" space:"launch" }
+
+  # Two declarations, three members: the closure makes plan, docs and vault one
+  # group without a third line.
+  same: [
+    { plan:"CORE-412" docs:"9f2c1a7b" }
+    { docs:"9f2c1a7b" vault:"launch/retention.md" }
+  ]
+
+  prefer: ["plan" "docs" "vault"]
+
+  alias: charter: "docs:9f2c1a7b"
+
+  view: open: { where:"NOT status:done" sort:"updated desc" }
+  view: stale: { where:"updated<30d AND NOT status:done" sort:"updated asc" }
+  view: decided: { where:"tag:decision" sort:"created desc" }
+}

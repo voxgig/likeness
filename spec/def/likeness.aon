@@ -1,0 +1,38 @@
+# likeness: the ground-truth schema, entry point.
+#
+# This file is the whole specification of the application in machine-checkable
+# form. Everything downstream - the five ports, the capability refusals, the
+# `describe` document, the agent tool descriptions, the docs and the parity
+# corpora - is checked against it or generated from it.
+#
+# WHAT THIS IS FOR
+#
+# SPEC.LIKENESS.md in project-specs remains the reasoned source of record: it
+# says why. This is the testable projection: it says exactly what, in a form a
+# machine refuses to let drift. Where the two disagree, that is a bug in one of
+# them and it is fixed in the same commit, never left as a difference of
+# emphasis.
+#
+# HOW TO USE IT
+#
+#   aontu vet def/<shape>.aon <data>.aon    check one data file against its shape
+#   make spec-check                          check every data file in this repo
+#   aontu jsonschema def/likeness.aon        export for a consumer that wants JSON Schema
+#   aontu breaking --against <rev> ...       is this change breaking?
+#
+# A SCHEMA FILE DOES NOT EVALUATE ON ITS OWN, and that is correct rather than a
+# fault: a shape is a truth, not a value, so `aontu def/likeness.aon` reports
+# what it has no value for. Use `vet`.
+#
+# A DATA FILE MUST NOT IMPORT ITS OWN SHAPE. `vet` composes the two. A data file
+# that imports its shape puts the shape's declarations on the data side, where
+# they read as unsatisfied requirements and the verdict comes back `incomplete`.
+
+@"./base.aon"
+@"./note.aon"
+@"./source.aon"
+@"./capability.aon"
+@"./error.aon"
+@"./envelope.aon"
+@"./command.aon"
+@"./corpus.aon"

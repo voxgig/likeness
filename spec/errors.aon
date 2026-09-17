@@ -1,0 +1,163 @@
+# likeness: the error code registry.
+#
+# GROUND TRUTH for every code likeness can emit, the exit status it produces,
+# whether it may carry partial results, and whether retrying could help.
+# `describe` publishes this; the reference documentation is generated from it;
+# and `aontu breaking --against` makes renaming one a visible breaking change.
+#
+# EXIT 1 IS NOT AN ERROR. It is the answer "none". A script that treats it as a
+# crash will be wrong constantly, which is why it has its own code rather than
+# sharing one with a failure.
+
+error: {
+  ok: code: "ok"
+  ok: exit: 0
+  ok: partial: false
+  ok: retryable: false
+  ok: means: "the command succeeded"
+
+  no-match: code: "no-match"
+  no-match: exit: 1
+  no-match: partial: false
+  no-match: retryable: false
+  no-match: means: "the question was valid and the answer is nothing"
+
+  not-found: code: "not-found"
+  not-found: exit: 1
+  not-found: partial: false
+  not-found: retryable: false
+  not-found: means: "a named ref does not exist"
+
+  # A SUCCESS-SIDE code: some sources answered and some did not, the rows that
+  # exist are printed, and meta.incomplete names the omission. Printing a
+  # smaller answer with no warning would be the worst of the three options.
+  partial: code: "partial"
+  partial: exit: 2
+  partial: partial: false
+  partial: retryable: true
+  partial: means: "some sources answered and some failed"
+
+  no-such-source: code: "no-such-source"
+  no-such-source: exit: 3
+  no-such-source: partial: false
+  no-such-source: retryable: false
+  no-such-source: means: "no source is registered under that name"
+  not-connected: code: "not-connected"
+  not-connected: exit: 3
+  not-connected: partial: false
+  not-connected: retryable: false
+  not-connected: means: "the source is known but no connection is configured"
+  auth-failed: code: "auth-failed"
+  auth-failed: exit: 3
+  auth-failed: partial: false
+  auth-failed: retryable: false
+  auth-failed: means: "the credential resolved and the source rejected it"
+  secret-backend-unavailable: code: "secret-backend-unavailable"
+  secret-backend-unavailable: exit: 3
+  secret-backend-unavailable: partial: false
+  secret-backend-unavailable: retryable: true
+  secret-backend-unavailable: means: "the secret store could not be reached"
+
+  # DISTINCT FROM auth-failed ON PURPOSE. A tool that reported an auth failure
+  # when Joplin simply is not running sends someone to regenerate a token that
+  # was never the problem.
+  source-unavailable: {
+    code: "source-unavailable"
+    exit: 3
+    partial: false
+    retryable: true
+    means: "the local application is not running or the bridge is unreachable"
+  }
+
+  invalid-selector: code: "invalid-selector"
+  invalid-selector: exit: 3
+  invalid-selector: partial: false
+  invalid-selector: retryable: false
+  invalid-selector: means: "the selector could not be parsed"
+  invalid-ref: code: "invalid-ref"
+  invalid-ref: exit: 3
+  invalid-ref: partial: false
+  invalid-ref: retryable: false
+  invalid-ref: means: "the ref is malformed"
+  invalid-project: code: "invalid-project"
+  invalid-project: exit: 3
+  invalid-project: partial: false
+  invalid-project: retryable: false
+  invalid-project: means: "the project file does not satisfy its shape"
+  stale-result-set: {
+    code: "stale-result-set"
+    exit: 3
+    partial: false
+    retryable: false
+    means: "a positional ref was resolved against a result set that has changed"
+  }
+  ambiguous-instance: {
+    code: "ambiguous-instance"
+    exit: 3
+    partial: false
+    retryable: false
+    means: "more than one instance could serve this and none was named"
+  }
+  rate-limited: code: "rate-limited"
+  rate-limited: exit: 3
+  rate-limited: partial: false
+  rate-limited: retryable: true
+  rate-limited: means: "the source refused after the SDK retries were exhausted"
+
+  conflict: code: "conflict"
+  conflict: exit: 4
+  conflict: partial: false
+  conflict: retryable: false
+  conflict: means: "the remote changed under an update"
+  precondition-failed: code: "precondition-failed"
+  precondition-failed: exit: 4
+  precondition-failed: partial: false
+  precondition-failed: retryable: false
+  precondition-failed: means: "the record changed after it was read"
+
+  # The guard refusals. Every one of these is decided BEFORE any network call,
+  # which is what makes them testable by asserting an empty call list - a far
+  # stronger assertion than an error message.
+  unsupported-capability: code: "unsupported-capability"
+  unsupported-capability: exit: 4
+  unsupported-capability: partial: false
+  unsupported-capability: retryable: false
+  unsupported-capability: means: "the source cannot perform this operation"
+  lossy-write: code: "lossy-write"
+  lossy-write: exit: 4
+  lossy-write: partial: false
+  lossy-write: retryable: false
+  lossy-write: means: "the write cannot be represented without dropping content"
+  path-escape: code: "path-escape"
+  path-escape: exit: 4
+  path-escape: partial: false
+  path-escape: retryable: false
+  path-escape: means: "the path resolves outside the vault root"
+  write-refused: code: "write-refused"
+  write-refused: exit: 4
+  write-refused: partial: false
+  write-refused: retryable: false
+  write-refused: means: "a human-decision floor refused this write"
+  limit-exceeded: {
+    code: "limit-exceeded"
+    exit: 4
+    partial: false
+    retryable: false
+    means: "the operation would affect more records than the limit allows"
+  }
+
+  # ONE OF THE TWO CODES THAT MAY CARRY DATA. Work already paid for is emitted
+  # rather than discarded; meta.truncated is true and ok is false.
+  budget-exceeded: code: "budget-exceeded"
+  budget-exceeded: exit: 5
+  budget-exceeded: partial: true
+  budget-exceeded: retryable: false
+  budget-exceeded: means: "the call or spend budget is spent"
+
+  # THE OTHER. A fan-out stopped part way has completed some of its members.
+  fanout-halted: code: "fanout-halted"
+  fanout-halted: exit: 4
+  fanout-halted: partial: true
+  fanout-halted: retryable: true
+  fanout-halted: means: "a fan-out stopped after a member failed"
+}

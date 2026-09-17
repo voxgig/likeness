@@ -1,0 +1,138 @@
+# likeness: the common entity shape.
+#
+# likeness projects four applications that agree about almost nothing onto six
+# entities. A projection loses things, so two rules are built into the shape
+# itself rather than left to an adapter's judgement:
+#
+#   - `raw` is a STRING, never nested structure. The envelope rules sort keys
+#     recursively and forbid floating point; a real source payload violates
+#     both. A string round-trips exactly and is one pipe from being structure
+#     again.
+#   - `version` is OPTIONAL. Not every source has a concurrency token, and a
+#     required field would either make such a source unable to produce a valid
+#     note or force an adapter to invent a token that enforces nothing.
+
+@"./base.aon"
+
+# `status` is a three-value normalisation, present only where the capability
+# matrix says the source has one. The source's own word is kept in `state`,
+# because a tool that flattens six Linear states into "open" and loses the
+# phrase "In Review" has taken something from the user.
+Status: hide("open"|"done"|"archived")
+
+# The entity kinds likeness models. Closed: adding one is a change to the
+# projection, and it should fail here first rather than appear as a typo in a
+# capability row.
+EntityKind: hide("note"|"space"|"tag"|"link"|"attachment"|"comment")
+
+# The operations likeness can ask of a source. Closed for the same reason.
+# These are LIKENESS operations, not SDK operations: `archive` and `search`
+# have no single SDK equivalent, and that gap is what the capability matrix
+# records.
+OpKind: hide(
+  "list"|"get"|"search"|"create"|"update"|"move"
+  | "tag"|"link"|"archive"|"delete"
+)
+
+# A note: the entity everything else hangs off.
+Note: type(close({
+  # Derived at read time from the source's own account identifier and the
+  # source-native id. Never stored in any source, never a secret, never a URL.
+  lid: $.Lid
+
+  # A name-shaped string, NOT a closed enumeration. Membership is checked
+  # against the source registry at load time. Closing it here would mean that
+  # adding a source edits the core model, and would make the model file itself
+  # fail the rule that forbids source identifiers outside declared data.
+  source: $.Ident
+  instance: $.Ident
+
+  # Source-native and opaque. Never split, never pattern-matched.
+  id: $.SourceId
+
+  title: string
+  body?: string
+  space?: $.SourceId
+  tags: [&: string]
+
+  # Capability-gated: present only where the source has a status concept.
+  status?: $.Status
+  # The source's own word, always carried where there is one.
+  state?: string
+
+  url: string
+  created: $.Rfc3339
+  updated: $.Rfc3339
+
+  # Absent where the source has no concurrency token. Its absence is what makes
+  # `precondition-failed` documented-as-unavailable rather than silently
+  # skipped for that source.
+  version?: string
+
+  # The source payload verbatim, as a JSON string. Only with --raw.
+  raw?: string
+}))
+
+# A space contains notes and may contain spaces: a Linear team, a Notion
+# database or parent page, an Obsidian folder, a Joplin notebook.
+Space: type(close({
+  lid: $.Lid
+  source: $.Ident
+  instance: $.Ident
+  id: $.SourceId
+  title: string
+  parent?: $.SourceId
+  url: string
+  raw?: string
+}))
+
+# A tag. Sources spell these very differently - a Linear label, a Notion
+# multi-select value, an Obsidian `#tag` or frontmatter key, a Joplin tag -
+# and only the name is common to all four.
+Tag: type(close({
+  lid: $.Lid
+  source: $.Ident
+  instance: $.Ident
+  id: $.SourceId
+  name: string
+  count?: $.Count
+  raw?: string
+}))
+
+# A link from one note to another. `target` may be unresolvable - a wikilink to
+# a note that does not exist is normal in a vault - and a dangling link is
+# RETAINED with its reason rather than dropped, because dropping it hides the
+# broken reference the user most needs to see.
+Link: type(close({
+  source: $.Ident
+  instance: $.Ident
+  from: $.SourceId
+  to: $.SourceId
+  kind: "wikilink"|"embed"|"mention"|"relation"|"url"
+  resolved: boolean
+  reason?: string
+}))
+
+Attachment: type(close({
+  lid: $.Lid
+  source: $.Ident
+  instance: $.Ident
+  id: $.SourceId
+  note: $.SourceId
+  name: string
+  bytes?: $.Count
+  mime?: string
+  raw?: string
+}))
+
+Comment: type(close({
+  lid: $.Lid
+  source: $.Ident
+  instance: $.Ident
+  id: $.SourceId
+  note: $.SourceId
+  body: string
+  author?: string
+  created: $.Rfc3339
+  raw?: string
+}))
