@@ -1,0 +1,23 @@
+{
+  "name": "@voxgig/likeness-mock",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Single-process mock server for every likeness SDK source (joplin, obsidian, notion, linear)",
+  "type": "module",
+  "main": "server.js",
+  "exports": {
+    ".": "./server.js",
+    "./store": "./store.js",
+    "./sources/*": "./sources/*"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "LIKENESS_MOCK_LOG=1 node server.js"
+  },
+  "dependencies": {
+    "fastify": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

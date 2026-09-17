@@ -1,0 +1,197 @@
+{
+  "source": "Definition: /tmp/claude-501/-Users-richard-Projects-voxgig-sdk-univec-sdk/2add9a16-da95-4678-b615-c71b996816d9/scratchpad/srcsdk/joplin-sdk/.sdk/def/joplin-notes-folders-tags.json (openapi 3.0.3, \"Joplin Data API\" 1.0.0). Model: .sdk/model/entity/{note,folder,tag}.aon (+ .sdk/model/api/api-info.aon, .sdk/model/sdk.json). Generated client verified: ts/src/** and, empirically, ts/dist/JoplinSDK.js driven against a local HTTP server capturing every request (probe scripts in scratchpad/joplinprobe/probe{,2,3,4,5}.js). Cross-checked py/joplin_sdk/utility/prepare_auth.py and prepare_query.py — same behaviour in every target. NOTE: this is an HTTP/REST SDK, not GraphQL; no point has kind \"graphql\" and no `doc` strings exist.",
+  "mock": "mock/sources/Definition: /tmp/claude-501/-Users-richard-Projects-voxgig-sdk-univec-sdk/2add9a16-da95-4678-b615-c71b996816d9/scratchpad/srcsdk/joplin-sdk/.sdk/def/joplin-notes-folders-tags.json (openapi 3.0.3, \"Joplin Data API\" 1.0.0). Model: .sdk/model/entity/{note,folder,tag}.aon (+ .sdk/model/api/api-info.aon, .sdk/model/sdk.json). Generated client verified: ts/src/** and, empirically, ts/dist/JoplinSDK.js driven against a local HTTP server capturing every request (probe scripts in scratchpad/joplinprobe/probe{,2,3,4,5}.js). Cross-checked py/joplin_sdk/utility/prepare_auth.py and prepare_query.py — same behaviour in every target. NOTE: this is an HTTP/REST SDK, not GraphQL; no point has kind \"graphql\" and no `doc` strings exist..js",
+  "note": "Seed for the Joplin Data API local mock: 18 operations over note, folder and tag. Field names, nesting and types come from the OpenAPI definition and the generated client only - nothing here is copied from a live Joplin instance, though the shapes match what the Clipper Server emits.",
+  "quirks": [
+    "apikey is the credential the mock accepts. The SDK sends it as a RAW `Authorization: <apikey>` header - NOT the ?token= query parameter the definition declares (PrepareAuthUtility hardcodes the header and the generator drops in/name). ?token= is accepted too, because a caller can smuggle it through the match object or direct({query}).",
+    "config.pageSize is deliberately 2 against 5 notes, so listNotes/listFolders/listTags really paginate: pages 1 and 2 answer has_more:true plus the X-Next-Page and Link rel=\"next\" headers - which is what the paging feature reads, since NO generated target reads has_more.",
+    "config.camelHasMore adds body `hasMore` (the camelCase key PagingFeature.PreResult actually looks for). Off by default so the body stays exactly as the definition declares it.",
+    "Projects is nested inside Work (parent_id set), so listFolderNotes has a non-trivial case.",
+    "note<->tag links feed listNoteTags and listTagNotes - the two routes the SDK can only reach with a dummy `field` present and a leaked %24action query key.",
+    "Titles carry commas and colons (\"Book: Designing Data-Intensive Applications\", tag \"reading, later\") so percent-encoding on the wire is exercised.",
+    "One note is a todo with an integer todo_due, and one carries float latitude/longitude/altitude beside the integer *_time fields, so response type checking (validateContract) is meaningful."
+  ],
+  "apikey": "joplin-mock-token",
+  "config": {
+    "pageSize": 2,
+    "camelHasMore": false
+  },
+  "folders": [
+    {
+      "id": "f01d0000000000000000000000000001",
+      "title": "Work",
+      "parent_id": "",
+      "created_time": 1741593600000,
+      "updated_time": 1741683600000,
+      "user_created_time": 1741593600000,
+      "user_updated_time": 1741683600000,
+      "is_shared": 0
+    },
+    {
+      "id": "f01d0000000000000000000000000002",
+      "title": "Personal",
+      "parent_id": "",
+      "created_time": 1741597200000,
+      "updated_time": 1741716000000,
+      "user_created_time": 1741597200000,
+      "user_updated_time": 1741716000000,
+      "is_shared": 0
+    },
+    {
+      "id": "f01d0000000000000000000000000003",
+      "title": "Projects",
+      "parent_id": "f01d0000000000000000000000000001",
+      "created_time": 1741600800000,
+      "updated_time": 1741762800000,
+      "user_created_time": 1741600800000,
+      "user_updated_time": 1741762800000,
+      "is_shared": 1
+    }
+  ],
+  "notes": [
+    {
+      "is_conflict": 0,
+      "latitude": 0,
+      "longitude": 0,
+      "altitude": 0,
+      "author": "R. Rodger",
+      "source_url": "",
+      "is_todo": 0,
+      "todo_due": 0,
+      "todo_completed": 0,
+      "markup_language": 1,
+      "id": "a0e50000000000000000000000000001",
+      "parent_id": "f01d0000000000000000000000000001",
+      "title": "Q2 planning",
+      "body": "# Q2 planning\n\n- hiring\n- roadmap freeze on the 30th\n",
+      "created_time": 1741593600000,
+      "updated_time": 1741683600000,
+      "user_created_time": 1741593600000,
+      "user_updated_time": 1741683600000
+    },
+    {
+      "is_conflict": 0,
+      "latitude": 0,
+      "longitude": 0,
+      "altitude": 0,
+      "author": "",
+      "source_url": "",
+      "is_todo": 0,
+      "todo_due": 0,
+      "todo_completed": 0,
+      "markup_language": 1,
+      "id": "a0e50000000000000000000000000002",
+      "parent_id": "f01d0000000000000000000000000001",
+      "title": "Standup 2025-03-11",
+      "body": "Yesterday: paging feature. Today: mock server. Blockers: none.\n",
+      "created_time": 1741683600000,
+      "updated_time": 1741683600000,
+      "user_created_time": 1741683600000,
+      "user_updated_time": 1741683600000
+    },
+    {
+      "is_conflict": 0,
+      "latitude": 0,
+      "longitude": 0,
+      "altitude": 0,
+      "author": "",
+      "source_url": "",
+      "is_todo": 1,
+      "todo_due": 1741798800000,
+      "todo_completed": 0,
+      "markup_language": 1,
+      "id": "a0e50000000000000000000000000003",
+      "parent_id": "f01d0000000000000000000000000002",
+      "title": "Grocery list",
+      "body": "- oats\n- coffee\n- olive oil\n",
+      "created_time": 1741716000000,
+      "updated_time": 1741719600000,
+      "user_created_time": 1741716000000,
+      "user_updated_time": 1741719600000
+    },
+    {
+      "is_conflict": 0,
+      "latitude": 53.3498,
+      "longitude": -6.2603,
+      "altitude": 20.5,
+      "author": "",
+      "source_url": "https://joplinapp.org/help/api/references/rest_api",
+      "is_todo": 0,
+      "todo_due": 0,
+      "todo_completed": 0,
+      "markup_language": 1,
+      "id": "a0e50000000000000000000000000004",
+      "parent_id": "f01d0000000000000000000000000003",
+      "title": "Joplin Data API: fields, paging",
+      "body": "GET /notes?fields=id,title&page=1 -> {items, has_more}\n",
+      "created_time": 1741762800000,
+      "updated_time": 1741777200000,
+      "user_created_time": 1741762800000,
+      "user_updated_time": 1741777200000
+    },
+    {
+      "is_conflict": 0,
+      "latitude": 0,
+      "longitude": 0,
+      "altitude": 0,
+      "author": "",
+      "source_url": "",
+      "is_todo": 0,
+      "todo_due": 0,
+      "todo_completed": 0,
+      "markup_language": 1,
+      "id": "a0e50000000000000000000000000005",
+      "parent_id": "f01d0000000000000000000000000002",
+      "title": "Book: Designing Data-Intensive Applications",
+      "body": "Chapter 5 - replication. Re-read the leaderless section.\n",
+      "created_time": 1741809600000,
+      "updated_time": 1741813200000,
+      "user_created_time": 1741809600000,
+      "user_updated_time": 1741813200000
+    }
+  ],
+  "tags": [
+    {
+      "id": "b7c30000000000000000000000000001",
+      "title": "work",
+      "created_time": 1741593600000,
+      "updated_time": 1741593600000,
+      "user_created_time": 1741593600000,
+      "user_updated_time": 1741593600000
+    },
+    {
+      "id": "b7c30000000000000000000000000002",
+      "title": "urgent",
+      "created_time": 1741593600000,
+      "updated_time": 1741683600000,
+      "user_created_time": 1741593600000,
+      "user_updated_time": 1741683600000
+    },
+    {
+      "id": "b7c30000000000000000000000000003",
+      "title": "reading, later",
+      "created_time": 1741809600000,
+      "updated_time": 1741809600000,
+      "user_created_time": 1741809600000,
+      "user_updated_time": 1741809600000
+    }
+  ],
+  "note_tags": [
+    {
+      "note_id": "a0e50000000000000000000000000001",
+      "tag_id": "b7c30000000000000000000000000001"
+    },
+    {
+      "note_id": "a0e50000000000000000000000000001",
+      "tag_id": "b7c30000000000000000000000000002"
+    },
+    {
+      "note_id": "a0e50000000000000000000000000002",
+      "tag_id": "b7c30000000000000000000000000001"
+    },
+    {
+      "note_id": "a0e50000000000000000000000000005",
+      "tag_id": "b7c30000000000000000000000000003"
+    }
+  ]
+}

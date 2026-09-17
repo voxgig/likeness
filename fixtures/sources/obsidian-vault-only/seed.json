@@ -1,0 +1,235 @@
+{
+  "$source": "Definition: /tmp/claude-501/-Users-richard-Projects-voxgig-sdk-univec-sdk/2add9a16-da95-4678-b615-c71b996816d9/scratchpad/srcsdk/obsidian-sdk/.sdk/def/obsidian-vault-only.json (OpenAPI 3.2.0, \"Obsidian Local REST API\" v1.0). Model: .sdk/model/entity/vault.aon + tag.aon + entity-index.aon. Generated client: ts/src/**.",
+  "$slug": "obsidian-vault-only",
+  "$mock": "mock/sources/<source>.js (Fastify 5 plugin, ESM)",
+  "$note": "Seed for the Obsidian Local REST API mock. The vault is deliberately shaped so that GET /tags on the pristine seed returns exactly the counts in the definition's own example: project 3, important 1, work 2, work/tasks 2. Time is fixed at 2025-01-01T00:00:00.000Z (1735689600000); the mock takes all NEW timestamps from opts.clock(), never Date.now().",
+  "baseUrl": "http://127.0.0.1:27123",
+  "auth": {
+    "headerKey": "authorization",
+    "prefix": "Bearer",
+    "scheme": "bearer",
+    "apikey": "obsidian-local-rest-api-key-0001",
+    "wireExample": "authorization: Bearer obsidian-local-rest-api-key-0001",
+    "basic": false,
+    "secretUsed": false,
+    "failure": {
+      "$mockDecision": "The definition declares NO 401 and NO 403 on any route (declared statuses are only 200/204/400/404/405/409/412/422). 401 + the Error envelope is this mock deciding, not the contract speaking.",
+      "status": 401,
+      "statusText": "Unauthorized",
+      "missingHeader": {
+        "errorCode": 40101,
+        "message": "Authorization required"
+      },
+      "wrongScheme": {
+        "errorCode": 40102,
+        "message": "Unsupported authorization scheme; expected Bearer"
+      },
+      "wrongKey": {
+        "errorCode": 40103,
+        "message": "Invalid API key"
+      }
+    }
+  },
+  "clock": {
+    "start": 1735689600000,
+    "startIso": "2025-01-01T00:00:00.000Z",
+    "step": 1000,
+    "$note": "Suggested deterministic clock for the harness: t = start + step * tick."
+  },
+  "pagination": {
+    "supported": false,
+    "$note": "NONE. No limit/offset/page/cursor/after parameter on any operation, no Link header, no next/hasMore/nextCursor field, no totals in the body. Config.ts sets feature.paging.options.active = false. Both list routes return the complete collection in one object. The mock ignores any page/cursor/limit query it is sent rather than truncating the list; it sets x-total-count only, which no client can read as \"there is more\"."
+  },
+  "vault": {
+    "files": [
+      {
+        "path": "mydocument.md",
+        "ctime": 1735689660000,
+        "mtime": 1735695000000,
+        "frontmatter": {
+          "title": "My Document",
+          "tags": [
+            "project",
+            "important"
+          ]
+        },
+        "links": [
+          "welcome.md"
+        ],
+        "unresolvedLinks": [],
+        "content": "---\ntitle: My Document\ntags:\n  - project\n  - important\n---\n\n# My Document\n\nThe definition's own example vault listing names this file.\n\nSee also [[welcome]].\n"
+      },
+      {
+        "path": "projects/nested/deep-note.md",
+        "ctime": 1735689720000,
+        "mtime": 1735691400000,
+        "frontmatter": {
+          "title": "Deep Note"
+        },
+        "links": [],
+        "unresolvedLinks": [],
+        "content": "---\ntitle: Deep Note\n---\n\n# Deep Note\n\nQUIRK FIXTURE: this note is two directories deep, so the SDK addresses it\nas /vault/projects%2Fnested%2Fdeep-note.md - encodeURIComponent escapes the\nseparators. It is reachable only because the mock percent-decodes the id.\n"
+      },
+      {
+        "path": "somedirectory/meeting-notes.md",
+        "ctime": 1735689780000,
+        "mtime": 1735696800000,
+        "frontmatter": {
+          "title": "Meeting Notes",
+          "tags": [
+            "work"
+          ]
+        },
+        "links": [
+          "welcome.md"
+        ],
+        "unresolvedLinks": [
+          "retro-2024.md"
+        ],
+        "content": "---\ntitle: Meeting Notes\ntags:\n  - work\n---\n\n# Meeting Notes\n\n## Attendees\n\n- Ada\n- Grace\n\n## Actions\n\nFollow up in #work/tasks before Friday. ^action-1\n\nLinked from [[welcome]]; see also [[retro-2024]].\n"
+      },
+      {
+        "path": "somedirectory/roadmap.md",
+        "ctime": 1735689840000,
+        "mtime": 1735693200000,
+        "frontmatter": {
+          "title": "Roadmap",
+          "tags": [
+            "project",
+            "work/tasks"
+          ]
+        },
+        "links": [],
+        "unresolvedLinks": [],
+        "content": "---\ntitle: Roadmap\ntags:\n  - project\n  - work/tasks\n---\n\n# Roadmap\n\n## Q1\n\nShip the likeness mock.\n"
+      },
+      {
+        "path": "welcome.md",
+        "ctime": 1735689600000,
+        "mtime": 1735692300000,
+        "frontmatter": {
+          "title": "Welcome",
+          "tags": [
+            "project",
+            "work"
+          ]
+        },
+        "links": [
+          "mydocument.md",
+          "somedirectory/meeting-notes.md"
+        ],
+        "unresolvedLinks": [
+          "missing-note.md"
+        ],
+        "content": "---\ntitle: Welcome\ntags:\n  - project\n  - work\n---\n\n# Welcome\n\nThis vault is served by the likeness mock for the Obsidian Local REST API.\n\n- [[mydocument]]\n- [[somedirectory/meeting-notes]]\n- [[missing-note]]\n"
+      }
+    ]
+  },
+  "expect": {
+    "tag.list": {
+      "request": "GET /tags   (definition path is /tags/ - the SDK strips the slash)",
+      "status": 200,
+      "body": {
+        "tags": [
+          {
+            "name": "important",
+            "count": 1
+          },
+          {
+            "name": "project",
+            "count": 3
+          },
+          {
+            "name": "work",
+            "count": 2
+          },
+          {
+            "name": "work/tasks",
+            "count": 2
+          }
+        ]
+      },
+      "$note": "Transform is body.tags - a bare top-level array yields an EMPTY list with ok:true and no error. Counts are usage counts: frontmatter tags plus inline #tags (meeting-notes.md carries #work/tasks inline)."
+    },
+    "vault.list": {
+      "request": "GET /vault  (definition path is /vault/ - the SDK strips the slash)",
+      "status": 200,
+      "body": {
+        "files": [
+          "mydocument.md",
+          "projects/",
+          "somedirectory/",
+          "welcome.md"
+        ]
+      },
+      "$note": "Directory entries end with /, files do not. Transform is body.files."
+    },
+    "vault.load (file)": {
+      "request": "GET /vault/welcome.md?id=welcome.md",
+      "status": 200,
+      "bodyKeys": [
+        "tags",
+        "frontmatter",
+        "stat",
+        "path",
+        "content",
+        "links",
+        "backlinks",
+        "unresolvedLinks"
+      ],
+      "$note": "All 8 NoteJson keys are required in the definition. The body MUST be valid JSON: serving the declared text/markdown default throws ObsidianSDK: load: Unexpected token hash inside the SDK."
+    },
+    "vault.load (nested, quirk)": {
+      "request": "GET /vault/projects%2Fnested%2Fdeep-note.md?id=projects%2Fnested%2Fdeep-note.md",
+      "status": 200,
+      "$note": "escurl is encodeURIComponent, so the separators are escaped. The mock percent-decodes the id segment or this note is unreachable."
+    },
+    "vault.load (directory point)": {
+      "request": "GET /vault/somedirectory%2F?id=somedirectory%2F",
+      "status": 200,
+      "body": {
+        "files": [
+          "meeting-notes.md",
+          "roadmap.md"
+        ]
+      },
+      "$note": "The directory point and the file point render the IDENTICAL request (parts [\"vault\",\"{id}\"], trailing slash stripped). The mock discriminates on the decoded id ending in / and nothing else."
+    },
+    "vault.create": {
+      "request": "POST /vault/inbox%2Fcapture.md",
+      "requestBody": {
+        "content": "# Capture\\n",
+        "id": "inbox/capture.md"
+      },
+      "status": 204,
+      "$note": "transform.req is the identity reqdata, so the body is the WHOLE argument object with id INSIDE it. Read content, ignore the redundant id, and never treat the body as raw file bytes. 204 must have a genuinely empty body."
+    },
+    "vault.update": {
+      "request": "PUT /vault/mydocument.md",
+      "requestBody": {
+        "content": "# My Document (revised)\\n",
+        "id": "mydocument.md"
+      },
+      "status": 204
+    },
+    "vault.remove": {
+      "request": "DELETE /vault/mydocument.md?id=mydocument.md&permanent=true",
+      "status": 204,
+      "$note": "permanent is a STRING enum \"true\"/\"false\" (default \"false\"), not a boolean. permanent=false moves the note to store.obsidian.trash."
+    },
+    "vault.patch (direct() only)": {
+      "request": "PATCH /vault/somedirectory%2Fmeeting-notes.md",
+      "requestBody": {
+        "targetType": "heading",
+        "target": "Actions",
+        "operation": "append",
+        "content": "Book the room. ^action-2"
+      },
+      "status": 200,
+      "$note": "sdk.Vault().patch is undefined - VaultEntity generates only load/list/create/update/remove. Reachable only through client.direct({path:\"vault/{id}\", method:\"PATCH\", ...})."
+    },
+    "copy / move": {
+      "$note": "In the definition as OpenAPI 3.2 additionalOperations, absent from the model, absent from every client, and outside options.allow.method. NOT implemented by the mock. Out of contract."
+    }
+  }
+}

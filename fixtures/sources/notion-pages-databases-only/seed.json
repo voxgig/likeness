@@ -1,0 +1,228 @@
+{
+  "_source": "notion-pages-databases-only",
+  "_doc": [
+    "Seed for the notion-pages-databases-only mock. Loaded into opts.store.notion",
+    "by the plugin (opts.seed, or store.seed). Every record is keyed by its id;",
+    "the plugin forces record.id to the key, so the two can never drift.",
+    "Ids in the 2a9e0000-... space are pages, 7b3d0000-... are databases - the",
+    "same shape the plugin's own counter mints, so seeded and created records",
+    "are indistinguishable. counter.* is set past the seeded ids so a create",
+    "never collides."
+  ],
+
+  "token": "secret_TOKEN",
+
+  "clock": { "startISO": "2024-05-01T09:00:00.000Z", "stepMs": 1000 },
+
+  "counter": { "page": 2, "database": 2 },
+
+  "database": {
+    "7b3d0000-0000-4000-8000-000000000001": {
+      "object": "database",
+      "created_time": "2024-05-01T09:00:00.000Z",
+      "last_edited_time": "2024-05-01T09:00:00.000Z",
+      "title": [
+        {
+          "type": "text",
+          "text": { "content": "Engineering Tasks", "link": null },
+          "annotations": {
+            "bold": false, "italic": false, "strikethrough": false,
+            "underline": false, "code": false, "color": "default"
+          },
+          "plain_text": "Engineering Tasks",
+          "href": null
+        }
+      ],
+      "properties": {
+        "Name": { "id": "title", "name": "Name", "type": "title", "title": {} },
+        "Status": {
+          "id": "V%3D%7Ck",
+          "name": "Status",
+          "type": "select",
+          "select": {
+            "options": [
+              { "id": "s-todo", "name": "Todo", "color": "red" },
+              { "id": "s-doing", "name": "Doing", "color": "yellow" },
+              { "id": "s-done", "name": "Done", "color": "green" }
+            ]
+          }
+        },
+        "Due": { "id": "N%3D%7Cd", "name": "Due", "type": "date", "date": {} }
+      },
+      "parent": { "page_id": "2a9e0000-0000-4000-8000-000000000001" }
+    },
+
+    "7b3d0000-0000-4000-8000-000000000002": {
+      "_quirk": "parent is an EMPTY object and title is empty - exactly what the SDK's own generated test data sends, in violation of DatabaseInput.required ['parent','title','properties']. Proves the mock does not enforce required[].",
+      "object": "database",
+      "created_time": "s46",
+      "last_edited_time": "s48",
+      "title": [],
+      "properties": {},
+      "parent": {}
+    },
+
+    "direct01": {
+      "_quirk": "Served for ts/test/entity/database/DatabaseDirect.test.ts, which calls sdk.direct({path:'databases/{id}', method:'GET', params:{id:'direct01'}}) and asserts result.data.id === 'direct01'. direct() bypasses the feature pipeline but uses the same auth and headers.",
+      "object": "database",
+      "created_time": "2024-05-01T09:00:00.000Z",
+      "last_edited_time": "2024-05-01T09:00:00.000Z",
+      "title": [
+        { "type": "text", "text": { "content": "Direct Fixture", "link": null }, "plain_text": "Direct Fixture", "href": null }
+      ],
+      "properties": { "Name": { "id": "title", "name": "Name", "type": "title", "title": {} } },
+      "parent": { "page_id": "direct01" }
+    },
+
+    "DATABASE00": {
+      "_quirk": "Verbatim from .sdk/test/entity/database/DatabaseTestData.json existing.database. The generated suite uses these as client-side entity defaults; seeding them means a load of DATABASE00 also succeeds over HTTP. Note created_time 's46' is not a timestamp at all - the mock stores and echoes it unchanged.",
+      "object": "s49",
+      "created_time": "s46",
+      "last_edited_time": "s48",
+      "title": [],
+      "properties": {},
+      "parent": {}
+    },
+    "DATABASE01": {
+      "object": "s8f",
+      "created_time": "s8c",
+      "last_edited_time": "s8e",
+      "title": [],
+      "properties": {},
+      "parent": {}
+    },
+    "DATABASE02": {
+      "object": "sd5",
+      "created_time": "sd2",
+      "last_edited_time": "sd4",
+      "title": [],
+      "properties": {},
+      "parent": {}
+    }
+  },
+
+  "page": {
+    "2a9e0000-0000-4000-8000-000000000001": {
+      "object": "page",
+      "created_time": "2024-05-01T09:00:00.000Z",
+      "last_edited_time": "2024-05-01T09:00:00.000Z",
+      "archived": false,
+      "properties": {
+        "Name": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": { "content": "Engineering", "link": null },
+              "annotations": {
+                "bold": false, "italic": false, "strikethrough": false,
+                "underline": false, "code": false, "color": "default"
+              },
+              "plain_text": "Engineering",
+              "href": null
+            }
+          ]
+        }
+      },
+      "parent": {}
+    },
+
+    "2a9e0000-0000-4000-8000-000000000002": {
+      "_quirk": "Full rich_text round-trip fixture. `properties` is typed {type:'object'} in the definition - no rich_text, annotations or plain_text is described anywhere in definition, model or generated types - so the SDK neither validates nor transforms this. It must come back byte-identical.",
+      "object": "page",
+      "created_time": "2024-05-01T09:01:00.000Z",
+      "last_edited_time": "2024-05-01T09:02:00.000Z",
+      "archived": false,
+      "properties": {
+        "Name": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": { "content": "Ship the ", "link": null },
+              "annotations": {
+                "bold": false, "italic": false, "strikethrough": false,
+                "underline": false, "code": false, "color": "default"
+              },
+              "plain_text": "Ship the ",
+              "href": null
+            },
+            {
+              "type": "text",
+              "text": { "content": "SDK", "link": { "url": "https://example.invalid/sdk" } },
+              "annotations": {
+                "bold": true, "italic": false, "strikethrough": false,
+                "underline": false, "code": true, "color": "blue"
+              },
+              "plain_text": "SDK",
+              "href": "https://example.invalid/sdk"
+            }
+          ]
+        },
+        "Status": { "id": "V%3D%7Ck", "type": "select", "select": { "id": "s-doing", "name": "Doing", "color": "yellow" } },
+        "Due": { "id": "N%3D%7Cd", "type": "date", "date": { "start": "2024-06-01", "end": null, "time_zone": null } },
+        "Done": { "id": "c%3Ahk", "type": "checkbox", "checkbox": false }
+      },
+      "parent": { "database_id": "7b3d0000-0000-4000-8000-000000000001" }
+    },
+
+    "direct01": {
+      "_quirk": "Served for ts/test/entity/page/PageDirect.test.ts: sdk.direct({path:'pages/{id}', method:'GET', params:{id:'direct01'}}) asserts result.data.id === 'direct01'.",
+      "object": "page",
+      "created_time": "2024-05-01T09:00:00.000Z",
+      "last_edited_time": "2024-05-01T09:00:00.000Z",
+      "archived": false,
+      "properties": {
+        "Name": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            { "type": "text", "text": { "content": "Direct Fixture", "link": null }, "plain_text": "Direct Fixture", "href": null }
+          ]
+        }
+      },
+      "parent": { "database_id": "7b3d0000-0000-4000-8000-000000000001" }
+    },
+
+    "PAGE00": {
+      "_quirk": "Verbatim from .sdk/test/entity/page/PageTestData.json existing.page - parent is {} with no database_id, violating PageInput.required.",
+      "object": "s4a",
+      "created_time": "s47",
+      "last_edited_time": "s49",
+      "archived": true,
+      "properties": {},
+      "parent": {}
+    },
+    "PAGE01": {
+      "object": "s90",
+      "created_time": "s8d",
+      "last_edited_time": "s8f",
+      "archived": true,
+      "properties": {},
+      "parent": {}
+    },
+    "PAGE02": {
+      "object": "sd6",
+      "created_time": "sd3",
+      "last_edited_time": "sd5",
+      "archived": true,
+      "properties": {},
+      "parent": {}
+    }
+  },
+
+  "_quirks_exercised": {
+    "required-not-enforced": "database 7b3d...0002, PAGE00-02, DATABASE00-02 all carry parent:{} - the empty parent the SDK's own generated test data sends.",
+    "opaque-rich-text": "page 2a9e...0002 carries a two-run rich_text title with annotations, a link, select, date and checkbox properties. None of it is described by the definition; it must round-trip unchanged.",
+    "created-time-is-not-a-time": "PAGE00/DATABASE00 seed created_time 's47'/'s46'. The mock never re-derives created_time, which is what lets BasicPageFlow PATCH created_time:'Mark01-page_ref01_<ts>' and assert the exact string back.",
+    "direct-fixture": "page/direct01 and database/direct01 exist because direct() tests hit a hard-coded id."
+  },
+
+  "_off_by_default": {
+    "_doc": "Both of these stay OFF: the SDK neither rate-limits nor retries (feature.ratelimit and feature.retry are active:false in Config.ts), so a mock enforcing Notion's ~3 req/sec would hard-fail the first caller with no backoff. Copy either key up to the top level of this file, or set it on store.notion directly, to exercise the failure path.",
+    "ratelimit": { "burst": 3, "retryAfter": 1 },
+    "force": [{ "status": 429, "code": "rate_limited", "message": "You have been rate limited. Please try again in a few minutes.", "retryAfter": 1 }]
+  }
+}

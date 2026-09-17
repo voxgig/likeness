@@ -1,0 +1,165 @@
+{
+  "source": "GraphQL SDL at /tmp/claude-501/-Users-richard-Projects-voxgig-sdk-univec-sdk/2add9a16-da95-4678-b615-c71b996816d9/scratchpad/srcsdk/linear-sdk/.sdk/def/linear-issues-only.graphql (types Issue/Team/User/WorkflowState/PageInfo/IssueEdge/IssueConnection/IssuePayload, inputs IssueCreateInput/IssueUpdateInput, Query issue/issues/team/teams, Mutation issueCreate/issueUpdate); resolved per-operation truth in .sdk/model/entity/issue.aon and .sdk/model/entity/team.aon (graphql.doc / method / transform.res / graphql.page); wire behaviour verified in the generated TypeScript client under ts/src/ - Config.ts (options.base, auth.prefix, headers, per-op graphql docs), utility/GraphqlUtility.ts (graphqlBody, graphqlErrors), utility/MakeSpecUtility.ts (graphql branch: path '' , query {} , content-type), utility/PrepareAuthUtility.ts, utility/MakeUrlUtility.ts, utility/MakeFetchDefUtility.ts (JSON.stringify indent 2), utility/MakeResponseUtility.ts + MakeResultUtility.ts + TransformResponseUtility.ts (response unwrapping), Context.ts (op.input = match for load/list, data for create/update), feature/paging/PagingFeature.ts, LinearTypes.ts (IssueCreateData/IssueUpdateData). Nothing here is inferred from the public Linear API.",
+  "mock": "linear-issues-only.graphql.js",
+  "note": "Seed for the six operations IssueLoad / IssueList / IssueCreate / IssueUpdate / TeamLoad / TeamList. Nothing here is taken from the public Linear API: field names and nesting come from the SDL fragments IssueFields and TeamFields only.",
+  "quirks": [
+    "4 issues so issue.list with first=2 returns hasNextPage true and a usable endCursor (relay paging lives in GraphQL variables, never in a query string).",
+    "issue eb0d... has assignee null, description null, estimate null, dueDate null - Query.issue/Team.description nullability.",
+    "issue 4f1a... has estimate 2.5: number/priority/estimate are Float in the SDL, not Int.",
+    "issue 91c7... is archived (archivedAt set) and completed - DateTime/TimelessDate are format-free custom scalars, any JSON value round-trips.",
+    "team tea-d3... has description null - Team.description is nullable while Query.teams is a bare [Team!]!, never a connection.",
+    "config.triggers gives one id per SDK error code so the errors-array mapping (request_auth / request_ratelimit / request_invalid / request_graphql / request_status) can be exercised end to end.",
+    "config.apikeys holds the only accepted bearer token: `Bearer <token>` is required, a bare token is refused, and a wholly absent header is the real no-apikey case."
+  ],
+  "config": {
+    "apikeys": ["lin_api_LiKeNeSs0MockKey0000000000000000"],
+    "appBase": "https://linear.app/likeness-mock",
+    "defaultPageSize": 50,
+    "maxPageSize": 250,
+    "mirrorRootPageInfo": true,
+    "viewerId": "usr-7b1e-4c90-mock",
+    "defaultTeamId": "tea-e1a7-4b02-mock",
+    "defaultStateId": "sta-0a31-4f77-mock",
+    "triggers": {
+      "trigger-ratelimit": {
+        "message": "Ratelimit exceeded, please wait before retrying",
+        "code": "RATELIMITED",
+        "type": "RATELIMIT_ERROR",
+        "status": 200
+      },
+      "trigger-invalid": {
+        "message": "Argument Validation Error",
+        "code": "BAD_USER_INPUT",
+        "type": "INVALID_INPUT",
+        "status": 200
+      },
+      "trigger-forbidden": {
+        "message": "You do not have access to this resource",
+        "code": "FORBIDDEN",
+        "type": "AUTHORIZATION_ERROR",
+        "status": 200
+      },
+      "trigger-graphql": {
+        "message": "Internal server error",
+        "code": "INTERNAL_SERVER_ERROR",
+        "type": "INTERNAL_ERROR",
+        "status": 200
+      },
+      "trigger-status-500": {
+        "message": "Internal server error",
+        "code": "INTERNAL_SERVER_ERROR",
+        "type": "INTERNAL_ERROR",
+        "status": 500
+      }
+    }
+  },
+  "users": [
+    { "id": "usr-7b1e-4c90-mock", "name": "Ada Okonkwo", "displayName": "ada" },
+    { "id": "usr-2d44-4ee1-mock", "name": "Bo Lindqvist", "displayName": "bo" }
+  ],
+  "workflowStates": [
+    { "id": "sta-0a31-4f77-mock", "name": "Todo", "type": "unstarted" },
+    { "id": "sta-6c58-41b3-mock", "name": "In Progress", "type": "started" },
+    { "id": "sta-9f20-4d05-mock", "name": "Done", "type": "completed" }
+  ],
+  "teams": [
+    {
+      "id": "tea-e1a7-4b02-mock",
+      "key": "ENG",
+      "name": "Engineering",
+      "description": "Platform and SDK generation"
+    },
+    {
+      "id": "tea-d3f6-49c8-mock",
+      "key": "DES",
+      "name": "Design",
+      "description": null
+    }
+  ],
+  "issues": [
+    {
+      "archivedAt": null,
+      "assignee": { "id": "usr-7b1e-4c90-mock" },
+      "branchName": "eng-1-generated-client-drops-the-graphql-fragm",
+      "canceledAt": null,
+      "completedAt": null,
+      "createdAt": "2026-01-04T09:15:00.000Z",
+      "creator": { "id": "usr-7b1e-4c90-mock" },
+      "description": "The IssueFields fragment must travel inline in the same document string.",
+      "dueDate": "2026-02-01",
+      "estimate": 3,
+      "id": "iss-1c2b-4a10-mock",
+      "identifier": "ENG-1",
+      "number": 1,
+      "priority": 2,
+      "state": { "id": "sta-6c58-41b3-mock" },
+      "team": { "id": "tea-e1a7-4b02-mock" },
+      "title": "Generated client drops the GraphQL fragment",
+      "updatedAt": "2026-01-05T11:02:00.000Z",
+      "url": "https://linear.app/likeness-mock/issue/ENG-1/generated-client-drops-the-graphql-fragment"
+    },
+    {
+      "archivedAt": null,
+      "assignee": null,
+      "branchName": "eng-2-paging-cursor-is-read-from-the-body-root",
+      "canceledAt": null,
+      "completedAt": null,
+      "createdAt": "2026-01-06T14:30:00.000Z",
+      "creator": { "id": "usr-2d44-4ee1-mock" },
+      "description": null,
+      "dueDate": null,
+      "estimate": null,
+      "id": "iss-eb0d-4f31-mock",
+      "identifier": "ENG-2",
+      "number": 2,
+      "priority": 0,
+      "state": { "id": "sta-0a31-4f77-mock" },
+      "team": { "id": "tea-e1a7-4b02-mock" },
+      "title": "Paging cursor is read from the body root",
+      "updatedAt": "2026-01-06T14:30:00.000Z",
+      "url": "https://linear.app/likeness-mock/issue/ENG-2/paging-cursor-is-read-from-the-body-root"
+    },
+    {
+      "archivedAt": "2026-01-20T08:00:00.000Z",
+      "assignee": { "id": "usr-2d44-4ee1-mock" },
+      "branchName": "eng-3-teams-query-returns-a-bare-list",
+      "canceledAt": null,
+      "completedAt": "2026-01-19T16:45:00.000Z",
+      "createdAt": "2026-01-08T10:05:00.000Z",
+      "creator": { "id": "usr-7b1e-4c90-mock" },
+      "description": "Query.teams is [Team!]!, so data.teams is an array with no edges and no pageInfo.",
+      "dueDate": "2026-01-19",
+      "estimate": 1,
+      "id": "iss-91c7-4b88-mock",
+      "identifier": "ENG-3",
+      "number": 3,
+      "priority": 3,
+      "state": { "id": "sta-9f20-4d05-mock" },
+      "team": { "id": "tea-e1a7-4b02-mock" },
+      "title": "teams query returns a bare list",
+      "updatedAt": "2026-01-20T08:00:00.000Z",
+      "url": "https://linear.app/likeness-mock/issue/ENG-3/teams-query-returns-a-bare-list"
+    },
+    {
+      "archivedAt": null,
+      "assignee": { "id": "usr-2d44-4ee1-mock" },
+      "branchName": "des-1-estimate-is-a-float-in-the-sdl",
+      "canceledAt": null,
+      "completedAt": null,
+      "createdAt": "2026-01-11T07:40:00.000Z",
+      "creator": { "id": "usr-2d44-4ee1-mock" },
+      "description": "number, priority and estimate are Float; the generated TS type calls them number.",
+      "dueDate": null,
+      "estimate": 2.5,
+      "id": "iss-4f1a-4d26-mock",
+      "identifier": "DES-1",
+      "number": 1,
+      "priority": 1,
+      "state": { "id": "sta-0a31-4f77-mock" },
+      "team": { "id": "tea-d3f6-49c8-mock" },
+      "title": "estimate is a Float in the SDL",
+      "updatedAt": "2026-01-12T09:00:00.000Z",
+      "url": "https://linear.app/likeness-mock/issue/DES-1/estimate-is-a-float-in-the-sdl"
+    }
+  ]
+}

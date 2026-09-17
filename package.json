@@ -1,0 +1,9 @@
+{
+  "name": "likeness",
+  "private": true,
+  "type": "module",
+  "description": "Local mocks of the source APIs the generated SDKs are tested against.",
+  "dependencies": {
+    "fastify": "^5.0.0"
+  }
+}
