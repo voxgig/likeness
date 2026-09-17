@@ -49,9 +49,18 @@ Ctx: type(close({
 # What the command must produce.
 Out: type(close({
   exit: $.Exit
-  # A path to a committed expectation file, byte-compared. Not parsed and
-  # compared: key order, spacing, escaping and the trailing newline are all
-  # part of the contract.
+  # A path to a committed expectation file. Compared as BYTES - key order,
+  # spacing, escaping and the trailing newline are all part of the contract -
+  # after the declared non-parity fields have been removed BY NAME from both
+  # sides. Those fields are `port` and `elapsed_ms`, and that removal is what
+  # lets ONE committed expectation serve five ports: every envelope is required
+  # to carry its own `port`, so five raw outputs can never be identical and
+  # never should be. A run where they were would mean a port was lying about
+  # which port it is.
+  #
+  # The removal is by name and the list is exhaustive by construction, so a
+  # difference in any other field is a failing check rather than a footnote.
+  # `--deterministic` handles the clock separately.
   stdout: string
   stderr?: string
   calls: [&: $.Call]
@@ -68,15 +77,28 @@ CliEntry: type(close({
 # One pure-function entry. `in` and `out` are unconstrained because the corpus
 # covers functions of many signatures; the shape's job here is to make sure
 # every entry is addressable, named and accounted for.
-UnitEntry: type(close({
-  id: string & re("^[a-z0-9/-]+$")
-  # The canonical function under test, as the TypeScript port exports it.
-  fn: string & re("^[a-zA-Z][a-zA-Z0-9_.]*$")
-  in: top
-  out: top
-  # Set where the entry asserts a throw rather than a value.
-  err?: string
-}))
+# EXACTLY ONE OF `out` AND `err`, expressed as a disjunction of two closed
+# shapes rather than as an optional field. An earlier version made `out`
+# mandatory and `err` optional, which meant every negative case had to invent a
+# meaningless output value, and left two runners free to disagree about whether
+# a throwing case should also match its `out`. Written this way, an entry
+# carrying both is refused and so is one carrying neither.
+UnitEntry: type(
+  close({
+    id: string & re("^[a-z0-9/-]+$")
+    # The canonical function under test, as the TypeScript port exports it.
+    fn: string & re("^[a-zA-Z][a-zA-Z0-9_.]*$")
+    in: top
+    out: top
+  })
+  | close({
+    id: string & re("^[a-z0-9/-]+$")
+    fn: string & re("^[a-zA-Z][a-zA-Z0-9_.]*$")
+    in: top
+    # The entry asserts a throw INSTEAD OF a value, so there is no `out` here.
+    err: string
+  })
+)
 
 primary: close({
   unit: { &: close({ set: [&: $.UnitEntry] }) }
