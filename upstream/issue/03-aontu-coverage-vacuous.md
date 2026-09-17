@@ -1,3 +1,5 @@
+**Filed:** [aontu-lang/aontu#245](https://github.com/aontu-lang/aontu/issues/245)
+
 **Repository:** `aontu-lang/aontu`
 **Reproduced on:** npm `0.67.0` (current `latest`, published 2026-09-17) **and** `main` built from source at `0436c12b6a41776794dfe212985a061234f75584`
 **Fix belongs in:** the coverage accounting behind `vet --coverage` / `--strict-coverage`

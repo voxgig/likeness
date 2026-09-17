@@ -73,6 +73,13 @@ Every record shape in `spec/def/` is closed.
 **A quoted `"*"` is a key named `*`, not a wildcard.** A schema written that way
 constrains nothing and still reports `valid`. Reach for `&:`.
 
+**To look up an error code, strip the `aontu/` prefix first.** A report prints
+`[aontu/constraint]`, and `aontu explain aontu/constraint` answers "no such
+error code". `aontu explain constraint` works. Several codes have no text
+registered at all, the `compat_*` ones that `breaking` reports among them, so
+`explain` sometimes answers with nothing useful even when asked correctly. Both
+are filed as `upstream/issue/08`.
+
 **Regex is restricted, on purpose.** `re()` refuses backreferences, lookaround
 and a quantifier applied to a group that contains one, because those backtrack
 exponentially in one of the two host engines. Write `[ab]+`, not `(?:a|b)+`.

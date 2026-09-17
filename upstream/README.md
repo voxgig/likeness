@@ -14,6 +14,10 @@ They are drafted here rather than filed directly because the session that found
 them had read-only access to the `voxgig-sdk` organisation. That is a permission
 boundary, not a judgement about whether they should be raised — they should.
 
+## Filed
+
+- `issue/03` — **filed as [aontu-lang/aontu#245](https://github.com/aontu-lang/aontu/issues/245)**, by a session rooted at that repository, which reproduced the bug against its own build before filing.
+
 ## Retracted
 
 **`breaking --against` exits 0 whatever it concludes** — drafted, then withdrawn
@@ -40,3 +44,4 @@ workaround in this repository exists.
 | `issue/04-scoped-definitions.md` | `voxgig-sdk/joplin-sdk` (all four) | major | the definitions are subsets narrow enough that no source can offer search |
 | `issue/05-corpus-activates-absent-features.md` | `voxgig-sdk/joplin-sdk` | major | the shared corpus activates `cost` and `netsim`, which no SDK generates, so its only feature section runs zero cases everywhere |
 | `issue/07-test-feature-port-divergence.md` | `voxgig-sdk/linear-sdk` (all four) | **blocker** | the offline test feature behaves differently in each port, and in C and Ruby it cannot run the Linear SDK at all |
+| `issue/08-explain-prefix-and-missing-text.md` | `aontu-lang/aontu` | minor | `explain` rejects the code as it is printed, and a large minority of codes have no text |
