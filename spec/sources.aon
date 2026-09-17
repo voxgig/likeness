@@ -228,7 +228,7 @@ source: {
 
     entity: vault: accessor: "Vault"
     entity: vault: name: "vault"
-    entity: vault: idfield: "filename"
+    entity: vault: idfield: "id"
     entity: vault: op: list: {
       name: "list"
       method: "GET"
@@ -267,7 +267,7 @@ source: {
     }
     entity: tag: accessor: "Tag"
     entity: tag: name: "tag"
-    entity: tag: idfield: "name"
+    entity: tag: idfield: "id"
     entity: tag: op: list: {
       name: "list"
       method: "GET"
@@ -277,16 +277,18 @@ source: {
 
     test: {
       construct: {
-        ts: "ObsidianSDK.test({entity: {vault: {'a.md': {filename: 'a.md'}}}})"
+        ts: "ObsidianSDK.test({entity: {vault: {'a.md': {id: 'a.md'}}}})"
         go: "sdk.Test(map[string]any{\"entity\": ...}, nil)"
-        py: "ObsidianSDK.test({'entity': {'vault': {'a.md': {'filename': 'a.md'}}}})"
-        rb: "ObsidianSDK.test({'entity' => {'vault' => {'a.md' => {'filename' => 'a.md'}}}})"
+        py: "ObsidianSDK.test({'entity': {'vault': {'a.md': {'id': 'a.md'}}}})"
+        rb: "ObsidianSDK.test({'entity' => {'vault' => {'a.md' => {'id' => 'a.md'}}}})"
         c: "test_sdk(seed, NULL)"
       }
-      # NOT `id`: the vault route ends in {filename}, so that is the field the
-      # seeding walk stamps and the field a lookup matches on. A seed written
-      # with `id` is never found.
-      idfield: { vault:"filename" tag:"name" }
+      # All four SDKs derive the seeding key from the entity route, and for
+      # every entity of all four it comes out as `id`. Declared per source
+      # anyway: it is derived rather than fixed, so a future entity whose
+      # route ends in another parameter would differ, and a seed written
+      # against the wrong field is silently never found.
+      idfield: { vault:"id" tag:"id" }
       mints_id: true
       netsim: {
         available: true

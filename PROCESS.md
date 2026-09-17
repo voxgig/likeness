@@ -158,11 +158,15 @@ const client = JoplinSDK.test({ entity: { note: { n1: { id: 'n1', title: 'T' } }
 The seeding shape is `{entity: {<entity>: {<id>: <record>}}}`, and the SDK
 stamps the map key onto the record's own identifier field.
 
-**That field is not always `id`.** It is whichever parameter the entity's route
-ends in: an Obsidian vault record is keyed by `filename`, because the route is
-`/vault/{filename}`. A seed written with `id` against such an entity is never
-found, and the test fails in a way that looks like a logic bug. The correct key
-per entity is declared in `spec/sources.aon` under `test.idfield`.
+**That field is derived, not fixed.** The SDK works it out from the entity's
+route, so it is declared per source in `spec/sources.aon` under `test.idfield`
+rather than assumed. For all four sources it derives to `id` — verified by
+running each SDK's own resolver over its own config, not by reading the routes,
+which is a distinction worth keeping: the Obsidian vault route is
+`/vault/{filename}` and its seeding key is still `id`. Check the declaration
+before writing a seed for a new entity. A seed written against the wrong field
+is silently never found, and the test fails in a way that looks like a logic
+bug.
 
 **Always supply an explicit `id` on a create.** When a create supplies none, the
 mock mints a random one — and the ports do not agree on its form. TypeScript

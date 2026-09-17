@@ -49,10 +49,11 @@ SdkTarget: type(close({
 #
 # The SDK's `test` feature is seeded with a map of records per entity, keyed by
 # the record's own identifier: `{entity: {<entity>: {<id>: <record>}}}`. The SDK
-# stamps the key onto the record's id field, which is NOT always `id` - it is
-# whichever parameter the entity's own route ends in. Declaring `idfield` here
-# means a seed that would silently never match is caught before a test is
-# written against it.
+# stamps that key onto a field it DERIVES from the entity's route rather than
+# one that is fixed, so `idfield` is declared per source rather than assumed.
+# For all four sources here it derives to `id`, verified by running each SDK's
+# own resolver; an entity whose route ended in another parameter would differ,
+# and a seed written against the wrong field is silently never found.
 SdkTest: type(close({
   # How a test client is constructed, per port. Recorded because the five ports
   # spell it differently and a port that guesses gets a live client.

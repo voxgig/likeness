@@ -45,6 +45,16 @@ console.log((await b.Note().create({ title: 'x' })).data().id)
 // two different values, and different again on the next run
 ```
 
+Observed, against `ts/dist` built from this revision:
+
+```
+minted id 1: "262924223437c100"
+minted id 2: "1740130a1a0018b4"
+explicit id : "n-explicit"
+```
+
+Note the trailing `00` on the first: that is `padEnd(16, '0')` filling for the unpadded groups, and it is the visible signature of the TypeScript spelling. An explicit id is honoured, which is the workaround.
+
 Run the equivalent in `py/`, `rb/`, `go/` and `c/` and compare the shape of the minted ids.
 
 ## Suggested direction
