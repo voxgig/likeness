@@ -30,7 +30,11 @@ capability: joplin: entity: note: op: {
   create: true
   update: true
   move: "parent-id"
-  tag: true
+  # FALSE, not true. The definition's complete route set has /notes/{id}/tags
+  # and /tags/{id}/notes as GET ONLY: no POST or PUT anywhere associates a tag
+  # with a note. Reading a note's tags works and belongs to `get`; applying one
+  # does not exist through this SDK.
+  tag: false
   link: "markdown"
   archive: false
   delete: true
@@ -114,11 +118,19 @@ capability: obsidian: entity: tag: op: {
 # no server-side filter, so a large vault is one big call rather than many
 # small ones. That is a budget fact, not a performance aside.
 capability: obsidian: limit: {
-  page_max: 10000
+  # Off the shape's ceiling, where it was both meaningless and unable to grow.
+  # A vault list returns every file in one response, so this is a budgeting
+  # figure for how large that response may get, not a page size.
+  page_max: 5000
   body: "markdown"
   search: "none"
   rate: 0
-  version_token: false
+  # TRUE, and obsidian is the only one of the four. A vault read returns a
+  # `version` content-hash token - the definition says "pass it back as a PATCH
+  # `ifMatch` to make an edit conditional on the file being unchanged" - and the
+  # generated model carries the `ifMatch` field. False here documented
+  # `precondition-failed` as unavailable for the one source that implements it.
+  version_token: true
 }
 
 capability: notion: name: "notion"
@@ -135,7 +147,10 @@ capability: notion: entity: note: op: {
   search: false
   create: true
   update: true
-  move: "parent"
+  # FALSE: `parent` is in PageInput, the CREATE body. PageUpdateInput is
+  # `[archived, properties]`, so a page can be created under a parent and not
+  # moved to another. `archive` below stands - `archived` IS in the update.
+  move: false
   tag: "property"
   link: "mention"
   archive: "archived-flag"
@@ -150,10 +165,13 @@ capability: notion: entity: space: op: {
   search: false
   create: true
   update: true
-  move: "parent"
+  # DatabaseUpdateInput is `[properties, title]`: no `parent` and no
+  # `archived`, so neither move nor archive is reachable for a database,
+  # though both are for a page.
+  move: false
   tag: false
   link: false
-  archive: "archived-flag"
+  archive: false
   delete: false
 }
 capability: notion: limit: {
@@ -177,9 +195,14 @@ capability: linear: entity: note: op: {
   create: true
   update: true
   move: "team-id"
-  tag: "label"
-  link: "relation"
-  archive: "archived-at"
+  # THREE REMOVED after reading the SDL instead of the vendor API.
+  # IssueUpdateInput is [title, description, priority, stateId, assigneeId,
+  # teamId]; `type Issue` has no labels and no relations; `archivedAt` is
+  # output-only and Mutation is only issueCreate and issueUpdate. So tag,
+  # link and archive are unreachable. `move` survives: teamId is in the input.
+  tag: false
+  link: false
+  archive: false
   delete: false
 }
 capability: linear: entity: space: kind: "space"

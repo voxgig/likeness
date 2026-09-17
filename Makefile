@@ -18,8 +18,12 @@ VET_PAIRS := \
 	$(DEF)/error.aon:$(SPEC)/errors.aon \
 	$(DEF)/project.aon:$(SPEC)/example/likeness.aon
 
-# Files that MUST fail to vet. A gate that cannot go red proves nothing, so the
-# proof that it can is a build target rather than a good intention.
+# Files that MUST fail to vet, AND MUST FAIL FOR THE RIGHT REASON. `aontu vet`
+# exits 1 for a contradiction, 2 for a usage error and 3 for an incomplete
+# model, so a loop that accepts any non-zero status also accepts a deleted or
+# renamed file - and then prints "fails as required" while proving nothing,
+# which is the exact failure this target exists to prevent. Exit 1, or it is a
+# build failure.
 VET_MUSTFAIL := \
 	$(DEF)/project.aon:$(SPEC)/example/likeness-broken.aon
 
@@ -28,11 +32,12 @@ VET_MUSTFAIL := \
 help:
 	@echo 'likeness make targets:'
 	@echo '  spec-check    every data file satisfies its shape, and the red tests go red'
-	@echo '  spec-agree    the capability matrix agrees with the SDKs it claims'
+	@echo '  spec-agree    the registry is present, and capability rows match it'
+	@echo '                (set LIKENESS_SDK_ROOT to also check against real SDKs)'
 	@echo '  spec-json     export the shapes as JSON Schema'
 	@echo '  spec-fmt      check schema formatting'
 	@echo '  spec-hash     print a content hash per schema file'
-	@echo '  spec          everything above'
+	@echo '  spec          spec-fmt, spec-check and spec-agree (not json or hash)'
 	@echo '  mock          run the local source mock server'
 
 
@@ -55,10 +60,13 @@ spec-check:
 	for pair in $(VET_MUSTFAIL); do \
 	  shape=$${pair%%:*}; data=$${pair#*:}; \
 	  printf '  red %-34s %s ... ' "$$(basename $$data)" "$$(basename $$shape)"; \
-	  if $(AONTU) vet "$$shape" "$$data" >/dev/null 2>&1; then \
+	  $(AONTU) vet "$$shape" "$$data" >/dev/null 2>&1; rc=$$?; \
+	  if [ 1 -eq $$rc ]; then \
+	    echo 'fails as required'; \
+	  elif [ 0 -eq $$rc ]; then \
 	    echo 'PASSED BUT MUST FAIL'; fail=1; \
 	  else \
-	    echo 'fails as required'; \
+	    echo "WRONG FAILURE (exit $$rc, wanted 1)"; fail=1; \
 	  fi; \
 	done; \
 	exit $$fail
@@ -66,13 +74,19 @@ spec-check:
 
 .PHONY: spec-agree
 spec-agree:
-	@AONTU="$(AONTU)" node tools/check-caps-vs-sdk.mjs
+	@AONTU="$(AONTU)" node tools/check-registry.mjs
 
 
 .PHONY: spec-json
+# The notes go to STDERR so that `make spec-json > schema.json` produces JSON
+# rather than JSON with two English sentences on top of it.
 spec-json:
-	@echo '  NOTE: an export, not the gate - read the "lossy:" lines on stderr.'
-	@echo '  A conjunction inside a `&:` template exports as {} and admits anything.'
+	@echo '  NOTE: an export, not the gate. aontu prints a "lossy:" line for each' >&2
+	@echo '  declaration it could not carry across; read them before trusting it.' >&2
+	@echo '  Known losses: a value reached through a named type exports as {} and' >&2
+	@echo '  admits anything, and every type() definition appears as a REQUIRED' >&2
+	@echo '  top-level property, so no likeness document satisfies the export.' >&2
+	@echo '  `aontu vet` is the authority. This is for readers, not validators.' >&2
 	@$(AONTU) jsonschema $(DEF)/likeness.aon
 
 

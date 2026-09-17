@@ -25,10 +25,14 @@ source: {
     protocol: "http"
     local: false
 
-    # The definition declares `apiKey in:query name:token`, but the generated
-    # client sends the raw credential in the Authorization header with no
-    # scheme. The WIRE form is what an adapter must match.
-    auth: { kind:"raw-header" carrier:"Authorization" prefix:"" }
+    # A QUERY PARAMETER, not a header. The generated client has no header
+    # branch at all: PrepareAuthUtility sets `query.token`, and Config declares
+    # `auth: { prefix: '', in: 'query', name: 'token' }`. An earlier version of
+    # this entry said the opposite - raw credential in an Authorization header -
+    # which was read from a historical note about an older sdkgen rather than
+    # from the client in the pinned revision. Definition and client agree here;
+    # only the note was out of date.
+    auth: { kind:"query" carrier:"token" prefix:"" }
 
     target: {
       ts: {
@@ -69,31 +73,31 @@ source: {
     entity: note: op: list: {
       name: "list"
       method: "GET"
-      route: "/notes"
-      pages: false
+      route: ["/notes" "/notes/{id}/tags"]
+      pages: true
     }
     entity: note: op: load: {
       name: "load"
       method: "GET"
-      route: "/notes/{id}"
+      route: ["/notes/{id}"]
       pages: false
     }
     entity: note: op: create: {
       name: "create"
       method: "POST"
-      route: "/notes"
+      route: ["/notes"]
       pages: false
     }
     entity: note: op: update: {
       name: "update"
       method: "PUT"
-      route: "/notes/{id}"
+      route: ["/notes/{id}"]
       pages: false
     }
     entity: note: op: remove: {
       name: "remove"
       method: "DELETE"
-      route: "/notes/{id}"
+      route: ["/notes/{id}"]
       pages: false
     }
     entity: folder: accessor: "Folder"
@@ -102,31 +106,31 @@ source: {
     entity: folder: op: list: {
       name: "list"
       method: "GET"
-      route: "/folders"
-      pages: false
+      route: ["/folders" "/folders/{id}/notes"]
+      pages: true
     }
     entity: folder: op: load: {
       name: "load"
       method: "GET"
-      route: "/folders/{id}"
+      route: ["/folders/{id}"]
       pages: false
     }
     entity: folder: op: create: {
       name: "create"
       method: "POST"
-      route: "/folders"
+      route: ["/folders"]
       pages: false
     }
     entity: folder: op: update: {
       name: "update"
       method: "PUT"
-      route: "/folders/{id}"
+      route: ["/folders/{id}"]
       pages: false
     }
     entity: folder: op: remove: {
       name: "remove"
       method: "DELETE"
-      route: "/folders/{id}"
+      route: ["/folders/{id}"]
       pages: false
     }
     entity: tag: accessor: "Tag"
@@ -135,38 +139,38 @@ source: {
     entity: tag: op: list: {
       name: "list"
       method: "GET"
-      route: "/tags"
-      pages: false
+      route: ["/tags" "/tags/{id}/notes"]
+      pages: true
     }
     entity: tag: op: load: {
       name: "load"
       method: "GET"
-      route: "/tags/{id}"
+      route: ["/tags/{id}"]
       pages: false
     }
     entity: tag: op: create: {
       name: "create"
       method: "POST"
-      route: "/tags"
+      route: ["/tags"]
       pages: false
     }
     entity: tag: op: update: {
       name: "update"
       method: "PUT"
-      route: "/tags/{id}"
+      route: ["/tags/{id}"]
       pages: false
     }
     entity: tag: op: remove: {
       name: "remove"
       method: "DELETE"
-      route: "/tags/{id}"
+      route: ["/tags/{id}"]
       pages: false
     }
 
     test: {
       construct: {
         ts: "JoplinSDK.test({entity: {note: {n1: {id: 'n1'}}}})"
-        go: "sdk.Test(map[string]any{\"entity\": ...}, nil)"
+        go: "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)"
         py: "JoplinSDK.test({'entity': {'note': {'n1': {'id': 'n1'}}}})"
         rb: "JoplinSDK.test({'entity' => {'note' => {'n1' => {'id' => 'n1'}}}})"
         c: "test_sdk(seed, NULL)"
@@ -175,7 +179,14 @@ source: {
       mints_id: true
       netsim: {
         available: true
-        option: ["latency" "failtimes" "failstatus" "errortimes" "offline"]
+        option: [
+          "latency"
+          "failTimes"
+          "failStatus"
+          "errorTimes"
+          "offline"
+          "sleep"
+        ]
       }
     }
   }
@@ -226,59 +237,56 @@ source: {
       }
     }
 
-    entity: vault: accessor: "Vault"
-    entity: vault: name: "vault"
-    entity: vault: idfield: "id"
-    entity: vault: op: list: {
-      name: "list"
-      method: "GET"
-      route: "/vault/"
-      pages: false
-    }
-    entity: vault: op: load: {
-      name: "load"
-      method: "GET"
-      route: "/vault/{filename}"
-      pages: false
-    }
-    entity: vault: op: create: {
-      name: "create"
-      method: "POST"
-      route: "/vault/{filename}"
-      pages: false
-    }
-    entity: vault: op: update: {
-      name: "update"
-      method: "PUT"
-      route: "/vault/{filename}"
-      pages: false
-    }
-    entity: vault: op: patch: {
-      name: "patch"
-      method: "PATCH"
-      route: "/vault/{filename}"
-      pages: false
-    }
-    entity: vault: op: remove: {
-      name: "remove"
-      method: "DELETE"
-      route: "/vault/{filename}"
-      pages: false
-    }
-    entity: tag: accessor: "Tag"
-    entity: tag: name: "tag"
-    entity: tag: idfield: "id"
-    entity: tag: op: list: {
-      name: "list"
-      method: "GET"
-      route: "/tags/"
-      pages: false
+    entity: {
+      vault: accessor: "Vault"
+      vault: name: "vault"
+      vault: idfield: "id"
+      vault: op: list: {
+        name: "list"
+        method: "GET"
+        route: ["/vault/"]
+        pages: false
+      }
+      vault: op: load: {
+        name: "load"
+        method: "GET"
+        route: ["/vault/{filename}" "/vault/{pathToDirectory}/"]
+        pages: false
+      }
+      vault: op: create: {
+        name: "create"
+        method: "POST"
+        route: ["/vault/{filename}"]
+        pages: false
+      }
+      vault: op: update: {
+        name: "update"
+        method: "PUT"
+        route: ["/vault/{filename}"]
+        pages: false
+      }
+      vault: op: patch: {
+        name: "patch"
+        method: "PATCH"
+        route: ["/vault/{filename}"]
+        pages: false
+      }
+      vault: op: remove: {
+        name: "remove"
+        method: "DELETE"
+        route: ["/vault/{filename}"]
+        pages: false
+      }
+      tag: accessor: "Tag"
+      tag: name: "tag"
+      tag: idfield: "id"
+      tag: op: list: { name:"list" method:"GET" route: ["/tags/"] pages:false }
     }
 
     test: {
       construct: {
         ts: "ObsidianSDK.test({entity: {vault: {'a.md': {id: 'a.md'}}}})"
-        go: "sdk.Test(map[string]any{\"entity\": ...}, nil)"
+        go: "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)"
         py: "ObsidianSDK.test({'entity': {'vault': {'a.md': {'id': 'a.md'}}}})"
         rb: "ObsidianSDK.test({'entity' => {'vault' => {'a.md' => {'id' => 'a.md'}}}})"
         c: "test_sdk(seed, NULL)"
@@ -292,7 +300,14 @@ source: {
       mints_id: true
       netsim: {
         available: true
-        option: ["latency" "failtimes" "failstatus" "errortimes" "offline"]
+        option: [
+          "latency"
+          "failTimes"
+          "failStatus"
+          "errorTimes"
+          "offline"
+          "sleep"
+        ]
       }
     }
   }
@@ -327,12 +342,12 @@ source: {
         published: false
         pin: "git+https://github.com/voxgig-sdk/notion-sdk@785fb7e1e6c1ec3369a001956d1d14eefca0c16d#subdirectory=py"
       }
-      rb: {
-        dir: "rb"
-        package: "voxgig-sdk-notion"
-        published: false
-        pin: "git: 'https://github.com/voxgig-sdk/notion-sdk', ref: '785fb7e1e6c1ec3369a001956d1d14eefca0c16d', glob: 'rb/*.gemspec'"
-      }
+      # NO RUBY TARGET. notion-sdk ships `js` where the other three ship `rb`;
+      # there is no rb/ directory and no gemspec anywhere in the repository. So
+      # likeness's RUBY PORT CANNOT REACH NOTION AT ALL, which is a gap in the
+      # five-port claim rather than an omission here. An absent key is the
+      # honest record; an earlier version invented a package to fill the hole a
+      # closed shape left.
       c: {
         dir: "c"
         package: "voxgig-sdk-notion"
@@ -351,19 +366,19 @@ source: {
     entity: page: op: load: {
       name: "load"
       method: "GET"
-      route: "/pages/{id}"
+      route: ["/pages/{id}"]
       pages: false
     }
     entity: page: op: create: {
       name: "create"
       method: "POST"
-      route: "/pages"
+      route: ["/pages"]
       pages: false
     }
     entity: page: op: update: {
       name: "update"
       method: "PATCH"
-      route: "/pages/{id}"
+      route: ["/pages/{id}"]
       pages: false
     }
     entity: database: accessor: "Database"
@@ -372,35 +387,41 @@ source: {
     entity: database: op: load: {
       name: "load"
       method: "GET"
-      route: "/databases/{id}"
+      route: ["/databases/{id}"]
       pages: false
     }
     entity: database: op: create: {
       name: "create"
       method: "POST"
-      route: "/databases"
+      route: ["/databases"]
       pages: false
     }
     entity: database: op: update: {
       name: "update"
       method: "PATCH"
-      route: "/databases/{id}"
+      route: ["/databases/{id}"]
       pages: false
     }
 
     test: {
       construct: {
         ts: "NotionSDK.test({entity: {page: {p1: {id: 'p1'}}}})"
-        go: "sdk.Test(map[string]any{\"entity\": ...}, nil)"
+        go: "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)"
         py: "NotionSDK.test({'entity': {'page': {'p1': {'id': 'p1'}}}})"
-        rb: "NotionSDK.test({'entity' => {'page' => {'p1' => {'id' => 'p1'}}}})"
         c: "test_sdk(seed, NULL)"
       }
       idfield: { page:"id" database:"id" }
       mints_id: true
       netsim: {
         available: true
-        option: ["latency" "failtimes" "failstatus" "errortimes" "offline"]
+        option: [
+          "latency"
+          "failTimes"
+          "failStatus"
+          "errorTimes"
+          "offline"
+          "sleep"
+        ]
       }
     }
   }
@@ -416,7 +437,11 @@ source: {
     rev: "046371226512e1faa497905086b254f9ba41b563"
     protocol: "graphql"
     local: false
-    auth: { kind:"bearer" carrier:"authorization" prefix:"Bearer" }
+    # NO SCHEME PREFIX, unlike obsidian and notion. linear's Config declares
+    # `auth: { prefix: '' }`, and PrepareAuthUtility only prepends a scheme when
+    # one is configured, so the header carries the raw credential - which is
+    # what Linear's API wants.
+    auth: { kind:"raw-header" carrier:"authorization" prefix:"" }
 
     target: {
       ts: {
@@ -459,25 +484,25 @@ source: {
     entity: issue: op: list: {
       name: "list"
       method: "POST"
-      route: "issues"
+      route: ["issues"]
       pages: true
     }
     entity: issue: op: load: {
       name: "load"
       method: "POST"
-      route: "issue"
+      route: ["issue"]
       pages: false
     }
     entity: issue: op: create: {
       name: "create"
       method: "POST"
-      route: "issueCreate"
+      route: ["issueCreate"]
       pages: false
     }
     entity: issue: op: update: {
       name: "update"
       method: "POST"
-      route: "issueUpdate"
+      route: ["issueUpdate"]
       pages: false
     }
     entity: team: accessor: "Team"
@@ -486,20 +511,23 @@ source: {
     entity: team: op: list: {
       name: "list"
       method: "POST"
-      route: "teams"
-      pages: true
+      route: ["teams"]
+      # `teams(first, after): [Team!]!` is a plain list, not a relay connection:
+      # there is no pageInfo, and the op's model carries no `graphql.page`, so
+      # nothing can be followed. `issues` is the connection; this is not.
+      pages: false
     }
     entity: team: op: load: {
       name: "load"
       method: "POST"
-      route: "team"
+      route: ["team"]
       pages: false
     }
 
     test: {
       construct: {
         ts: "LinearSDK.test({entity: {issue: {i1: {id: 'i1'}}}})"
-        go: "sdk.Test(map[string]any{\"entity\": ...}, nil)"
+        go: "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)"
         py: "LinearSDK.test({'entity': {'issue': {'i1': {'id': 'i1'}}}})"
         rb: "LinearSDK.test({'entity' => {'issue' => {'i1' => {'id' => 'i1'}}}})"
         c: "test_sdk(seed, NULL)"
@@ -508,7 +536,14 @@ source: {
       mints_id: true
       netsim: {
         available: true
-        option: ["latency" "failtimes" "failstatus" "errortimes" "offline"]
+        option: [
+          "latency"
+          "failTimes"
+          "failStatus"
+          "errorTimes"
+          "offline"
+          "sleep"
+        ]
       }
     }
   }

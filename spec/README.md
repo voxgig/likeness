@@ -24,6 +24,29 @@ spec/
     likeness-broken.aon   a deliberately invalid one; CI asserts it FAILS
 ```
 
+## What is exercised, and what is not
+
+Four of the ten shapes have no data file yet, and therefore have never been run
+against a value. They are named here rather than left to be discovered:
+
+| Shape | Data | Note |
+|---|---|---|
+| `source.aon` | `sources.aon` | checked |
+| `capability.aon` | `caps.aon` | checked |
+| `error.aon` | `errors.aon` | checked |
+| `project.aon` | `example/likeness.aon` + a red case | checked |
+| `base.aon` | — | exercised through the four above |
+| `note.aon` | **none** | the projected entity model |
+| `envelope.aon` | **none** | the output shape every port must match byte for byte |
+| `command.aon` | **none** | the CLI surface `describe` is generated from |
+| `corpus.aon` | **none** | both parity corpora |
+
+So `make spec-check` currently proves that three registries and one example
+project file are internally consistent. It does not yet say anything about the
+four shapes the project's central claims rest on. Each gets a data file as the
+stage that needs it lands, and until then this table is the honest statement of
+coverage.
+
 ## Check it
 
 ```sh

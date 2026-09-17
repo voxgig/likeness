@@ -35,7 +35,7 @@ surprises you, and before changing the thing you assume produced it.
 |---|---|
 | `make spec-check` | a data file that violates its shape — with a path, an expected, an actual, and both source lines |
 | `make spec-check` red cases | a gate that has stopped gating. `spec/example/likeness-broken.aon` **must fail**; if it passes, the build fails |
-| `make spec-agree` | the capability matrix and the SDK registry disagreeing while both remain individually valid |
+| `make spec-agree` | an empty or misspelled registry root, a capability row that does not match the registry, and a source no port can reach. With `LIKENESS_SDK_ROOT` set, also the registry against the real SDK models |
 | `make spec-fmt` | formatting drift, so a diff is about meaning |
 | `make spec-hash` | a pin per schema file, for the AGENTS.md stanza and for release notes |
 
@@ -193,6 +193,16 @@ rate-limit paths.
 features: `debug`, `idempotency`, `metrics`, `paging`, `ratelimit`, `retry`,
 `test` and `timeout`. netsim is the `net:` option of `test`. Any plan that
 speaks of "the netsim feature" is describing something that does not exist.
+
+### Ruby cannot reach Notion at all
+
+Separately from the divergences below: **notion-sdk ships no `rb` target.** It
+has `js` where the other three have `rb`, and there is no gemspec anywhere in
+the repository. So likeness's Ruby port has no Notion SDK to depend on, and no
+offline test mode for Notion either, because there is nothing to construct.
+
+`make spec-agree` reports this as a warning on every run rather than letting it
+be found during the Ruby stage. It is filed as `upstream/issue/09`.
 
 ### The feature is not yet identical across the ports
 

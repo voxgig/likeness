@@ -7,9 +7,6 @@
 
 @"./base.aon"
 
-# A code is kebab-case and stable.
-Code: type(string & re("^[a-z][a-z0-9-]{0,31}$"))
-
 ErrorDef: type(close({
   code: $.Code
   exit: $.Exit

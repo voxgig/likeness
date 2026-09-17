@@ -23,7 +23,7 @@
 # can, by a named mechanism worth writing down - Notion's status lives in a
 # page property, not a first-class field, and an adapter that assumes otherwise
 # is wrong in a way no boolean would have caught.
-Support: hide(boolean|string & re("^[a-z][a-z0-9-]{0,31}$"))
+Support: hide(boolean|$.Code)
 
 # The per-entity capability row. Every likeness operation appears, so a source
 # that gains one is a changed value rather than a new key, and a source that

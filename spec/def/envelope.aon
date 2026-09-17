@@ -41,7 +41,11 @@ ErrorBody: type(close({
 
 Envelope: type(close({
   ok: boolean
-  code: string & re("^[a-z][a-z0-9-]{0,31}$")
+  # Shape only. This is NOT tied to the error registry: an envelope carrying a
+  # code absent from errors.aon still validates, because a shape file must not
+  # import a data file. Closing that gap needs a check in tooling; until there
+  # is one, this is a kebab-case string and nothing stronger.
+  code: $.Code
   cmd: [&: string]
   # `data` is deliberately unconstrained here: it is a note, a list of notes, a
   # capability matrix or null depending on the command, and pinning it in one

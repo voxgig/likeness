@@ -45,3 +45,4 @@ workaround in this repository exists.
 | `issue/05-corpus-activates-absent-features.md` | `voxgig-sdk/joplin-sdk` | major | the shared corpus activates `cost` and `netsim`, which no SDK generates, so its only feature section runs zero cases everywhere |
 | `issue/07-test-feature-port-divergence.md` | `voxgig-sdk/linear-sdk` (all four) | **blocker** | the offline test feature behaves differently in each port, and in C and Ruby it cannot run the Linear SDK at all |
 | `issue/08-explain-prefix-and-missing-text.md` | `aontu-lang/aontu` | minor | `explain` rejects the code as it is printed, and a large minority of codes have no text |
+| `issue/09-notion-no-ruby-target.md` | `voxgig-sdk/notion-sdk` | **blocker** | no Ruby target, so likeness's Ruby port cannot reach Notion at all |
