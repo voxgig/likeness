@@ -1,81 +1,103 @@
-**Repository:** `aontu`
-**Observed at:** 0.67.0 (npm `latest`)
-**Fix belongs in:** the coverage accounting in `vet`
+**Repository:** `aontu-lang/aontu`
+**Reproduced on:** npm `0.67.0` (current `latest`, published 2026-09-17) **and** `main` built from source at `0436c12b6a41776794dfe212985a061234f75584`
+**Fix belongs in:** the coverage accounting behind `vet --coverage` / `--strict-coverage`
 
 ---
 
-# `--coverage` reports "checked nothing" on a run that reports violations, so `--strict-coverage` rejects correct schemas
+# `vet --coverage` reports VACUOUS on a run that reports violations, when constraints reach data through a named `type()`
 
-## What happens
+Coverage accounting does not see constraints that reach the data through a named `type()` shape referenced as `$.Name`. It counts the same constraints correctly when they are written inline.
 
-Coverage accounting does not see constraints that reach the data through a named `type()` shape referenced as `$.Name`. It counts them correctly when the same shape is written inline.
+## Reproduction
 
-**Inline — counted:**
-
-```
-# schema.aon
-note: { &: { id: string & re("^[a-z0-9]+$"), title: string, count: integer & min(0) } }
-```
-```
-$ aontu vet --coverage schema.aon data-ok.aon
-verdict: valid
-coverage: 7/7 data leaves checked, 6 schema declarations
-```
-
-**Behind a named shape — not counted:**
+Four small files.
 
 ```
 # base.aon
 Ident: type(string & re("^[a-z][a-z0-9-]{0,31}$"))
 
-# sch.aon
+# sch.aon  — the constraint arrives via a named type
 @"./base.aon"
 Conn: type(close({ source: $.Ident, instance: $.Ident }))
 connection: { &: $.Conn }
+
+# inline.aon — the same constraints, written inline
+connection: { &: { source: string & re("^[a-z]+$"), instance: string & re("^[a-z]+$") } }
+
+# ok.aon
+connection: { plan: { source: 'linear', instance: 'plan' } }
 ```
+
+**Via a named type — not counted:**
+
 ```
 $ aontu vet --coverage sch.aon ok.aon
 verdict: valid
+
 coverage: VACUOUS — no data leaf was constrained by the schema; this run checked nothing
-coverage: 0/3 data leaves checked, 8 schema declarations
+coverage: 0/2 data leaves checked, 6 schema declarations
+  unchecked: $.connection.plan.instance
+  unchecked: $.connection.plan.source
+  unused: $.Conn
+  unused: $.Ident
 ```
 
-The schema is not vacuous. The same invocation against broken data finds the violations, with correct paths and both source lines:
+**The same constraints inline — counted:**
 
+```
+$ aontu vet --coverage inline.aon ok.aon
+verdict: valid
+
+coverage: 2/2 data leaves checked, 4 schema declarations
+```
+
+## The report contradicts itself in the same run
+
+The schema is plainly not vacuous. Give it data that violates it and the same invocation reports the violation — on the very leaf it also lists as `unchecked`:
+
+```
+# bad.aon
+connection: { plan: { source: 'Linear', instance: 'plan' } }
+```
 ```
 $ aontu vet --coverage sch.aon bad.aon
 verdict: invalid
-coverage: VACUOUS — no data leaf was constrained by the schema; this run checked nothing
+
 $.connection.plan.source: constraint [conflict]
+  [aontu/constraint]: Cannot unify values at path $.connection.plan.source
   expected: re("^[a-z][a-z0-9-]{0,31}$")
   actual:   "Linear"
-  data:   bad.aon:2:19
-  schema: base.aon:1:8
+  data: bad.aon:1:31 ("Linear")
+  schema: base.aon:1:8 (re("^[a-z][a-z0-9-]{0,31}$"))
+
+coverage: VACUOUS — no data leaf was constrained by the schema; this run checked nothing
+coverage: 0/2 data leaves checked, 6 schema declarations
+  unchecked: $.connection.plan.instance     <-- the leaf it just reported on
+  unchecked: $.connection.plan.source
 ```
 
-A run cannot both have checked nothing and have found three violations.
+A run cannot both have checked nothing and have found a contradiction in what it checked.
 
-## Why it matters
+## Consequence: the recommended CI guard is unusable
 
-`aontu help tasks` presents `--strict-coverage` as the guard that a check is not vacuous — *"Make the check prove it checked something. A check that examined nothing answers exactly like one that passed."* That is exactly the guard a schema-first project wants in CI.
+`aontu help tasks` presents `--strict-coverage` as the guard that a check is not vacuous:
 
-But on a real schema it is unusable:
+> **Make the check prove it checked something.** A check that examined nothing answers exactly like one that passed.
+
+That is exactly the guard a schema-first project wants. On a schema built from named shapes it rejects correct work:
 
 ```
-$ aontu vet --strict-coverage spec/def/source.aon spec/sources.aon
-verdict: valid
+$ aontu vet --strict-coverage sch.aon ok.aon
 EXIT 1
 ```
 
-Named, reusable shapes are the idiom the tool itself teaches — `aontu init` generates a model built on `&:`, and every voxgig SDK model is written this way. So the recommended guard fails precisely on schemas written the recommended way, and the only way to adopt it is to stop factoring shapes into named types.
+Named, reusable shapes are the idiom the tool itself teaches — `aontu init` generates a model built on `&:`, and the voxgig SDK models are written this way throughout. So the guard fails precisely on schemas written the recommended way, and the only way to adopt it is to stop factoring shapes into named types.
 
-## Reproduction
+## Why it matters to us
 
-The two schema/data pairs above, in full, take about ten lines each. The distinguishing variable is only whether the constraint is written inline or behind `type()` + `$.Name`.
+[voxgig/likeness](https://github.com/voxgig/likeness) specifies its application in aontu and gates every change on it. The schema is ten shape files built from a shared `base.aon` of named primitive types, so every constraint reaches data through `$.Name` and every `vet --coverage` run reports VACUOUS. We want `--strict-coverage` in CI and cannot use it; we fall back to `vet` plus a deliberately-broken example that CI asserts must fail, which covers the same ground by hand.
 
-## Impact on likeness
-
-We want `--strict-coverage` in CI and cannot use it. Our schema has ten shape files built from a shared `base.aon` of named primitive types, so every constraint reaches data through `$.Name`. We fall back to `vet` alone plus a deliberately-broken example that CI asserts must fail — which covers the same ground, but by hand.
+The `unused:` lines are informative and correct in themselves — `$.Conn` and `$.Ident` genuinely are definitions rather than data. The defect is that the leaves they constrain are counted as unchecked.
 
 ---
 _Generated by [Claude Code](https://claude.ai/code)_

@@ -102,9 +102,9 @@ proposing one:
 aontu breaking --against HEAD spec/def/error.aon
 ```
 
-Read the **verdict line**, not the exit status: `breaking` currently exits `0`
-whatever it concludes, so a CI gate must parse the output. The verdict names the
-class — `compat_required_added`, `sub_unresolved` — with both source lines.
+It exits `1` on a breaking verdict and `0` otherwise, so a CI gate can be
+written against the exit status directly. The output names the class —
+`compat_required_added`, `sub_unresolved` — with both source lines.
 
 Renaming an error code, removing a capability key, or making an optional field
 required are all breaking. They are allowed; they are not allowed to be silent.
