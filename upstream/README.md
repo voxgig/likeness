@@ -17,6 +17,7 @@ boundary, not a judgement about whether they should be raised — they should.
 ## Filed
 
 - `issue/03` — **filed as [aontu-lang/aontu#245](https://github.com/aontu-lang/aontu/issues/245)**, by a session rooted at that repository, which reproduced the bug against its own build before filing.
+- `issue/08` — **filed as [aontu-lang/aontu#246](https://github.com/aontu-lang/aontu/issues/246)**, same way. It re-derived the counts rather than taking mine: 29 of 168 registered codes have no text, and the `compat` class is 13 of 13.
 
 ## Retracted
 

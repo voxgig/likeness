@@ -1,3 +1,5 @@
+**Filed:** [aontu-lang/aontu#246](https://github.com/aontu-lang/aontu/issues/246)
+
 **Repository:** `aontu-lang/aontu`
 **Reproduced on:** npm `0.67.0` and `main` built from source at `0436c12b6a41776794dfe212985a061234f75584`
 
@@ -46,9 +48,9 @@ class: compat
 (no explanation text is registered for this code)
 ```
 
-Same for `sub_unresolved`. Probing every code from `explain --list`: **29 of 164 probed have no text**, against 168 total registered. (The probe extracted bare code tokens from the list output, so treat the denominator as approximate and the numerator as a floor.)
+Same for `sub_unresolved`. **29 of 168 registered codes have no text**, and the `compat` class is 13 out of 13 — every one of them undocumented.
 
-The gap is not evenly spread. It includes the `compat` codes, which are exactly what `breaking --against` reports. A release gate on `breaking` surfaces `compat_required_added`, the reader does the prescribed lookup, and gets nothing — at the moment they most need it, because a compat verdict is the one that blocks a release.
+The gap is not evenly spread: the `compat` class is entirely undocumented, and those are exactly what `breaking --against` reports. A release gate on `breaking` surfaces `compat_required_added`, the reader does the prescribed lookup, and gets nothing — at the moment they most need it, because a compat verdict is the one that blocks a release.
 
 ## Why it matters to us
 
