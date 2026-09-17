@@ -187,6 +187,33 @@ features: `debug`, `idempotency`, `metrics`, `paging`, `ratelimit`, `retry`,
 `test` and `timeout`. netsim is the `net:` option of `test`. Any plan that
 speaks of "the netsim feature" is describing something that does not exist.
 
+### The feature is not yet identical across the ports
+
+The TypeScript implementation is the same 494 lines in all four SDKs, so there
+is one intended semantic — but the other ports implement different subsets of
+it. This is recorded in `upstream/issue/07`, and until it is fixed upstream it
+constrains where the offline mode can be relied on:
+
+| Behaviour | TS | Go | Py | Rb | C |
+|---|---|---|---|---|---|
+| multi-segment response envelope (`body.data.x.y`) | yes | yes | yes | **no** | **no** |
+| `update` whose id matches nothing | **404** | 200, clobbers a record | 200, clobbers the first | 200, clobbers the first | 200, clobbers the first |
+| `update` merge depth | **deep** | shallow | shallow | shallow | shallow |
+| stamps `id` from the seed map key | yes | yes | yes | **no** | yes |
+| required query params also matched | yes | yes | yes | **no** | **no** |
+
+**The consequence that changes plans: Linear cannot be tested offline in the
+Ruby or C ports.** Every Linear operation unwraps a multi-segment envelope —
+`body.data.issue`, `body.data.issueCreate.issue` — and those two ports
+synthesise only a single segment. So until `issue/07` is resolved, the Ruby and
+C ports reach Linear through `mock/` instead. That is a declared exception with
+a named cause, not a port quietly growing its own mock.
+
+**And treat an `update` against an unseeded id as undefined behaviour** in every
+port. It is a 404 in TypeScript and a silent clobber of an unrelated record in
+the other four, which is the failure a mock exists to prevent. Seed what you
+update.
+
 ### Where the mock server still earns its place
 
 `mock/` is a Fastify server emulating all four sources on one port. It is **not**
@@ -198,6 +225,7 @@ redundant with the SDKs' offline mode, and the two have different jobs:
 | Whole-command transcript entries | `SDK.test({entity, net})` |
 | Proving the generated client's real wire behaviour — headers, encoding, status codes, GraphQL error envelopes | `mock/` |
 | Exercising auth failure, pagination headers, and vendor quirks the in-memory mock does not model | `mock/` |
+| Linear, in the Ruby and C ports, until `upstream/issue/07` is fixed | `mock/` |
 
 The rule: **if a test asserts on likeness's behaviour, it uses the SDK's test
 mode; if it asserts on the wire, it uses `mock/`.**

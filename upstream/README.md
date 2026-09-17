@@ -29,3 +29,4 @@ workaround in this repository exists.
 | `issue/04-scoped-definitions.md` | `voxgig-sdk/joplin-sdk` (all four) | major | the definitions are subsets narrow enough that no source can offer search |
 | `issue/05-corpus-activates-absent-features.md` | `voxgig-sdk/joplin-sdk` | major | the shared corpus activates `cost` and `netsim`, which no SDK generates, so its only feature section runs zero cases everywhere |
 | `issue/06-breaking-exit-code.md` | `aontu` | minor | `breaking --against` exits 0 whatever it concludes, so a CI gate must parse prose |
+| `issue/07-test-feature-port-divergence.md` | `voxgig-sdk/linear-sdk` (all four) | **blocker** | the offline test feature behaves differently in each port, and in C and Ruby it cannot run the Linear SDK at all |
