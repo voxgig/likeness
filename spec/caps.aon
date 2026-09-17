@@ -26,7 +26,13 @@ capability: joplin: entity: note: sdk: "note"
 capability: joplin: entity: note: op: {
   list: true
   get: true
-  search: false
+  # `replica`, not false. No source's SDK has a search operation, but every
+  # entity listed here is mirrored into the local replica, and the replica
+  # has FTS5. So search IS available - served from a cache, marked as such
+  # in the envelope, and refused rather than guessed at when the replica is
+  # off or does not hold the entity. This is the whole reason the replica
+  # earns its cost.
+  search: "replica"
   create: true
   update: true
   move: "parent-id"
@@ -45,6 +51,9 @@ capability: joplin: entity: space: sdk: "folder"
 capability: joplin: entity: space: op: {
   list: true
   get: true
+  # The replica indexes NOTES only - note_fts is built over the note table -
+  # so a space or a tag is not searchable through it either. Claiming
+  # otherwise would be the same overclaim as the ones already corrected here.
   search: false
   create: true
   update: true
@@ -60,6 +69,9 @@ capability: joplin: entity: tag: sdk: "tag"
 capability: joplin: entity: tag: op: {
   list: true
   get: true
+  # The replica indexes NOTES only - note_fts is built over the note table -
+  # so a space or a tag is not searchable through it either. Claiming
+  # otherwise would be the same overclaim as the ones already corrected here.
   search: false
   create: true
   update: true
@@ -90,7 +102,7 @@ capability: obsidian: entity: note: sdk: "vault"
 capability: obsidian: entity: note: op: {
   list: true
   get: true
-  search: false
+  search: "replica"
   create: true
   update: true
   move: false
@@ -105,6 +117,9 @@ capability: obsidian: entity: tag: sdk: "tag"
 capability: obsidian: entity: tag: op: {
   list: true
   get: false
+  # The replica indexes NOTES only - note_fts is built over the note table -
+  # so a space or a tag is not searchable through it either. Claiming
+  # otherwise would be the same overclaim as the ones already corrected here.
   search: false
   create: false
   update: false
@@ -144,7 +159,7 @@ capability: notion: entity: note: sdk: "page"
 capability: notion: entity: note: op: {
   list: false
   get: true
-  search: false
+  search: "replica"
   create: true
   update: true
   # FALSE: `parent` is in PageInput, the CREATE body. PageUpdateInput is
@@ -162,6 +177,9 @@ capability: notion: entity: space: sdk: "database"
 capability: notion: entity: space: op: {
   list: false
   get: true
+  # The replica indexes NOTES only - note_fts is built over the note table -
+  # so a space or a tag is not searchable through it either. Claiming
+  # otherwise would be the same overclaim as the ones already corrected here.
   search: false
   create: true
   update: true
@@ -191,7 +209,7 @@ capability: linear: entity: note: sdk: "issue"
 capability: linear: entity: note: op: {
   list: true
   get: true
-  search: false
+  search: "replica"
   create: true
   update: true
   move: "team-id"
@@ -212,6 +230,9 @@ capability: linear: entity: space: sdk: "team"
 capability: linear: entity: space: op: {
   list: true
   get: true
+  # The replica indexes NOTES only - note_fts is built over the note table -
+  # so a space or a tag is not searchable through it either. Claiming
+  # otherwise would be the same overclaim as the ones already corrected here.
   search: false
   create: false
   update: false

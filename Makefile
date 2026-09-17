@@ -16,7 +16,8 @@ VET_PAIRS := \
 	$(DEF)/source.aon:$(SPEC)/sources.aon \
 	$(DEF)/capability.aon:$(SPEC)/caps.aon \
 	$(DEF)/error.aon:$(SPEC)/errors.aon \
-	$(DEF)/project.aon:$(SPEC)/example/likeness.aon
+	$(DEF)/project.aon:$(SPEC)/example/likeness.aon \
+	$(DEF)/replica.aon:$(SPEC)/replica.aon
 
 # Files that MUST fail to vet, AND MUST FAIL FOR THE RIGHT REASON. `aontu vet`
 # exits 1 for a contradiction, 2 for a usage error and 3 for an incomplete

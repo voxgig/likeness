@@ -19,6 +19,7 @@ The reasoned specification lives in
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability and error data populated |
 | `mock/` — a Fastify server emulating all four sources on one port | working, smoke-tested |
+| `replica/` — a local SQLite copy reached through a generated SDK | designed; schema and search verified, SDK not generated |
 | The five ports | not started |
 | The parity corpora | shapes defined, entries not written |
 
@@ -33,6 +34,7 @@ make mock        # run the source mock server on 127.0.0.1:7777
   unit tests use the SDKs' own offline test mode
 - [spec/README.md](spec/README.md) — the schema, file by file
 - [mock/README.md](mock/README.md) — the mock server and the wire quirks it preserves
+- [replica/README.md](replica/README.md) — the local SQLite replica: why it is an SDK, what it buys (search), and the three ports that need a dependency for it
 - [upstream/](upstream/) — gaps found in the SDKs and the toolchain, written up ready to file
 
 MIT.

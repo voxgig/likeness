@@ -1,0 +1,907 @@
+{
+  "components": {
+    "schemas": {
+      "Link": {
+        "properties": {
+          "from_id": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "synced": {
+            "type": "string"
+          },
+          "to_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "instance",
+          "from_id",
+          "to_id",
+          "kind",
+          "resolved",
+          "synced"
+        ],
+        "type": "object"
+      },
+      "Note": {
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "created": {
+            "type": "string"
+          },
+          "id": {
+            "description": "Source-native, opaque.",
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "lid": {
+            "description": "The likeness identifier, derived. Primary key.",
+            "type": "string"
+          },
+          "pending": {
+            "description": "1 while a local write is unconfirmed by the source.",
+            "type": "integer"
+          },
+          "raw": {
+            "description": "The source payload verbatim, as a string.",
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "space": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "synced": {
+            "description": "When this row was last written from its source.",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid",
+          "source",
+          "instance",
+          "id",
+          "title",
+          "url",
+          "created",
+          "updated",
+          "synced",
+          "pending"
+        ],
+        "type": "object"
+      },
+      "Space": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "lid": {
+            "type": "string"
+          },
+          "parent": {
+            "type": "string"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "raw": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "synced": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid",
+          "source",
+          "instance",
+          "id",
+          "title",
+          "url",
+          "synced",
+          "pending"
+        ],
+        "type": "object"
+      },
+      "Tag": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "lid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "raw": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "synced": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lid",
+          "source",
+          "instance",
+          "id",
+          "name",
+          "synced",
+          "pending"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "The local SQLite replica of what the sources hold, described as an API so that sdkgen can generate the access layer in every port.\n\nTHE PATHS ARE NOMINAL. Nothing here is served over HTTP. The generated SDK's transport is replaced by a `transport: 'base'` feature backed by SQLite, the same slot the SDKs' own offline test feature occupies. The paths exist because they are how sdkgen names an operation and derives an entity surface; they are never dialled.\n\nTHE REPLICA IS A CACHE AND NEVER A SOURCE OF TRUTH. Deleting the file loses nothing, every row records where it came from and when, and a write reaches here only after its source accepted it.",
+    "title": "likeness replica",
+    "version": "0.0.0"
+  },
+  "openapi": "3.0.3",
+  "paths": {
+    "/link": {
+      "get": {
+        "operationId": "listLink",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "instance",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "description": "True when a further page is available.",
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "items": {
+                        "$ref": "#/components/schemas/Link"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "has_more"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "A page of links, resolved and dangling alike."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createLink",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Link"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Link"
+                }
+              }
+            },
+            "description": "The written link."
+          }
+        }
+      }
+    },
+    "/note": {
+      "get": {
+        "operationId": "listNote",
+        "parameters": [
+          {
+            "description": "Restrict to one connection.",
+            "in": "query",
+            "name": "instance",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "description": "True when a further page is available.",
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "items": {
+                        "$ref": "#/components/schemas/Note"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "has_more"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "A page of rows."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createNote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Note"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            },
+            "description": "The written row."
+          }
+        }
+      }
+    },
+    "/note/{lid}": {
+      "delete": {
+        "operationId": "removeNote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Removed from the cache. The source is untouched."
+          }
+        }
+      },
+      "get": {
+        "operationId": "loadNote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            },
+            "description": "The row."
+          },
+          "404": {
+            "description": "Not cached."
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateNote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Note"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            },
+            "description": "The updated row."
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "description": "Full-text search across every replicated source at once. This is the operation no source SDK provides, and the reason the replica exists. The query is FTS5 syntax: bare terms, phrases, and column filters such as body:legal.",
+        "operationId": "searchNote",
+        "parameters": [
+          {
+            "description": "An FTS5 match expression.",
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "instance",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "description": "True when a further page is available.",
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "items": {
+                        "$ref": "#/components/schemas/Note"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "has_more"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Matching rows, in the declared total order."
+          }
+        }
+      }
+    },
+    "/space": {
+      "get": {
+        "operationId": "listSpace",
+        "parameters": [
+          {
+            "description": "Restrict to one connection.",
+            "in": "query",
+            "name": "instance",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "description": "True when a further page is available.",
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "items": {
+                        "$ref": "#/components/schemas/Space"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "has_more"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "A page of rows."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSpace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Space"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Space"
+                }
+              }
+            },
+            "description": "The written row."
+          }
+        }
+      }
+    },
+    "/space/{lid}": {
+      "delete": {
+        "operationId": "removeSpace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Removed from the cache. The source is untouched."
+          }
+        }
+      },
+      "get": {
+        "operationId": "loadSpace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Space"
+                }
+              }
+            },
+            "description": "The row."
+          },
+          "404": {
+            "description": "Not cached."
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateSpace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Space"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Space"
+                }
+              }
+            },
+            "description": "The updated row."
+          }
+        }
+      }
+    },
+    "/tag": {
+      "get": {
+        "operationId": "listTag",
+        "parameters": [
+          {
+            "description": "Restrict to one connection.",
+            "in": "query",
+            "name": "instance",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "description": "True when a further page is available.",
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "items": {
+                        "$ref": "#/components/schemas/Tag"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "has_more"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "A page of rows."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Tag"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            },
+            "description": "The written row."
+          }
+        }
+      }
+    },
+    "/tag/{lid}": {
+      "delete": {
+        "operationId": "removeTag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Removed from the cache. The source is untouched."
+          }
+        }
+      },
+      "get": {
+        "operationId": "loadTag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            },
+            "description": "The row."
+          },
+          "404": {
+            "description": "Not cached."
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateTag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lid",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Tag"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            },
+            "description": "The updated row."
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "description": "Not a URL. A marker: this SDK's transport is a local database file.",
+      "url": "sqlite:///likeness.db"
+    }
+  ]
+}
