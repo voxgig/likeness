@@ -71,6 +71,8 @@ spec-agree:
 
 .PHONY: spec-json
 spec-json:
+	@echo '  NOTE: an export, not the gate - read the "lossy:" lines on stderr.'
+	@echo '  A conjunction inside a `&:` template exports as {} and admits anything.'
 	@$(AONTU) jsonschema $(DEF)/likeness.aon
 
 

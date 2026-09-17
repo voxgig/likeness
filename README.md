@@ -33,5 +33,6 @@ make mock        # run the source mock server on 127.0.0.1:7777
   unit tests use the SDKs' own offline test mode
 - [spec/README.md](spec/README.md) — the schema, file by file
 - [mock/README.md](mock/README.md) — the mock server and the wire quirks it preserves
+- [upstream/](upstream/) — gaps found in the SDKs and the toolchain, written up ready to file
 
 MIT.

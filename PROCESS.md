@@ -77,6 +77,20 @@ constrains nothing and still reports `valid`. Reach for `&:`.
 and a quantifier applied to a group that contains one, because those backtrack
 exponentially in one of the two host engines. Write `[ab]+`, not `(?:a|b)+`.
 
+**`aontu jsonschema` is an export, not the gate.** Named definitions come out
+faithfully — `pattern`, `minimum`, `enum`, `additionalProperties: false`. But a
+conjunction written *inside* a `&:` template exports as `{}`, which admits
+anything. aontu says so rather than hiding it, on stderr:
+
+```
+lossy: $.x.&.conj unresolved: this is not a value yet, so there is nothing to
+constrain a consumer to; the schema admits anything here
+```
+
+So `make spec-json` is for a consumer who wants the shape in a familiar format,
+and **`aontu vet` remains the only authority**. Read the `lossy:` lines before
+handing the export to anyone who will validate against it.
+
 ---
 
 ## 3. Changing the schema
@@ -224,3 +238,8 @@ it can be exact. Include:
   SDKs' own offline test mode makes this always possible;
 - what it costs likeness, specifically. "This breaks byte-identical output
   across five ports" is actionable in a way that "this seems wrong" is not.
+
+[`upstream/`](upstream/) holds the issues found so far, each written to be filed
+as-is. When one is filed, add its link to the top of the file rather than
+deleting it: a closed issue next to the schema that depends on it is how a
+future reader learns why a workaround here exists.
