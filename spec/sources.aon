@@ -39,7 +39,7 @@ source: {
         dir: "ts"
         package: "@voxgig-sdk/joplin"
         published: false
-        pin: "github:voxgig-sdk/joplin-sdk#4504c82ae6502ef24b582a528bcd747d485d0a1e"
+        pin: "clone https://github.com/voxgig-sdk/joplin-sdk at 4504c82ae6502ef24b582a528bcd747d485d0a1e, then npm install <clone>/ts"
       }
       go: {
         dir: "go"
@@ -209,7 +209,7 @@ source: {
         dir: "ts"
         package: "@voxgig-sdk/obsidian"
         published: false
-        pin: "github:voxgig-sdk/obsidian-sdk#958b620f1ef9ecdfc6c9d553cda94029e060c523"
+        pin: "clone https://github.com/voxgig-sdk/obsidian-sdk at 958b620f1ef9ecdfc6c9d553cda94029e060c523, then npm install <clone>/ts"
       }
       go: {
         dir: "go"
@@ -328,7 +328,7 @@ source: {
         dir: "ts"
         package: "@voxgig-sdk/notion"
         published: false
-        pin: "github:voxgig-sdk/notion-sdk#785fb7e1e6c1ec3369a001956d1d14eefca0c16d"
+        pin: "clone https://github.com/voxgig-sdk/notion-sdk at 785fb7e1e6c1ec3369a001956d1d14eefca0c16d, then npm install <clone>/ts"
       }
       go: {
         dir: "go"
@@ -448,7 +448,7 @@ source: {
         dir: "ts"
         package: "@voxgig-sdk/linear"
         published: false
-        pin: "github:voxgig-sdk/linear-sdk#046371226512e1faa497905086b254f9ba41b563"
+        pin: "clone https://github.com/voxgig-sdk/linear-sdk at 046371226512e1faa497905086b254f9ba41b563, then npm install <clone>/ts"
       }
       go: {
         dir: "go"

@@ -1,0 +1,656 @@
+{
+  "primary": {
+    "unit": {
+      "envelope": {
+        "set": [
+          {
+            "fn": "serialise",
+            "id": "envelope/keys-sorted",
+            "in": {
+              "2": 5,
+              "10": 4,
+              "C": 3,
+              "a": 2,
+              "b": 1
+            },
+            "out": "{\"10\":4,\"2\":5,\"C\":3,\"a\":2,\"b\":1}\n"
+          },
+          {
+            "fn": "serialise",
+            "id": "envelope/keys-sorted-nested",
+            "in": {
+              "a": [
+                {
+                  "m": 2,
+                  "n": 1
+                }
+              ],
+              "z": {
+                "x": 2,
+                "y": 1
+              }
+            },
+            "out": "{\"a\":[{\"m\":2,\"n\":1}],\"z\":{\"x\":2,\"y\":1}}\n"
+          },
+          {
+            "fn": "serialise",
+            "id": "envelope/trailing-newline-exactly-one",
+            "in": 1,
+            "out": "1\n"
+          },
+          {
+            "fn": "serialise",
+            "id": "envelope/empty-containers-are-emitted",
+            "in": {
+              "list": [],
+              "map": {}
+            },
+            "out": "{\"list\":[],\"map\":{}}\n"
+          },
+          {
+            "fn": "serialise",
+            "id": "envelope/null-is-emitted",
+            "in": {
+              "a": null,
+              "b": 1
+            },
+            "out": "{\"a\":null,\"b\":1}\n"
+          },
+          {
+            "fn": "serialise",
+            "id": "envelope/absent-is-absent",
+            "in": {
+              "b": 1
+            },
+            "out": "{\"b\":1}\n"
+          },
+          {
+            "err": "floating point",
+            "fn": "serialise",
+            "id": "envelope/float-is-refused",
+            "in": {
+              "ms": 1.5
+            }
+          },
+          {
+            "fn": "serialise",
+            "id": "envelope/integer-is-exact",
+            "in": {
+              "n": 9007199254740991
+            },
+            "out": "{\"n\":9007199254740991}\n"
+          },
+          {
+            "fn": "serialise",
+            "id": "envelope/escape-quote-and-backslash",
+            "in": {
+              "s": "a\"b\\c"
+            },
+            "out": "{\"s\":\"a\\\"b\\\\c\"}\n"
+          },
+          {
+            "fn": "serialise",
+            "id": "envelope/escape-control-as-lowercase-hex",
+            "in": {
+              "s": "a\nb\tc"
+            },
+            "out": "{\"s\":\"a\\u000ab\\u0009c\"}\n"
+          },
+          {
+            "fn": "serialise",
+            "id": "envelope/non-ascii-is-literal-utf8",
+            "in": {
+              "s": "café 日本語"
+            },
+            "out": "{\"s\":\"café 日本語\"}\n"
+          },
+          {
+            "fn": "serialise",
+            "id": "envelope/raw-payload-is-an-opaque-string",
+            "in": {
+              "raw": "{\"score\":0.5,\"b\":1,\"a\":2}"
+            },
+            "out": "{\"raw\":\"{\\\"score\\\":0.5,\\\"b\\\":1,\\\"a\\\":2}\"}\n"
+          },
+          {
+            "fn": "partialCodes",
+            "id": "envelope/partial-codes-are-a-closed-set",
+            "in": null,
+            "out": [
+              "budget-exceeded",
+              "fanout-halted"
+            ]
+          }
+        ]
+      },
+      "identity": {
+        "set": [
+          {
+            "fn": "lid",
+            "id": "identity/lid-joplin",
+            "in": [
+              "joplin",
+              "profile-1",
+              "note",
+              "a0e50000000000000000000000000001"
+            ],
+            "out": "lk_sptw25xyrt8t"
+          },
+          {
+            "fn": "lid",
+            "id": "identity/lid-empty-id",
+            "in": [
+              "joplin",
+              "profile-1",
+              "note",
+              ""
+            ],
+            "out": "lk_ha1dc206dj90"
+          },
+          {
+            "fn": "lid",
+            "id": "identity/lid-linear",
+            "in": [
+              "linear",
+              "voxgig",
+              "note",
+              "CORE-412"
+            ],
+            "out": "lk_wkp9w5jzyh71"
+          },
+          {
+            "fn": "lid",
+            "id": "identity/lid-notion",
+            "in": [
+              "notion",
+              "8f14e45f",
+              "note",
+              "9f2c1a7b"
+            ],
+            "out": "lk_e5h86f0xvf4q"
+          },
+          {
+            "fn": "crockfordAlphabet",
+            "id": "identity/crockford-alphabet",
+            "in": null,
+            "out": "0123456789abcdefghjkmnpqrstvwxyz"
+          },
+          {
+            "fn": "rfc3339",
+            "id": "identity/rfc3339-epoch",
+            "in": 0,
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "rfc3339",
+            "id": "identity/rfc3339-second-precision",
+            "in": 1758008460999,
+            "out": "2025-09-16T07:41:00Z"
+          }
+        ]
+      },
+      "order": {
+        "set": [
+          {
+            "fn": "compareCodePoints",
+            "id": "order/code-point-not-utf16",
+            "in": [
+              "𝐀",
+              "�"
+            ],
+            "out": 1
+          },
+          {
+            "fn": "compareCodePoints",
+            "id": "order/shorter-prefix-first",
+            "in": [
+              "ab",
+              "abc"
+            ],
+            "out": -1
+          },
+          {
+            "fn": "compareCodePoints",
+            "id": "order/equal",
+            "in": [
+              "abc",
+              "abc"
+            ],
+            "out": 0
+          }
+        ]
+      },
+      "selector": {
+        "set": [
+          {
+            "fn": "parseSelector",
+            "id": "selector/field-colon-value",
+            "in": "tag:launch",
+            "out": {
+              "field": "tag",
+              "op": ":",
+              "t": "cmp",
+              "value": {
+                "k": "word",
+                "v": "launch"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/adjacency-implies-and",
+            "in": "tag:a tag:b",
+            "out": {
+              "kids": [
+                {
+                  "field": "tag",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "a"
+                  }
+                },
+                {
+                  "field": "tag",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "b"
+                  }
+                }
+              ],
+              "t": "and"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/or-binds-looser-than-and",
+            "in": "tag:a AND tag:b OR tag:c",
+            "out": {
+              "kids": [
+                {
+                  "kids": [
+                    {
+                      "field": "tag",
+                      "op": ":",
+                      "t": "cmp",
+                      "value": {
+                        "k": "word",
+                        "v": "a"
+                      }
+                    },
+                    {
+                      "field": "tag",
+                      "op": ":",
+                      "t": "cmp",
+                      "value": {
+                        "k": "word",
+                        "v": "b"
+                      }
+                    }
+                  ],
+                  "t": "and"
+                },
+                {
+                  "field": "tag",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "c"
+                  }
+                }
+              ],
+              "t": "or"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/parens-override-precedence",
+            "in": "tag:a AND (tag:b OR tag:c)",
+            "out": {
+              "kids": [
+                {
+                  "field": "tag",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "a"
+                  }
+                },
+                {
+                  "kids": [
+                    {
+                      "field": "tag",
+                      "op": ":",
+                      "t": "cmp",
+                      "value": {
+                        "k": "word",
+                        "v": "b"
+                      }
+                    },
+                    {
+                      "field": "tag",
+                      "op": ":",
+                      "t": "cmp",
+                      "value": {
+                        "k": "word",
+                        "v": "c"
+                      }
+                    }
+                  ],
+                  "t": "or"
+                }
+              ],
+              "t": "and"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/not-keyword",
+            "in": "NOT status:done",
+            "out": {
+              "kid": {
+                "field": "status",
+                "op": ":",
+                "t": "cmp",
+                "value": {
+                  "k": "word",
+                  "v": "done"
+                }
+              },
+              "t": "not"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/dash-negates-when-it-opens-an-atom",
+            "in": "-tag:draft",
+            "out": {
+              "kid": {
+                "field": "tag",
+                "op": ":",
+                "t": "cmp",
+                "value": {
+                  "k": "word",
+                  "v": "draft"
+                }
+              },
+              "t": "not"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/dash-inside-a-word-is-not-negation",
+            "in": "tag:rate-limit",
+            "out": {
+              "field": "tag",
+              "op": ":",
+              "t": "cmp",
+              "value": {
+                "k": "word",
+                "v": "rate-limit"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/duration",
+            "in": "updated>14d",
+            "out": {
+              "field": "updated",
+              "op": ">",
+              "t": "cmp",
+              "value": {
+                "k": "dur",
+                "n": 14,
+                "unit": "d"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/duration-months-are-two-letters",
+            "in": "created<3mo",
+            "out": {
+              "field": "created",
+              "op": "<",
+              "t": "cmp",
+              "value": {
+                "k": "dur",
+                "n": 3,
+                "unit": "mo"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/date",
+            "in": "updated>=2026-09-01",
+            "out": {
+              "field": "updated",
+              "op": ">=",
+              "t": "cmp",
+              "value": {
+                "k": "date",
+                "v": "2026-09-01"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/symbolic-date",
+            "in": "updated>today",
+            "out": {
+              "field": "updated",
+              "op": ">",
+              "t": "cmp",
+              "value": {
+                "k": "date",
+                "v": "today"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/quoted-value-is-never-reinterpreted",
+            "in": "title:\"2026-09-01\"",
+            "out": {
+              "field": "title",
+              "op": ":",
+              "t": "cmp",
+              "value": {
+                "k": "word",
+                "v": "2026-09-01"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/quoted-value-with-spaces",
+            "in": "title:\"retention policy\"",
+            "out": {
+              "field": "title",
+              "op": ":",
+              "t": "cmp",
+              "value": {
+                "k": "word",
+                "v": "retention policy"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/quoted-escape",
+            "in": "title:\"a \\\"b\\\" c\"",
+            "out": {
+              "field": "title",
+              "op": ":",
+              "t": "cmp",
+              "value": {
+                "k": "word",
+                "v": "a \"b\" c"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/bareword-is-full-text",
+            "in": "retention",
+            "out": {
+              "t": "text",
+              "v": "retention"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/not-equals",
+            "in": "status!=done",
+            "out": {
+              "field": "status",
+              "op": "!=",
+              "t": "cmp",
+              "value": {
+                "k": "word",
+                "v": "done"
+              }
+            }
+          }
+        ]
+      },
+      "selector-errors": {
+        "set": [
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/empty",
+            "in": "",
+            "out": {
+              "offset": 0,
+              "token": ""
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/unknown-field",
+            "in": "bogus:x",
+            "out": {
+              "offset": 0,
+              "token": "bogus"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/no-value",
+            "in": "tag:",
+            "out": {
+              "offset": 4,
+              "token": ""
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/unterminated-quote",
+            "in": "tag:\"unterminated",
+            "out": {
+              "offset": 4,
+              "token": "\"unterminated"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/unclosed-group",
+            "in": "(tag:a",
+            "out": {
+              "offset": 6,
+              "token": ""
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/unmatched-close",
+            "in": "tag:a)",
+            "out": {
+              "offset": 5,
+              "token": ")"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/op-with-no-field",
+            "in": ":x",
+            "out": {
+              "offset": 0,
+              "token": ":"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/malformed-duration",
+            "in": "updated>soon",
+            "out": {
+              "offset": 8,
+              "token": "soon"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/dangling-and",
+            "in": "tag:a AND",
+            "out": {
+              "offset": 9,
+              "token": ""
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/dangling-or",
+            "in": "tag:a OR",
+            "out": {
+              "offset": 8,
+              "token": ""
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/dangling-not",
+            "in": "NOT",
+            "out": {
+              "offset": 3,
+              "token": ""
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/bare-bang",
+            "in": "tag:a !b",
+            "out": {
+              "offset": 6,
+              "token": "!"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/offset-is-bytes-latin1",
+            "in": "title:café bogus:x",
+            "out": {
+              "offset": 12,
+              "token": "bogus"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/offset-is-bytes-cjk",
+            "in": "title:日本語 bogus:x",
+            "out": {
+              "offset": 16,
+              "token": "bogus"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

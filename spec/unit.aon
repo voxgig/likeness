@@ -1,0 +1,452 @@
+# likeness: the unit corpus.
+#
+# Pure functions, one entry each: the selector grammar, identity, timestamp
+# normalisation, the envelope serialiser and the total sort order. Fast,
+# precise, and where cross-language drift actually starts.
+#
+# EVERY ENTRY IS A CASE THAT WOULD HAVE CAUGHT SOMETHING. The serialisation
+# rules each correspond to a specific way five languages diverge for free; the
+# selector cases each pin a byte offset, because an error without one sends the
+# reader to count characters by hand.
+#
+# `make spec-build` compiles this to spec/unit.json, which every port runs
+# through its own harness. Never hand-edit the JSON.
+
+primary: unit: {
+  # ---------------------------------------------------------------- envelope
+  envelope: set: [
+    {
+      id: "envelope/keys-sorted"
+      fn: "serialise"
+      in: { b:1 a:2 C:3 "10":4 "2":5 }
+      # By Unicode code point, so digits precede uppercase which precedes
+      # lowercase, and "10" precedes "2" because '0' < '2'.
+      out: "{\"10\":4,\"2\":5,\"C\":3,\"a\":2,\"b\":1}\n"
+    }
+
+    {
+      id: "envelope/keys-sorted-nested"
+      fn: "serialise"
+      in: { z: { y:1 x:2 } a: [{ n:1 m:2 }] }
+      out: "{\"a\":[{\"m\":2,\"n\":1}],\"z\":{\"x\":2,\"y\":1}}\n"
+    }
+
+    { id:"envelope/trailing-newline-exactly-one" fn:"serialise" in:1 out:"1\n" }
+
+    {
+      id: "envelope/empty-containers-are-emitted"
+      fn: "serialise"
+      # Unification drops optional keys holding empty containers; serialisation
+      # must not. An absent list and an empty one are different answers.
+      in: { list: [] map: {} }
+      out: "{\"list\":[],\"map\":{}}\n"
+    }
+
+    {
+      id: "envelope/null-is-emitted"
+      fn: "serialise"
+      in: { a:null b:1 }
+      out: "{\"a\":null,\"b\":1}\n"
+    }
+
+    {
+      id: "envelope/absent-is-absent"
+      fn: "serialise"
+      # The same value with the key omitted. Null and missing mean different
+      # things and must not be normalised into each other.
+      in: b: 1
+      out: "{\"b\":1}\n"
+    }
+
+    {
+      id: "envelope/float-is-refused"
+      fn: "serialise"
+      in: ms: 1.5
+      # There is no rendering of 1.5 that five languages agree on, so the
+      # writer refuses rather than picking one. Durations are integer
+      # milliseconds; anything fractional is carried as a string.
+      err: "floating point"
+    }
+
+    {
+      id: "envelope/integer-is-exact"
+      fn: "serialise"
+      in: n: 9007199254740991
+      out: "{\"n\":9007199254740991}\n"
+    }
+
+    {
+      id: "envelope/escape-quote-and-backslash"
+      fn: "serialise"
+      in: s: "a\"b\\c"
+      out: "{\"s\":\"a\\\"b\\\\c\"}\n"
+    }
+
+    {
+      id: "envelope/escape-control-as-lowercase-hex"
+      fn: "serialise"
+      # No \n or \t shorthand: one form for every control character removes a
+      # class of per-port disagreement.
+      in: s: "a\nb\tc"
+      out: "{\"s\":\"a\\u000ab\\u0009c\"}\n"
+    }
+
+    {
+      id: "envelope/non-ascii-is-literal-utf8"
+      fn: "serialise"
+      # JavaScript emits literal non-ASCII, several C JSON writers escape
+      # everything. This picks one.
+      in: s: "café 日本語"
+      out: "{\"s\":\"café 日本語\"}\n"
+    }
+
+    {
+      id: "envelope/raw-payload-is-an-opaque-string"
+      fn: "serialise"
+      # The one value likeness does not own. Nesting it unchanged would smuggle
+      # a source's float formatting into the envelope, which is the exact
+      # divergence these rules exist to prevent.
+      in: raw: "{\"score\":0.5,\"b\":1,\"a\":2}"
+      out: "{\"raw\":\"{\\\"score\\\":0.5,\\\"b\\\":1,\\\"a\\\":2}\"}\n"
+    }
+
+    {
+      id: "envelope/partial-codes-are-a-closed-set"
+      fn: "partialCodes"
+      in: null
+      # The only two failure codes permitted to carry data. `describe`
+      # publishes this so a caller never guesses whether to look in `data`.
+      out: ["budget-exceeded" "fanout-halted"]
+    }
+  ]
+
+  # ---------------------------------------------------------------- selector
+  selector: set: [
+    {
+      id: "selector/field-colon-value"
+      fn: "parseSelector"
+      in: "tag:launch"
+      out: { t:"cmp" field:"tag" op:":" value: { k:"word" v:"launch" } }
+    }
+
+    {
+      id: "selector/adjacency-implies-and"
+      fn: "parseSelector"
+      in: "tag:a tag:b"
+      out: {
+        t: "and"
+        kids: [
+          { t:"cmp" field:"tag" op:":" value: { k:"word" v:"a" } }
+          { t:"cmp" field:"tag" op:":" value: { k:"word" v:"b" } }
+        ]
+      }
+    }
+
+    {
+      id: "selector/or-binds-looser-than-and"
+      fn: "parseSelector"
+      in: "tag:a AND tag:b OR tag:c"
+      out: {
+        t: "or"
+        kids: [
+          {
+            t: "and"
+            kids: [
+              { t:"cmp" field:"tag" op:":" value: { k:"word" v:"a" } }
+              { t:"cmp" field:"tag" op:":" value: { k:"word" v:"b" } }
+            ]
+          }
+          { t:"cmp" field:"tag" op:":" value: { k:"word" v:"c" } }
+        ]
+      }
+    }
+
+    {
+      id: "selector/parens-override-precedence"
+      fn: "parseSelector"
+      in: "tag:a AND (tag:b OR tag:c)"
+      out: {
+        t: "and"
+        kids: [
+          { t:"cmp" field:"tag" op:":" value: { k:"word" v:"a" } }
+          {
+            t: "or"
+            kids: [
+              { t:"cmp" field:"tag" op:":" value: { k:"word" v:"b" } }
+              { t:"cmp" field:"tag" op:":" value: { k:"word" v:"c" } }
+            ]
+          }
+        ]
+      }
+    }
+
+    {
+      id: "selector/not-keyword"
+      fn: "parseSelector"
+      in: "NOT status:done"
+      out: {
+        t: "not"
+        kid: { t:"cmp" field:"status" op:":" value: { k:"word" v:"done" } }
+      }
+    }
+
+    {
+      id: "selector/dash-negates-when-it-opens-an-atom"
+      fn: "parseSelector"
+      in: "-tag:draft"
+      out: {
+        t: "not"
+        kid: { t:"cmp" field:"tag" op:":" value: { k:"word" v:"draft" } }
+      }
+    }
+
+    {
+      id: "selector/dash-inside-a-word-is-not-negation"
+      fn: "parseSelector"
+      in: "tag:rate-limit"
+      out: { t:"cmp" field:"tag" op:":" value: { k:"word" v:"rate-limit" } }
+    }
+
+    {
+      id: "selector/duration"
+      fn: "parseSelector"
+      in: "updated>14d"
+      out: { t:"cmp" field:"updated" op:">" value: { k:"dur" n:14 unit:"d" } }
+    }
+
+    {
+      id: "selector/duration-months-are-two-letters"
+      fn: "parseSelector"
+      in: "created<3mo"
+      out: { t:"cmp" field:"created" op:"<" value: { k:"dur" n:3 unit:"mo" } }
+    }
+
+    {
+      id: "selector/date"
+      fn: "parseSelector"
+      in: "updated>=2026-09-01"
+      out: {
+        t: "cmp"
+        field: "updated"
+        op: ">="
+        value: { k:"date" v:"2026-09-01" }
+      }
+    }
+
+    {
+      id: "selector/symbolic-date"
+      fn: "parseSelector"
+      in: "updated>today"
+      out: { t:"cmp" field:"updated" op:">" value: { k:"date" v:"today" } }
+    }
+
+    {
+      id: "selector/quoted-value-is-never-reinterpreted"
+      fn: "parseSelector"
+      # The escape hatch: quoted, a date-shaped string is text.
+      in: "title:\"2026-09-01\""
+      out: { t:"cmp" field:"title" op:":" value: { k:"word" v:"2026-09-01" } }
+    }
+
+    {
+      id: "selector/quoted-value-with-spaces"
+      fn: "parseSelector"
+      in: "title:\"retention policy\""
+      out: {
+        t: "cmp"
+        field: "title"
+        op: ":"
+        value: { k:"word" v:"retention policy" }
+      }
+    }
+
+    {
+      id: "selector/quoted-escape"
+      fn: "parseSelector"
+      in: "title:\"a \\\"b\\\" c\""
+      out: { t:"cmp" field:"title" op:":" value: { k:"word" v:"a \"b\" c" } }
+    }
+
+    {
+      id: "selector/bareword-is-full-text"
+      fn: "parseSelector"
+      in: "retention"
+      out: { t:"text" v:"retention" }
+    }
+
+    {
+      id: "selector/not-equals"
+      fn: "parseSelector"
+      in: "status!=done"
+      out: { t:"cmp" field:"status" op:"!=" value: { k:"word" v:"done" } }
+    }
+  ]
+
+  # Malformed input. EVERY ONE ASSERTS A BYTE OFFSET: never a stack trace,
+  # never silently ignored, and never a character index - the ports do not
+  # agree on what a character is.
+  selector-errors: set: [
+    {
+      id: "selector-err/empty"
+      fn: "parseSelectorError"
+      in: ""
+      out: { offset:0 token:"" }
+    }
+    {
+      id: "selector-err/unknown-field"
+      fn: "parseSelectorError"
+      in: "bogus:x"
+      out: { offset:0 token:"bogus" }
+    }
+    {
+      id: "selector-err/no-value"
+      fn: "parseSelectorError"
+      in: "tag:"
+      out: { offset:4 token:"" }
+    }
+    {
+      id: "selector-err/unterminated-quote"
+      fn: "parseSelectorError"
+      in: "tag:\"unterminated"
+      out: { offset:4 token:"\"unterminated" }
+    }
+    {
+      id: "selector-err/unclosed-group"
+      fn: "parseSelectorError"
+      in: "(tag:a"
+      out: { offset:6 token:"" }
+    }
+    {
+      id: "selector-err/unmatched-close"
+      fn: "parseSelectorError"
+      in: "tag:a)"
+      out: { offset:5 token:")" }
+    }
+    {
+      id: "selector-err/op-with-no-field"
+      fn: "parseSelectorError"
+      in: ":x"
+      out: { offset:0 token:":" }
+    }
+    {
+      id: "selector-err/malformed-duration"
+      fn: "parseSelectorError"
+      in: "updated>soon"
+      out: { offset:8 token:"soon" }
+    }
+    {
+      id: "selector-err/dangling-and"
+      fn: "parseSelectorError"
+      in: "tag:a AND"
+      out: { offset:9 token:"" }
+    }
+    {
+      id: "selector-err/dangling-or"
+      fn: "parseSelectorError"
+      in: "tag:a OR"
+      out: { offset:8 token:"" }
+    }
+    {
+      id: "selector-err/dangling-not"
+      fn: "parseSelectorError"
+      in: "NOT"
+      out: { offset:3 token:"" }
+    }
+    {
+      id: "selector-err/bare-bang"
+      fn: "parseSelectorError"
+      in: "tag:a !b"
+      out: { offset:6 token:"!" }
+    }
+
+    # THE OFFSET IS BYTES, NOT CHARACTERS, and these two prove it: the
+    # offending token starts at character 11 and character 10 respectively.
+    {
+      id: "selector-err/offset-is-bytes-latin1"
+      fn: "parseSelectorError"
+      in: "title:café bogus:x"
+      out: { offset:12 token:"bogus" }
+    }
+    {
+      id: "selector-err/offset-is-bytes-cjk"
+      fn: "parseSelectorError"
+      in: "title:日本語 bogus:x"
+      out: { offset:16 token:"bogus" }
+    }
+  ]
+
+  # ---------------------------------------------------------------- identity
+  identity: set: [
+    # Known vectors. A port that gets this subtly wrong produces
+    # plausible-looking identifiers that silently fail to match another port's,
+    # which is the worst kind of wrong. Cross-checked against an independent
+    # implementation before being written down.
+    {
+      id: "identity/lid-joplin"
+      fn: "lid"
+      in: ["joplin" "profile-1" "note" "a0e50000000000000000000000000001"]
+      out: "lk_sptw25xyrt8t"
+    }
+
+    {
+      id: "identity/lid-empty-id"
+      fn: "lid"
+      in: ["joplin" "profile-1" "note" ""]
+      out: "lk_ha1dc206dj90"
+    }
+
+    {
+      id: "identity/lid-linear"
+      fn: "lid"
+      in: ["linear" "voxgig" "note" "CORE-412"]
+      out: "lk_wkp9w5jzyh71"
+    }
+
+    {
+      id: "identity/lid-notion"
+      fn: "lid"
+      in: ["notion" "8f14e45f" "note" "9f2c1a7b"]
+      out: "lk_e5h86f0xvf4q"
+    }
+
+    # The alphabet omits i, l, o and u. A lid may never contain one.
+    {
+      id: "identity/crockford-alphabet"
+      fn: "crockfordAlphabet"
+      in: null
+      out: "0123456789abcdefghjkmnpqrstvwxyz"
+    }
+
+    { id:"identity/rfc3339-epoch" fn:"rfc3339" in:0 out:"1970-01-01T00:00:00Z" }
+    {
+      id: "identity/rfc3339-second-precision"
+      # Milliseconds are truncated, never rounded: RFC 3339 UTC at second
+      # precision is the only timestamp form the envelope carries.
+      fn: "rfc3339"
+      in: 1758008460999
+      out: "2025-09-16T07:41:00Z"
+    }
+  ]
+
+  # ------------------------------------------------------------------- order
+  order: set: [
+    {
+      id: "order/code-point-not-utf16"
+      fn: "compareCodePoints"
+      # U+1D400 is above U+FFFD by code point, but its UTF-16 surrogate pair
+      # sorts BELOW it. A port that inherits its language's default string
+      # comparison gets this backwards.
+      in: ["𝐀" "�"]
+      out: 1
+    }
+
+    {
+      id: "order/shorter-prefix-first"
+      fn: "compareCodePoints"
+      in: ["ab" "abc"]
+      out: -1
+    }
+
+    { id:"order/equal" fn:"compareCodePoints" in: ["abc" "abc"] out:0 }
+  ]
+}

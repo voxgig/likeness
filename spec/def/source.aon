@@ -41,7 +41,17 @@ SdkTarget: type(close({
   # dependency it cannot install.
   published: boolean
 
-  # The exact dependency line, pinned by revision.
+  # The exact dependency line, pinned by revision - or, where the ecosystem
+  # cannot express the pin, the exact steps that produce it.
+  #
+  # NOT EVERY ECOSYSTEM CAN ADDRESS THESE PACKAGES. Each SDK repository holds
+  # its package in a language subdirectory, and npm is alone in having no way
+  # to install from a subdirectory of a git repository: `github:owner/repo#sha`
+  # resolves the repository ROOT, which has no package.json at all. Go's module
+  # path carries the subdirectory natively, pip takes `#subdirectory=py`, and
+  # bundler takes a `glob:`. So the npm entries record a clone-then-install
+  # rather than a dependency line, and that is a fact about npm rather than a
+  # gap here.
   pin: string & re("^.+$")
 }))
 

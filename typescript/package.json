@@ -1,0 +1,23 @@
+{
+  "name": "@voxgig/likeness",
+  "version": "0.1.0",
+  "private": true,
+  "description": "likeness, TypeScript port - the canonical one",
+  "type": "module",
+  "main": "dist/src/cli.js",
+  "bin": { "likeness-ts": "bin/likeness.js" },
+  "scripts": {
+    "build": "tsc --build src test",
+    "pretest": "npm run build",
+    "test": "node --test 'dist/test/**/*.test.js'",
+    "clean": "rm -rf dist node_modules package-lock.json"
+  },
+  "dependencies": {
+    "@voxgig-sdk/joplin": "file:../../voxgig-sdk/joplin-sdk/ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": { "node": ">=22" }
+}

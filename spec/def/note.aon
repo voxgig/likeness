@@ -53,7 +53,17 @@ Note: type(close({
   title: string
   body?: string
   space?: $.SourceId
-  tags: [&: string]
+
+  # OPTIONAL, and the distinction is the point: `[]` means the adapter asked
+  # and the note has no tags, ABSENT means it never asked. A required list
+  # forces an adapter that does not fetch tag associations to emit `[]`, which
+  # is a confident wrong answer - the note may well have tags - and it is the
+  # answer a `tag:` selector would then be filtering against.
+  #
+  # A command that cannot answer a question about an absent field refuses
+  # rather than guessing; see the `unsupported-capability` entries in the
+  # transcript corpus.
+  tags?: [&: string]
 
   # Capability-gated: present only where the source has a status concept.
   status?: $.Status

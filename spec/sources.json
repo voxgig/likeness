@@ -1,0 +1,633 @@
+{
+  "source": {
+    "joplin": {
+      "auth": {
+        "carrier": "token",
+        "kind": "query",
+        "prefix": ""
+      },
+      "def": "joplin-notes-folders-tags.json",
+      "defkind": "openapi",
+      "entity": {
+        "folder": {
+          "accessor": "Folder",
+          "idfield": "id",
+          "name": "folder",
+          "op": {
+            "create": {
+              "method": "POST",
+              "name": "create",
+              "pages": false,
+              "route": [
+                "/folders"
+              ]
+            },
+            "list": {
+              "method": "GET",
+              "name": "list",
+              "pages": true,
+              "route": [
+                "/folders",
+                "/folders/{id}/notes"
+              ]
+            },
+            "load": {
+              "method": "GET",
+              "name": "load",
+              "pages": false,
+              "route": [
+                "/folders/{id}"
+              ]
+            },
+            "remove": {
+              "method": "DELETE",
+              "name": "remove",
+              "pages": false,
+              "route": [
+                "/folders/{id}"
+              ]
+            },
+            "update": {
+              "method": "PUT",
+              "name": "update",
+              "pages": false,
+              "route": [
+                "/folders/{id}"
+              ]
+            }
+          }
+        },
+        "note": {
+          "accessor": "Note",
+          "idfield": "id",
+          "name": "note",
+          "op": {
+            "create": {
+              "method": "POST",
+              "name": "create",
+              "pages": false,
+              "route": [
+                "/notes"
+              ]
+            },
+            "list": {
+              "method": "GET",
+              "name": "list",
+              "pages": true,
+              "route": [
+                "/notes",
+                "/notes/{id}/tags"
+              ]
+            },
+            "load": {
+              "method": "GET",
+              "name": "load",
+              "pages": false,
+              "route": [
+                "/notes/{id}"
+              ]
+            },
+            "remove": {
+              "method": "DELETE",
+              "name": "remove",
+              "pages": false,
+              "route": [
+                "/notes/{id}"
+              ]
+            },
+            "update": {
+              "method": "PUT",
+              "name": "update",
+              "pages": false,
+              "route": [
+                "/notes/{id}"
+              ]
+            }
+          }
+        },
+        "tag": {
+          "accessor": "Tag",
+          "idfield": "id",
+          "name": "tag",
+          "op": {
+            "create": {
+              "method": "POST",
+              "name": "create",
+              "pages": false,
+              "route": [
+                "/tags"
+              ]
+            },
+            "list": {
+              "method": "GET",
+              "name": "list",
+              "pages": true,
+              "route": [
+                "/tags",
+                "/tags/{id}/notes"
+              ]
+            },
+            "load": {
+              "method": "GET",
+              "name": "load",
+              "pages": false,
+              "route": [
+                "/tags/{id}"
+              ]
+            },
+            "remove": {
+              "method": "DELETE",
+              "name": "remove",
+              "pages": false,
+              "route": [
+                "/tags/{id}"
+              ]
+            },
+            "update": {
+              "method": "PUT",
+              "name": "update",
+              "pages": false,
+              "route": [
+                "/tags/{id}"
+              ]
+            }
+          }
+        }
+      },
+      "local": false,
+      "name": "joplin",
+      "protocol": "http",
+      "repo": "voxgig-sdk/joplin-sdk",
+      "rev": "4504c82ae6502ef24b582a528bcd747d485d0a1e",
+      "semver": "0.0.1",
+      "target": {
+        "c": {
+          "dir": "c",
+          "package": "voxgig-sdk-joplin",
+          "pin": "vendored from voxgig-sdk/joplin-sdk@4504c82ae6502ef24b582a528bcd747d485d0a1e c/",
+          "published": false
+        },
+        "go": {
+          "dir": "go",
+          "package": "github.com/voxgig-sdk/joplin-sdk/go",
+          "pin": "github.com/voxgig-sdk/joplin-sdk/go@4504c82ae6502ef24b582a528bcd747d485d0a1e",
+          "published": false
+        },
+        "py": {
+          "dir": "py",
+          "package": "voxgig-sdk-joplin",
+          "pin": "git+https://github.com/voxgig-sdk/joplin-sdk@4504c82ae6502ef24b582a528bcd747d485d0a1e#subdirectory=py",
+          "published": false
+        },
+        "rb": {
+          "dir": "rb",
+          "package": "voxgig-sdk-joplin",
+          "pin": "git: 'https://github.com/voxgig-sdk/joplin-sdk', ref: '4504c82ae6502ef24b582a528bcd747d485d0a1e', glob: 'rb/*.gemspec'",
+          "published": false
+        },
+        "ts": {
+          "dir": "ts",
+          "package": "@voxgig-sdk/joplin",
+          "pin": "clone https://github.com/voxgig-sdk/joplin-sdk at 4504c82ae6502ef24b582a528bcd747d485d0a1e, then npm install <clone>/ts",
+          "published": false
+        }
+      },
+      "test": {
+        "construct": {
+          "c": "test_sdk(seed, NULL)",
+          "go": "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)",
+          "py": "JoplinSDK.test({'entity': {'note': {'n1': {'id': 'n1'}}}})",
+          "rb": "JoplinSDK.test({'entity' => {'note' => {'n1' => {'id' => 'n1'}}}})",
+          "ts": "JoplinSDK.test({entity: {note: {n1: {id: 'n1'}}}})"
+        },
+        "idfield": {
+          "folder": "id",
+          "note": "id",
+          "tag": "id"
+        },
+        "mints_id": true,
+        "netsim": {
+          "available": true,
+          "option": [
+            "latency",
+            "failTimes",
+            "failStatus",
+            "errorTimes",
+            "offline",
+            "sleep"
+          ]
+        }
+      }
+    },
+    "linear": {
+      "auth": {
+        "carrier": "authorization",
+        "kind": "raw-header",
+        "prefix": ""
+      },
+      "def": "linear-issues-only.graphql",
+      "defkind": "graphql",
+      "entity": {
+        "issue": {
+          "accessor": "Issue",
+          "idfield": "id",
+          "name": "issue",
+          "op": {
+            "create": {
+              "method": "POST",
+              "name": "create",
+              "pages": false,
+              "route": [
+                "issueCreate"
+              ]
+            },
+            "list": {
+              "method": "POST",
+              "name": "list",
+              "pages": true,
+              "route": [
+                "issues"
+              ]
+            },
+            "load": {
+              "method": "POST",
+              "name": "load",
+              "pages": false,
+              "route": [
+                "issue"
+              ]
+            },
+            "update": {
+              "method": "POST",
+              "name": "update",
+              "pages": false,
+              "route": [
+                "issueUpdate"
+              ]
+            }
+          }
+        },
+        "team": {
+          "accessor": "Team",
+          "idfield": "id",
+          "name": "team",
+          "op": {
+            "list": {
+              "method": "POST",
+              "name": "list",
+              "pages": false,
+              "route": [
+                "teams"
+              ]
+            },
+            "load": {
+              "method": "POST",
+              "name": "load",
+              "pages": false,
+              "route": [
+                "team"
+              ]
+            }
+          }
+        }
+      },
+      "local": false,
+      "name": "linear",
+      "protocol": "graphql",
+      "repo": "voxgig-sdk/linear-sdk",
+      "rev": "046371226512e1faa497905086b254f9ba41b563",
+      "semver": "0.0.1",
+      "target": {
+        "c": {
+          "dir": "c",
+          "package": "voxgig-sdk-linear",
+          "pin": "vendored from voxgig-sdk/linear-sdk@046371226512e1faa497905086b254f9ba41b563 c/",
+          "published": false
+        },
+        "go": {
+          "dir": "go",
+          "package": "github.com/voxgig-sdk/linear-sdk/go",
+          "pin": "github.com/voxgig-sdk/linear-sdk/go@046371226512e1faa497905086b254f9ba41b563",
+          "published": false
+        },
+        "py": {
+          "dir": "py",
+          "package": "voxgig-sdk-linear",
+          "pin": "git+https://github.com/voxgig-sdk/linear-sdk@046371226512e1faa497905086b254f9ba41b563#subdirectory=py",
+          "published": false
+        },
+        "rb": {
+          "dir": "rb",
+          "package": "voxgig-sdk-linear",
+          "pin": "git: 'https://github.com/voxgig-sdk/linear-sdk', ref: '046371226512e1faa497905086b254f9ba41b563', glob: 'rb/*.gemspec'",
+          "published": false
+        },
+        "ts": {
+          "dir": "ts",
+          "package": "@voxgig-sdk/linear",
+          "pin": "clone https://github.com/voxgig-sdk/linear-sdk at 046371226512e1faa497905086b254f9ba41b563, then npm install <clone>/ts",
+          "published": false
+        }
+      },
+      "test": {
+        "construct": {
+          "c": "test_sdk(seed, NULL)",
+          "go": "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)",
+          "py": "LinearSDK.test({'entity': {'issue': {'i1': {'id': 'i1'}}}})",
+          "rb": "LinearSDK.test({'entity' => {'issue' => {'i1' => {'id' => 'i1'}}}})",
+          "ts": "LinearSDK.test({entity: {issue: {i1: {id: 'i1'}}}})"
+        },
+        "idfield": {
+          "issue": "id",
+          "team": "id"
+        },
+        "mints_id": true,
+        "netsim": {
+          "available": true,
+          "option": [
+            "latency",
+            "failTimes",
+            "failStatus",
+            "errorTimes",
+            "offline",
+            "sleep"
+          ]
+        }
+      }
+    },
+    "notion": {
+      "auth": {
+        "carrier": "authorization",
+        "kind": "bearer",
+        "prefix": "Bearer"
+      },
+      "def": "notion-pages-databases-only.json",
+      "defkind": "openapi",
+      "entity": {
+        "database": {
+          "accessor": "Database",
+          "idfield": "id",
+          "name": "database",
+          "op": {
+            "create": {
+              "method": "POST",
+              "name": "create",
+              "pages": false,
+              "route": [
+                "/databases"
+              ]
+            },
+            "load": {
+              "method": "GET",
+              "name": "load",
+              "pages": false,
+              "route": [
+                "/databases/{id}"
+              ]
+            },
+            "update": {
+              "method": "PATCH",
+              "name": "update",
+              "pages": false,
+              "route": [
+                "/databases/{id}"
+              ]
+            }
+          }
+        },
+        "page": {
+          "accessor": "Page",
+          "idfield": "id",
+          "name": "page",
+          "op": {
+            "create": {
+              "method": "POST",
+              "name": "create",
+              "pages": false,
+              "route": [
+                "/pages"
+              ]
+            },
+            "load": {
+              "method": "GET",
+              "name": "load",
+              "pages": false,
+              "route": [
+                "/pages/{id}"
+              ]
+            },
+            "update": {
+              "method": "PATCH",
+              "name": "update",
+              "pages": false,
+              "route": [
+                "/pages/{id}"
+              ]
+            }
+          }
+        }
+      },
+      "local": false,
+      "name": "notion",
+      "protocol": "http",
+      "repo": "voxgig-sdk/notion-sdk",
+      "rev": "785fb7e1e6c1ec3369a001956d1d14eefca0c16d",
+      "semver": "0.0.1",
+      "target": {
+        "c": {
+          "dir": "c",
+          "package": "voxgig-sdk-notion",
+          "pin": "vendored from voxgig-sdk/notion-sdk@785fb7e1e6c1ec3369a001956d1d14eefca0c16d c/",
+          "published": false
+        },
+        "go": {
+          "dir": "go",
+          "package": "github.com/voxgig-sdk/notion-sdk/go",
+          "pin": "github.com/voxgig-sdk/notion-sdk/go@785fb7e1e6c1ec3369a001956d1d14eefca0c16d",
+          "published": false
+        },
+        "py": {
+          "dir": "py",
+          "package": "voxgig-sdk-notion",
+          "pin": "git+https://github.com/voxgig-sdk/notion-sdk@785fb7e1e6c1ec3369a001956d1d14eefca0c16d#subdirectory=py",
+          "published": false
+        },
+        "ts": {
+          "dir": "ts",
+          "package": "@voxgig-sdk/notion",
+          "pin": "clone https://github.com/voxgig-sdk/notion-sdk at 785fb7e1e6c1ec3369a001956d1d14eefca0c16d, then npm install <clone>/ts",
+          "published": false
+        }
+      },
+      "test": {
+        "construct": {
+          "c": "test_sdk(seed, NULL)",
+          "go": "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)",
+          "py": "NotionSDK.test({'entity': {'page': {'p1': {'id': 'p1'}}}})",
+          "ts": "NotionSDK.test({entity: {page: {p1: {id: 'p1'}}}})"
+        },
+        "idfield": {
+          "database": "id",
+          "page": "id"
+        },
+        "mints_id": true,
+        "netsim": {
+          "available": true,
+          "option": [
+            "latency",
+            "failTimes",
+            "failStatus",
+            "errorTimes",
+            "offline",
+            "sleep"
+          ]
+        }
+      }
+    },
+    "obsidian": {
+      "auth": {
+        "carrier": "authorization",
+        "kind": "bearer",
+        "prefix": "Bearer"
+      },
+      "def": "obsidian-vault-only.json",
+      "defkind": "openapi",
+      "entity": {
+        "tag": {
+          "accessor": "Tag",
+          "idfield": "id",
+          "name": "tag",
+          "op": {
+            "list": {
+              "method": "GET",
+              "name": "list",
+              "pages": false,
+              "route": [
+                "/tags/"
+              ]
+            }
+          }
+        },
+        "vault": {
+          "accessor": "Vault",
+          "idfield": "id",
+          "name": "vault",
+          "op": {
+            "create": {
+              "method": "POST",
+              "name": "create",
+              "pages": false,
+              "route": [
+                "/vault/{filename}"
+              ]
+            },
+            "list": {
+              "method": "GET",
+              "name": "list",
+              "pages": false,
+              "route": [
+                "/vault/"
+              ]
+            },
+            "load": {
+              "method": "GET",
+              "name": "load",
+              "pages": false,
+              "route": [
+                "/vault/{filename}",
+                "/vault/{pathToDirectory}/"
+              ]
+            },
+            "patch": {
+              "method": "PATCH",
+              "name": "patch",
+              "pages": false,
+              "route": [
+                "/vault/{filename}"
+              ]
+            },
+            "remove": {
+              "method": "DELETE",
+              "name": "remove",
+              "pages": false,
+              "route": [
+                "/vault/{filename}"
+              ]
+            },
+            "update": {
+              "method": "PUT",
+              "name": "update",
+              "pages": false,
+              "route": [
+                "/vault/{filename}"
+              ]
+            }
+          }
+        }
+      },
+      "local": true,
+      "name": "obsidian",
+      "protocol": "http",
+      "repo": "voxgig-sdk/obsidian-sdk",
+      "rev": "958b620f1ef9ecdfc6c9d553cda94029e060c523",
+      "semver": "0.0.1",
+      "target": {
+        "c": {
+          "dir": "c",
+          "package": "voxgig-sdk-obsidian",
+          "pin": "vendored from voxgig-sdk/obsidian-sdk@958b620f1ef9ecdfc6c9d553cda94029e060c523 c/",
+          "published": false
+        },
+        "go": {
+          "dir": "go",
+          "package": "github.com/voxgig-sdk/obsidian-sdk/go",
+          "pin": "github.com/voxgig-sdk/obsidian-sdk/go@958b620f1ef9ecdfc6c9d553cda94029e060c523",
+          "published": false
+        },
+        "py": {
+          "dir": "py",
+          "package": "voxgig-sdk-obsidian",
+          "pin": "git+https://github.com/voxgig-sdk/obsidian-sdk@958b620f1ef9ecdfc6c9d553cda94029e060c523#subdirectory=py",
+          "published": false
+        },
+        "rb": {
+          "dir": "rb",
+          "package": "voxgig-sdk-obsidian",
+          "pin": "git: 'https://github.com/voxgig-sdk/obsidian-sdk', ref: '958b620f1ef9ecdfc6c9d553cda94029e060c523', glob: 'rb/*.gemspec'",
+          "published": false
+        },
+        "ts": {
+          "dir": "ts",
+          "package": "@voxgig-sdk/obsidian",
+          "pin": "clone https://github.com/voxgig-sdk/obsidian-sdk at 958b620f1ef9ecdfc6c9d553cda94029e060c523, then npm install <clone>/ts",
+          "published": false
+        }
+      },
+      "test": {
+        "construct": {
+          "c": "test_sdk(seed, NULL)",
+          "go": "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)",
+          "py": "ObsidianSDK.test({'entity': {'vault': {'a.md': {'id': 'a.md'}}}})",
+          "rb": "ObsidianSDK.test({'entity' => {'vault' => {'a.md' => {'id' => 'a.md'}}}})",
+          "ts": "ObsidianSDK.test({entity: {vault: {'a.md': {id: 'a.md'}}}})"
+        },
+        "idfield": {
+          "tag": "id",
+          "vault": "id"
+        },
+        "mints_id": true,
+        "netsim": {
+          "available": true,
+          "option": [
+            "latency",
+            "failTimes",
+            "failStatus",
+            "errorTimes",
+            "offline",
+            "sleep"
+          ]
+        }
+      }
+    }
+  }
+}

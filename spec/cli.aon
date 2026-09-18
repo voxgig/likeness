@@ -1,0 +1,567 @@
+# likeness: the transcript corpus.
+#
+# Whole commands, one entry each. This is the contract that matters, because it
+# is the CLI's behaviour written down: argv in, exit status and bytes out, and
+# the list of calls it was allowed to make on the way.
+#
+# A LIKENESS COMMAND IS A PURE FUNCTION. Everything impure is declared in `ctx`
+# - the clock, the fixture, the identifier seed, the configured connections and
+# the environment - so an entry means the same thing on a laptop, in CI and in
+# five years. Nothing here reads a config file, the wall clock or a network.
+#
+# THE CALL LIST IS HALF THE TEST. An entry that checked only stdout would pass
+# for a command that produced the right answer by making forty requests, and
+# "a refusal never reaches the network" - the single most important claim in
+# the spec's design - could not be written down at all. Two entries below make
+# exactly that claim, and they make it by asserting an EMPTY call list.
+#
+# `make spec-build` compiles this to spec/cli.json, which every port runs
+# through its own harness. Never hand-edit the JSON, and never hand-edit an
+# expectation file under spec/expect/ either: regenerate it, read the diff, and
+# commit it only if the change was the one you meant to make.
+
+primary: cli: {
+  # ------------------------------------------------------------------- list
+  #
+  # The clock is 2026-09-18T00:00:00Z throughout and the fixture's three notes
+  # were last updated on the 16th, the 12th and the 11th of the same month.
+  # That spread is deliberate: it is what makes `updated>3d` select one note
+  # rather than all of them or none, so a port that resolved a duration against
+  # the wrong end of the window fails here instead of passing by luck.
+  list: set: [
+    {
+      id: "list/all"
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/all.json"
+        # ONE call for three notes. The generated paging feature records page
+        # signals but does not follow them, so a list is a single request - and
+        # this is where that stops being an assumption.
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "list/free-text"
+      # A bareword with no field is a case-insensitive substring over title and
+      # body. Note 1 has it in the title, note 2 in the body, note 3 nowhere.
+      args: ["list" "retention" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/free-text.json"
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "list/relative-duration"
+      # `updated>3d` reads as "changed within the last three days", so the
+      # duration is a LOWER BOUND ON THE TIMESTAMP. A port that read it as an
+      # upper bound returns the other two notes and fails here.
+      args: ["list" "updated>3d" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/relative-duration.json"
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "list/limit-truncates"
+      args: ["list" "--limit" "2" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        # `meta.truncated` is true. A limit that silently dropped rows without
+        # saying so is how a caller concludes a source holds two notes.
+        stdout: "spec/expect/list/limit-truncates.json"
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "list/no-match"
+      args: ["list" "title:nothingmatchesthis" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        # EXIT 1 IS NOT AN ERROR. The question was valid and the answer is
+        # nothing, so `ok` stays true, `data` is an empty list rather than null,
+        # and the code is `no-match` rather than a failure a script would stop
+        # on. The source WAS asked, so the call list is not empty.
+        exit: 1
+        stdout: "spec/expect/list/no-match.json"
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "list/human"
+      # No `--json`. Human output is part of the contract too, and it is pinned
+      # with no stripping at all because it carries no envelope.
+      args: ["list"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/human.txt"
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "list/human-no-match"
+      # Nothing matched: print NOTHING. An empty list joined by newlines is a
+      # blank line, which reads as one unnamed result and breaks `wc -l`.
+      args: ["list" "title:nothingmatchesthis"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/list/human-no-match.txt"
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "list/invalid-selector-refuses-before-the-network"
+      # THE ENTRY THIS CORPUS EXISTS FOR. `bogusfield` is not in the closed
+      # field list, so the command refuses - and the assertion that matters is
+      # `calls: []`. A port that parsed the selector after fetching would
+      # produce this exact stdout and this exact exit code, and would still be
+      # wrong, because it spent a request to answer a question it could have
+      # refused for free.
+      args: ["list" "bogusfield:x" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/list/invalid-selector.json" calls: [] }
+    }
+
+    {
+      id: "list/unanswerable-field-refused-before-the-network"
+      # THE THIRD REFUSAL-BEFORE-THE-NETWORK ENTRY, and the subtlest. `tag` is
+      # a real field and this parses cleanly; what is missing is a source that
+      # can answer it. The Joplin adapter does not fetch tag associations, so a
+      # note's `tags` is ABSENT rather than `[]` - and filtering an absent
+      # field would have produced a confident "no matches" for notes that may
+      # well be tagged.
+      #
+      # `calls: []` again. The refusal is knowable from declared capability, so
+      # it costs nothing to find out.
+      args: ["list" "tag:anything" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/list/unanswerable-field.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "list/partial"
+      # Two connections, one of them offline. The rows that exist are printed,
+      # `meta.incomplete` names the omission, and the exit status is 2 rather
+      # than 0: a smaller answer with no warning is the worst of the three
+      # options. BOTH connections are called - the failure is discovered, not
+      # predicted.
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"jot" source:"joplin" account:"local" }
+          { instance:"spare" source:"joplin" account:"spare" net:offline:true }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 2
+        stdout: "spec/expect/list/partial.json"
+        calls: [
+          { instance:"jot" method:"GET" path:"/notes" }
+          { instance:"spare" method:"GET" path:"/notes" }
+        ]
+      }
+    }
+
+    {
+      id: "list/partial-human"
+      # The same run without `--json`. THE WARNING GOES TO STDERR and the rows
+      # go to stdout, so a pipeline keeps working and a human still finds out.
+      args: ["list"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"jot" source:"joplin" account:"local" }
+          { instance:"spare" source:"joplin" account:"spare" net:offline:true }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 2
+        stdout: "spec/expect/list/partial-human.txt"
+        stderr: "spare unavailable - results are incomplete\n"
+        calls: [
+          { instance:"jot" method:"GET" path:"/notes" }
+          { instance:"spare" method:"GET" path:"/notes" }
+        ]
+      }
+    }
+
+    {
+      id: "list/strict-halts-the-fanout"
+      # `--strict` refuses to call a partial answer a success: exit 4, `ok`
+      # false. It still PRINTS the rows, because `fanout-halted` is one of the
+      # two codes the registry marks as permitted to carry data - the work was
+      # already done and paid for, and a caller branching on `ok` alone
+      # discards it correctly anyway.
+      args: ["list" "--strict" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"jot" source:"joplin" account:"local" }
+          { instance:"spare" source:"joplin" account:"spare" net:offline:true }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/list/strict-halts.json"
+        calls: [
+          { instance:"jot" method:"GET" path:"/notes" }
+          { instance:"spare" method:"GET" path:"/notes" }
+        ]
+      }
+    }
+
+    {
+      id: "list/instance-filter"
+      # `--instance` narrows the fan-out BEFORE it happens: the second
+      # connection is never called, which the empty second call proves.
+      args: ["list" "--instance" "jot" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"jot" source:"joplin" account:"local" }
+          { instance:"spare" source:"joplin" account:"spare" net:offline:true }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/instance-filter.json"
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+  ]
+
+  # -------------------------------------------------------------------- get
+  get: set: [
+    {
+      id: "get/one"
+      args: ["get" "jot:a0e50000000000000000000000000001" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        # The lid in this file is a derived value, not a stored one: it is a
+        # SHA-256 over source, account, entity and the source-native id, in
+        # Crockford base32. Five ports agreeing on it is not free.
+        stdout: "spec/expect/get/one.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes/a0e50000000000000000000000000001"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "get/not-found"
+      # Exit 1, like `no-match`: the ref was well formed and there is no such
+      # record. The source WAS asked, so there is one call.
+      args: ["get" "jot:nosuchnote" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/get/not-found.json"
+        calls: [{ instance:"jot" method:"GET" path:"/notes/nosuchnote" }]
+      }
+    }
+
+    {
+      id: "get/no-ref"
+      args: ["get" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/get/no-ref.json" calls: [] }
+    }
+
+    {
+      id: "get/unparseable-ref"
+      args: ["get" "nocolonhere" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/get/unparseable-ref.json" calls: [] }
+    }
+
+    {
+      id: "get/unknown-instance"
+      # THE SECOND REFUSAL-BEFORE-THE-NETWORK ENTRY. No connection is named
+      # `absent`, which is knowable without asking anyone, so no call is made.
+      args: ["get" "absent:x" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/get/unknown-instance.json" calls: [] }
+    }
+  ]
+
+  # ----------------------------------------------------------------- doctor
+  doctor: set: [
+    {
+      id: "doctor/ok"
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/doctor/ok.json"
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "doctor/unreachable"
+      # `detail` is a FIXED SENTENCE, never the SDK's own message: each port's
+      # generated client words a transport failure differently and embeds the
+      # URL it tried, so passing it through would put five different strings on
+      # stdout for one condition. This entry is what holds that line.
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"jot" source:"joplin" account:"local" net:offline:true }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/doctor/unreachable.json"
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "doctor/auth-rejected"
+      # A rejected token and an unreachable application are one experience and
+      # two remedies. Telling someone whose credential expired to go and start
+      # an application that is already running is the failure this separates.
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          {
+            instance: "jot"
+            source: "joplin"
+            account: "local"
+            net: { failTimes:1 failStatus:401 }
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/doctor/auth-rejected.json"
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "doctor/mixed-failures"
+      # Two connections failing for two different reasons. The envelope's code
+      # is the WORST ROW - highest exit status, then code name ascending to
+      # break a tie - so the rule is stated rather than felt, and the per-row
+      # codes still carry the detail.
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"jot" source:"joplin" account:"local" net:offline:true }
+          {
+            instance: "spare"
+            source: "joplin"
+            account: "spare"
+            net: { failTimes:1 failStatus:401 }
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/doctor/mixed-failures.json"
+        calls: [
+          { instance:"jot" method:"GET" path:"/notes" }
+          { instance:"spare" method:"GET" path:"/notes" }
+        ]
+      }
+    }
+  ]
+
+  # ------------------------------------------------------- version and which
+  #
+  # Neither touches a source, so both assert an empty call list. `version` also
+  # carries a `port` inside `data` as well as at the top level, which is why the
+  # parity exceptions are removed BY NAME AND RECURSIVELY: a rule that stripped
+  # only the outer one would leave these two entries impossible for any second
+  # port to pass.
+  meta: set: [
+    {
+      id: "meta/version"
+      args: ["version" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/meta/version.json" calls: [] }
+    }
+
+    {
+      id: "meta/which"
+      args: ["which" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/meta/which.json" calls: [] }
+    }
+
+    {
+      id: "meta/stub-is-honest"
+      # A stub that EXISTS and says it does not work yet. The alternative -
+      # no such command - tells a user their installation is broken, and the
+      # alternative to that, silence, is worse.
+      args: ["search" "anything" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:4 stdout:"spec/expect/meta/stub.json" calls: [] }
+    }
+
+    {
+      id: "meta/unknown-command"
+      args: ["nosuchcommand" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/meta/unknown-command.json" calls: [] }
+    }
+
+    {
+      id: "meta/no-command"
+      # Bare `likeness`, with no arguments at all. NOTHING ON STDOUT and the
+      # complaint on stderr, so a pipeline reading stdout gets an empty stream
+      # rather than an error message it will try to parse.
+      args: []
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/meta/no-command.txt"
+        stderr: "error: invalid-selector\n  no command given\n  remedy  try `likeness list` or `likeness --help`\n"
+        calls: []
+      }
+    }
+  ]
+}

@@ -17,7 +17,9 @@ VET_PAIRS := \
 	$(DEF)/capability.aon:$(SPEC)/caps.aon \
 	$(DEF)/error.aon:$(SPEC)/errors.aon \
 	$(DEF)/project.aon:$(SPEC)/example/likeness.aon \
-	$(DEF)/replica.aon:$(SPEC)/replica.aon
+	$(DEF)/replica.aon:$(SPEC)/replica.aon \
+	$(DEF)/corpus.aon:$(SPEC)/unit.aon \
+	$(DEF)/corpus.aon:$(SPEC)/cli.aon
 
 # Files that MUST fail to vet, AND MUST FAIL FOR THE RIGHT REASON. `aontu vet`
 # exits 1 for a contradiction, 2 for a usage error and 3 for an incomplete
@@ -35,15 +37,71 @@ help:
 	@echo '  spec-check    every data file satisfies its shape, and the red tests go red'
 	@echo '  spec-agree    the registry is present, and capability rows match it'
 	@echo '                (set LIKENESS_SDK_ROOT to also check against real SDKs)'
+	@echo '  spec-build    compile the data files to the JSON every port reads'
+	@echo '  spec-fresh    fail if a committed JSON file is stale'
 	@echo '  spec-json     export the shapes as JSON Schema'
 	@echo '  spec-fmt      check schema formatting'
 	@echo '  spec-hash     print a content hash per schema file'
-	@echo '  spec          spec-fmt, spec-check and spec-agree (not json or hash)'
+	@echo '  spec          spec-fmt, spec-check, spec-fresh and spec-agree'
+	@echo '  sdk           clone the generated SDKs at their pinned revisions'
+	@echo '  sdk-check     fail if a clone is missing or off its pin'
+	@echo '  test-ts       build and run the TypeScript port against both corpora'
+	@echo '  check         spec and every port'
+	@echo '  expect        REGENERATE the committed expectations - read the diff'
 	@echo '  mock          run the local source mock server'
 
 
 .PHONY: spec
-spec: spec-fmt spec-check spec-agree
+spec: spec-fmt spec-check spec-fresh spec-agree
+
+
+# Everything. What CI runs, and what a change should run before it is pushed.
+.PHONY: check
+check: spec test-ts
+
+
+.PHONY: spec-build
+spec-build:
+	@AONTU="$(AONTU)" node tools/build-spec.mjs
+
+
+# Drift between a .aon file and the JSON committed beside it fails a build here
+# rather than being discovered a month later, when a port disagrees with the
+# spec it claims to implement.
+.PHONY: spec-fresh
+spec-fresh:
+	@AONTU="$(AONTU)" node tools/build-spec.mjs --check
+
+
+# The generated SDKs are not published to any language registry yet, so there
+# is no lockfile to hold them and this does the job instead. The revisions come
+# from spec/sources.json and are never restated in the Makefile.
+.PHONY: sdk
+sdk:
+	@node tools/fetch-sdk.mjs
+
+
+.PHONY: sdk-check
+sdk-check:
+	@node tools/fetch-sdk.mjs --check
+
+
+# sdk-check first: a port built against a drifted clone produces a corpus
+# result about an SDK nobody else has.
+.PHONY: test-ts
+test-ts: sdk-check
+	@cd typescript && npm run build && npm test
+
+
+# NOT A TEST, and never run to make one pass. It rewrites the contract to agree
+# with whatever the code now does, which is the opposite of what the corpus is
+# for. Run it deliberately, read the diff, and commit it only if the change was
+# the one you meant to make. CI never runs this; it runs `make check`.
+.PHONY: expect
+expect:
+	@echo '  Regenerating committed expectations from the CANONICAL (ts) port.' >&2
+	@echo '  READ THE DIFF before committing: this rewrites the contract.' >&2
+	@node tools/regen-expect.mjs
 
 
 .PHONY: spec-check

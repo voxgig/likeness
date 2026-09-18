@@ -1,0 +1,1 @@
+{"cmd":["list"],"code":"unsupported-capability","data":null,"error":{"message":"no source can answer a question about tag","remedy":"drop that term, or narrow to a source that supplies it with --source"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

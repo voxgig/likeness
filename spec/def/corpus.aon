@@ -26,11 +26,52 @@
 # how "a no-op sync makes zero write calls" becomes a test rather than a hope.
 Call: type(close({ instance:$.Ident method:$.Method path:string }))
 
+# Conditions imposed on ONE connection's offline transport, handed to the
+# generated SDK's own test mode as `net`. Spelled exactly as the SDKs spell it,
+# in camelCase, in all seven languages.
+#
+# This is how a source being down becomes a test rather than a hope. Without it
+# the only way to exercise a partial answer is to point a connection at a port
+# nothing is listening on, which is slow, differs between CI images, and tests
+# the operating system's refusal rather than likeness's handling of it.
+Net: type(close({
+  offline?: boolean
+  latency?: $.Millis
+  failTimes?: $.Count
+  # An HTTP status the transport should return instead of answering. Not
+  # $.Exit, and not a free integer either: a status outside the response range
+  # is a typo, not a test.
+  failStatus?: integer & min(100) & max(599)
+  errorTimes?: $.Count
+}))
+
+# One configured connection, as a transcript entry declares it.
+#
+# CONFIGURATION IS AN IMPURE INPUT, so it is named here rather than left to a
+# file on the machine running the tests. An entry that read ~/.config would pass
+# on the author's laptop and fail in CI, which is the failure this whole shape
+# exists to make impossible.
+#
+# No credential appears: the fixture supplies the SDK's offline transport, so
+# there is nothing to authenticate against and nothing to leak into a corpus
+# file that is committed and public.
+Conn: type(close({ instance:$.Ident source:$.Ident account:string net?:$.Net }))
+
 # The context a transcript entry runs in. Every impure input, named.
 Ctx: type(close({
   # The fixture set: a map of seed records handed to the SDK's offline test
   # mode, by source. Recorded once and frozen.
+  #
+  # Named, not inlined: the same seed serves many entries, and a fixture pasted
+  # into each of them is a fixture that drifts between them. The runner reads
+  # `fixtures/sources/<fixture>/seed.json`.
   fixture: string
+
+  # The connections this entry runs against, in order. An entry naming none is
+  # legitimate - `version` and `which` never touch a source - so this is a list
+  # that may be empty rather than an optional key, because "no connections" and
+  # "connections unspecified" must not be spelled the same way.
+  connections: [&: $.Conn]
 
   # Injected. Never the wall clock: an entry that asserted on `now` would pass
   # for one second and fail forever after.
@@ -49,19 +90,36 @@ Ctx: type(close({
 # What the command must produce.
 Out: type(close({
   exit: $.Exit
-  # A path to a committed expectation file. Compared as BYTES - key order,
-  # spacing, escaping and the trailing newline are all part of the contract -
-  # after the declared non-parity fields have been removed BY NAME from both
-  # sides. Those fields are `port` and `elapsed_ms`, and that removal is what
-  # lets ONE committed expectation serve five ports: every envelope is required
-  # to carry its own `port`, so five raw outputs can never be identical and
-  # never should be. A run where they were would mean a port was lying about
-  # which port it is.
+  # A path, relative to the repository root, to a committed expectation file.
+  # Compared as BYTES - key order, spacing, escaping and the trailing newline
+  # are all part of the contract - after the declared non-parity fields have
+  # been removed BY NAME, RECURSIVELY, from both sides. Those fields are `port`
+  # and `elapsed_ms`, and that removal is what lets ONE committed expectation
+  # serve five ports: every envelope is required to carry its own `port`, so
+  # five raw outputs can never be identical and never should be. A run where
+  # they were would mean a port was lying about which port it is.
   #
-  # The removal is by name and the list is exhaustive by construction, so a
-  # difference in any other field is a failing check rather than a footnote.
+  # RECURSIVELY, because `version` and `which` carry a `port` inside `data` as
+  # well as at the top level, and a rule that removed only the outer one would
+  # have exactly two entries in this corpus that no second port could ever
+  # pass. The runner asserts the top-level `port` equals the port under test
+  # separately, so removing it here loses no coverage.
+  #
+  # This comparison is not the serialiser's test. Stripping and re-rendering
+  # passes the actual output back through the port's own writer, so a writer
+  # that sorted keys wrongly would produce a wrong expectation and match it.
+  # THE UNIT CORPUS IS THE ANCHOR: it pins `serialise` in every language against
+  # bytes no port produced. This entry pins the CONTENT, given a writer already
+  # proved correct. Neither check is sufficient alone, which is why there are
+  # two corpora rather than one.
+  #
   # `--deterministic` handles the clock separately.
   stdout: string
+
+  # A LITERAL, not a path, and compared as bytes with no stripping. Narration
+  # is short enough to read in place, and unlike stdout it carries no envelope
+  # and so has no non-parity fields to remove. Absent means the empty string:
+  # under `--json` nothing may reach stderr at all, and most entries use it.
   stderr?: string
   calls: [&: $.Call]
 }))

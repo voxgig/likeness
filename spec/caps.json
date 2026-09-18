@@ -1,0 +1,205 @@
+{
+  "capability": {
+    "joplin": {
+      "entity": {
+        "note": {
+          "kind": "note",
+          "op": {
+            "archive": false,
+            "create": true,
+            "delete": true,
+            "get": true,
+            "link": "markdown",
+            "list": true,
+            "move": "parent-id",
+            "search": "replica",
+            "tag": false,
+            "update": true
+          },
+          "sdk": "note",
+          "term": "note"
+        },
+        "space": {
+          "kind": "space",
+          "op": {
+            "archive": false,
+            "create": true,
+            "delete": true,
+            "get": true,
+            "link": false,
+            "list": true,
+            "move": "parent-id",
+            "search": false,
+            "tag": false,
+            "update": true
+          },
+          "sdk": "folder",
+          "term": "notebook"
+        },
+        "tag": {
+          "kind": "tag",
+          "op": {
+            "archive": false,
+            "create": true,
+            "delete": true,
+            "get": true,
+            "link": false,
+            "list": true,
+            "move": false,
+            "search": false,
+            "tag": false,
+            "update": true
+          },
+          "sdk": "tag",
+          "term": "tag"
+        }
+      },
+      "limit": {
+        "body": "markdown",
+        "page_max": 100,
+        "rate": 0,
+        "search": "none",
+        "version_token": false
+      },
+      "name": "joplin"
+    },
+    "linear": {
+      "entity": {
+        "note": {
+          "kind": "note",
+          "op": {
+            "archive": false,
+            "create": true,
+            "delete": false,
+            "get": true,
+            "link": false,
+            "list": true,
+            "move": "team-id",
+            "search": "replica",
+            "tag": false,
+            "update": true
+          },
+          "sdk": "issue",
+          "term": "issue"
+        },
+        "space": {
+          "kind": "space",
+          "op": {
+            "archive": false,
+            "create": false,
+            "delete": false,
+            "get": true,
+            "link": false,
+            "list": true,
+            "move": false,
+            "search": false,
+            "tag": false,
+            "update": false
+          },
+          "sdk": "team",
+          "term": "team"
+        }
+      },
+      "limit": {
+        "body": "markdown",
+        "page_max": 100,
+        "rate": 0,
+        "search": "none",
+        "version_token": false
+      },
+      "name": "linear"
+    },
+    "notion": {
+      "entity": {
+        "note": {
+          "kind": "note",
+          "op": {
+            "archive": "archived-flag",
+            "create": true,
+            "delete": false,
+            "get": true,
+            "link": "mention",
+            "list": false,
+            "move": false,
+            "search": "replica",
+            "tag": "property",
+            "update": true
+          },
+          "sdk": "page",
+          "term": "page"
+        },
+        "space": {
+          "kind": "space",
+          "op": {
+            "archive": false,
+            "create": true,
+            "delete": false,
+            "get": true,
+            "link": false,
+            "list": false,
+            "move": false,
+            "search": false,
+            "tag": false,
+            "update": true
+          },
+          "sdk": "database",
+          "term": "database"
+        }
+      },
+      "limit": {
+        "body": "blocks",
+        "page_max": 100,
+        "rate": 3,
+        "search": "none",
+        "version_token": false
+      },
+      "name": "notion"
+    },
+    "obsidian": {
+      "entity": {
+        "note": {
+          "kind": "note",
+          "op": {
+            "archive": false,
+            "create": true,
+            "delete": true,
+            "get": true,
+            "link": "wikilink",
+            "list": true,
+            "move": false,
+            "search": "replica",
+            "tag": "frontmatter",
+            "update": true
+          },
+          "sdk": "vault",
+          "term": "file"
+        },
+        "tag": {
+          "kind": "tag",
+          "op": {
+            "archive": false,
+            "create": false,
+            "delete": false,
+            "get": false,
+            "link": false,
+            "list": true,
+            "move": false,
+            "search": false,
+            "tag": false,
+            "update": false
+          },
+          "sdk": "tag",
+          "term": "tag"
+        }
+      },
+      "limit": {
+        "body": "markdown",
+        "page_max": 5000,
+        "rate": 0,
+        "search": "none",
+        "version_token": true
+      },
+      "name": "obsidian"
+    }
+  }
+}

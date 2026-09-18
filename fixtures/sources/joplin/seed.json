@@ -1,0 +1,40 @@
+{
+  "_doc": [
+    "Seed for the Joplin SDK's offline test mode. Handed to JoplinSDK.test() as",
+    "{entity: {note: {<id>: <record>}}}; the SDK stamps the map key onto the",
+    "record's own id field, which for every entity of all four sources derives",
+    "to `id` - established by running each SDK's resolver, not by reading routes.",
+    "",
+    "Timestamps are Joplin's own form: epoch milliseconds, integers. Fixed and",
+    "frozen: an entry that asserted on the wall clock would pass for one second",
+    "and fail forever after."
+  ],
+  "entity": {
+    "note": {
+      "a0e50000000000000000000000000001": {
+        "id": "a0e50000000000000000000000000001",
+        "parent_id": "f01d0000000000000000000000000001",
+        "title": "Retention policy for archived notes",
+        "body": "We keep archived notes indefinitely today. Legal want a 24-month ceiling.",
+        "created_time": 1773129600000,
+        "updated_time": 1789544460000
+      },
+      "a0e50000000000000000000000000002": {
+        "id": "a0e50000000000000000000000000002",
+        "parent_id": "f01d0000000000000000000000000001",
+        "title": "Rate limit budget for the sync worker",
+        "body": "Budget for the sync worker. Nothing about retention here.",
+        "created_time": 1773216000000,
+        "updated_time": 1789195500000
+      },
+      "a0e50000000000000000000000000003": {
+        "id": "a0e50000000000000000000000000003",
+        "parent_id": "f01d0000000000000000000000000002",
+        "title": "Launch checklist",
+        "body": "Ship it.",
+        "created_time": 1773302400000,
+        "updated_time": 1789109100000
+      }
+    }
+  }
+}
