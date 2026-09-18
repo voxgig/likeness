@@ -1,16 +1,3 @@
-/* The unit corpus runner.
- *
- * spec/unit.aon compiles to spec/unit.json; this runs every entry in it
- * through this port's own exports. THE UNIT CORPUS IS THE ANCHOR OF THE WHOLE
- * PARITY SCHEME: the transcript corpus strips and re-renders output through
- * the port's own writer, so only this file holds `Serialise` to bytes that no
- * port produced.
- *
- * Every function under test is registered explicitly. Adding a corpus entry
- * for an unregistered function fails loudly here instead of being silently
- * skipped, which is the failure mode a reflective lookup would have.
- */
-
 package likeness
 
 import (
@@ -127,9 +114,6 @@ func TestUnitCorpus(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			// Compared as the BYTES each value would become, so that
-			// json.Number("1") and int(1) are the same answer and two maps
-			// with different key order are not accidentally different.
 			if a, b := canon(t, got), canon(t, e["out"]); a != b {
 				t.Fatalf("\n  want %s  got  %s", b, a)
 			}

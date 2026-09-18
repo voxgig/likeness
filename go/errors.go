@@ -1,12 +1,3 @@
-/* The error and exit code registry, read from the compiled ground truth.
- *
- * spec/errors.aon is the source; `make spec-build` compiles it to
- * spec/errors.json and `make spec-fresh` fails on drift. Nothing here restates
- * a code or an exit status: a second copy is a second source of truth, and the
- * one nobody regenerates is the one that goes stale. That the Go port and the
- * TypeScript port read the SAME file is most of why their exit codes agree.
- */
-
 package likeness
 
 import (
@@ -18,7 +9,6 @@ import (
 	"sync"
 )
 
-// ErrorDef is one row of the registry.
 type ErrorDef struct {
 	Code      string `json:"code"`
 	Exit      int    `json:"exit"`
@@ -33,12 +23,6 @@ var (
 	registryErr  error
 )
 
-/*
-specDir finds the compiled ground truth by walking up until it appears, rather
-than counting directories from here. A fixed path encodes the build layout in
-the source and the two drift silently; the symptom is a stack trace from inside
-a command rather than a clear failure at startup.
-*/
 func specDir() (string, error) {
 	dir, err := os.Getwd()
 	if nil != err {
@@ -58,7 +42,6 @@ func specDir() (string, error) {
 	return "", fmt.Errorf("spec/errors.json not found above the working directory - run `make spec-build` from the repository root")
 }
 
-// Errors returns the registry, loading it once.
 func Errors() (map[string]ErrorDef, error) {
 	registryOnce.Do(func() {
 		dir, err := specDir()

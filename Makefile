@@ -61,7 +61,7 @@ spec: spec-fmt spec-check spec-fresh spec-agree
 
 # Everything. What CI runs, and what a change should run before it is pushed.
 .PHONY: check
-check: spec test-ts test-go parity
+check: comments spec test-ts test-go parity
 
 
 .PHONY: spec-build
@@ -201,3 +201,16 @@ spec-list:
 .PHONY: mock
 mock:
 	@cd mock && npm start
+
+
+.PHONY: comments comments-test hooks
+comments:
+	node tools/comment-gate.cjs
+
+comments-test:
+	node --test tools/comment-gate.test.cjs
+
+hooks:
+	git config core.hooksPath .githooks
+
+test: comments

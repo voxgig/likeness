@@ -1,13 +1,3 @@
-/* The core: a likeness command as a pure function.
- *
- *   (argv, env, config, fixture-state, clock) -> (exit, stdout, stderr, calls)
- *
- * Everything impure is a parameter. The clock is injected, the network is the
- * SDK's offline test transport, identifiers come from a seeded source, and
- * concurrency is unobservable because results are sorted. Given that, a whole
- * command is a corpus entry - which is the reason the argv shell is thin and
- * this is a library.
- */
 
 import { serialise, render, type Envelope } from './envelope.js'
 import { parseSelector, fieldsOf, SelectorError } from './selector.js'
@@ -31,16 +21,12 @@ export type Connection = {
 export type Ctx = {
   argv: string[]
   env?: Record<string, string>
-  /* RFC 3339. Injected always: a command that read the wall clock could not be
-   * a corpus entry. */
   clock: string
   seed?: number
   connections: Connection[]
   /* Seed maps for the SDKs' offline test mode, by instance. Present in every
    * test and absent in production. */
   fixture?: Record<string, unknown>
-  /* Every likeness on PATH, for `which`. Injected rather than probed so the
-   * command is testable. */
   path?: { path: string, port: string, version: string }[]
 }
 
@@ -102,19 +88,6 @@ function envelope (
   error?: Envelope['error'],
 ): Envelope {
   const env: Envelope = {
-    // `ok` IS FALSE EXACTLY WHEN THE ENVELOPE CARRIES AN `error`. One sentence,
-    // no second copy of the registry, and it is the question a caller is
-    // actually asking: is there something to read in `error`?
-    //
-    // Two earlier definitions were both wrong. `code === 'ok' || code ===
-    // 'partial'` made `no-match` an error, when the registry's own first line
-    // says exit 1 is not one. `exitFor(code) <= 2` then made `not-found` a
-    // SUCCESS whose `data` was null - a caller that branched on `ok` and read
-    // `data` got null and no explanation.
-    //
-    // This definition gets every case right: `no-match` carries `[]` and no
-    // error, so it is ok despite exit 1; `not-found` and `fanout-halted` carry
-    // an error, so they are not, whatever their data and exit status.
     ok: undefined === error,
     code,
     cmd,
@@ -125,10 +98,6 @@ function envelope (
       sources: meta.sources ?? [],
       incomplete: meta.incomplete ?? [],
       calls: meta.calls ?? 0,
-      // A declared non-parity field, removed by name before the byte diff, and
-      // zeroed under --deterministic so the two legitimate exceptions cannot
-      // defeat it. It is MEASURED otherwise: a field that always reported zero
-      // was worse than no field, because it looked like an answer.
       elapsed_ms: meta.elapsed_ms ?? 0,
     },
     port: PORT,
@@ -138,26 +107,12 @@ function envelope (
   return env
 }
 
-/* Attach an error to an already-built envelope, keeping `ok` in step.
- *
- * Two commands decide their error only after assembling their data - a halted
- * fan-out and a doctor run - and setting `env.error` directly would leave `ok`
- * saying the opposite. There is no route to an error that does not pass
- * through here or through `envelope`'s own parameter.
- */
 function fails (env: Envelope, message: string, remedy: string): Envelope {
   env.error = { message, remedy }
   env.ok = false
   return env
 }
 
-/* The connections a command runs against, after `--instance` and `--source`.
- *
- * A FILTER THAT MATCHES NOTHING IS AN ERROR, not an empty set. A mistyped
- * `--instance jto` used to leave no connections at all, so `list` answered
- * `no-match` and `doctor` answered `ok` with zero rows - both of which say the
- * configuration is fine when the command never looked at it.
- */
 function selected (ctx: Ctx, flags: Flags): Connection[] {
   const unknownInstance = flags.instance.filter(
     i => !ctx.connections.some(c => c.instance === i))
@@ -182,13 +137,6 @@ function selected (ctx: Ctx, flags: Flags): Connection[] {
 
 function q (s: string): string { return '"' + s + '"' }
 
-/* The adapter for a source, or nothing.
- *
- * Dispatch is BY THE CONNECTION'S DECLARED SOURCE. The fan-out used to send
- * every connection through the Joplin SDK whatever its source said, which
- * either called the wrong API and reported a misleading partial failure, or
- * projected another source's records as Joplin notes.
- */
 const ADAPTERS: Record<string, typeof joplin> = { joplin }
 
 function adapterFor (c: Connection): typeof joplin | undefined {
@@ -244,10 +192,6 @@ Promise<{ notes: Note[], ok: string[], failed: string[], short: string[] }> {
   return { notes, ok: ok.sort(), failed: failed.sort(), short: short.sort() }
 }
 
-/* The Note fields every adapter populates whatever the source is: an identity,
- * a title, a URL and the two timestamps. An adapter adds to this; none may
- * subtract from it, which is why `title` is here and `tag` is not.
- */
 const UNIVERSAL = ['lid', 'id', 'title', 'url', 'created', 'updated', 'source', 'instance']
 
 function supplies (c: Connection): Set<string> {
@@ -258,14 +202,12 @@ function supplies (c: Connection): Set<string> {
   return new Set([...UNIVERSAL, ...(bySource[c.source] ?? [])])
 }
 
-/* Which of the asked-about fields no selected source can answer. */
 function unanswerable (conns: Connection[], fields: string[]): string[] {
   if (0 === conns.length) return []
   const sets = conns.map(supplies)
   return fields.filter(f => !sets.every(s => s.has(f))).sort()
 }
 
-// -- commands ---------------------------------------------------------------
 
 async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Promise<Envelope> {
   const conns = selected(ctx, flags)
@@ -274,14 +216,6 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): P
   let filter = null
   if (0 < rest.length && '' !== rest[0]) {
     filter = parseSelector(rest[0])
-    // BEFORE THE NETWORK, and before anything is fetched that would then be
-    // filtered against a field nobody populated. An adapter declares what it
-    // supplies; a question about anything else is refused rather than answered
-    // with a confident, wrong "no matches".
-    //
-    // Every selected source must supply the field, not just one of them: an
-    // answer assembled from the sources that could answer and silently missing
-    // the ones that could not is the same wrong answer in a longer form.
     const unsupported = unanswerable(conns, fieldsOf(filter))
     if (0 < unsupported.length) {
       throw new LikenessError('unsupported-capability',
@@ -308,13 +242,6 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): P
 
   const incomplete = [...got.failed, ...got.short].sort()
 
-  // `--strict` refuses to call a partial answer a success. It still PRINTS the
-  // rows it has: `fanout-halted` is one of the two codes the registry marks as
-  // permitted to carry data, because the work was already done and paid for,
-  // and a caller branching on `ok` alone discards it correctly anyway.
-  // NOT EVERY SOURCE FAILING IS A PARTIAL ANSWER. `partial` means some sources
-  // answered; when none did, an envelope saying `ok: true` with empty data lets
-  // a total outage or a rejected credential read as a valid empty result.
   const noneAnswered = 0 < got.failed.length && 0 === got.ok.length
 
   const code =
@@ -362,9 +289,6 @@ async function cmdGet (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Pr
     }
     const instance = ref.slice(0, idx)
     const id = ref.slice(idx + 1)
-    // An empty source-native id is malformed under the declared SourceId
-    // contract, and knowing that costs no request. It used to be sent, fetched
-    // and reported as `not-found`, which blamed the source for a typo.
     if ('' === id) {
       throw new LikenessError('invalid-ref', 'not a ref: ' + ref + ' (no id after the colon)',
         'a ref is <instance>:<id>, a lid, #n or @alias')
@@ -417,11 +341,6 @@ async function cmdDoctor (ctx: Ctx, flags: Flags, calls: Calls): Promise<Envelop
     if (!r.ok) { row.code = r.code as string; failures.push(r.code as string); bad++ }
     rows.push(row)
   }
-  // THE WORST ROW WINS, and "worst" is defined rather than felt: highest exit
-  // status first, then code name ascending to break a tie. Reporting a fixed
-  // `source-unavailable` for every kind of failure - as an earlier version did
-  // - told a user whose token had expired to go and start an application that
-  // was already running.
   const codes = [...new Set(failures)].sort((a, b) => {
     const d = exitFor(b) - exitFor(a)
     return 0 !== d ? d : (a < b ? -1 : a > b ? 1 : 0)
@@ -453,12 +372,6 @@ function cmdWhich (ctx: Ctx): Envelope {
   return envelope(['which'], code, rows, { count: rows.length })
 }
 
-/* `--help`, implemented, because two error remedies named it.
- *
- * An error that sends the reader to an option the program does not parse is
- * worse than one with no remedy: `--help` was dispatched as an unknown command
- * and answered with another error recommending the same unusable option.
- */
 function cmdHelp (): Envelope {
   const commands = [
     { command: 'list', takes: '[selector]', does: 'list notes across the configured sources' },
@@ -483,7 +396,6 @@ const STUBS: Record<string, string> = {
   sources: 'connection management',
 }
 
-// -- the entry point --------------------------------------------------------
 
 export async function run (ctx: Ctx): Promise<Result> {
   const calls = new Calls()
@@ -508,8 +420,6 @@ export async function run (ctx: Ctx): Promise<Result> {
     env.meta.elapsed_ms = flags.deterministic ? 0 : Date.now() - started
     return {
       exit: exitFor(env.code),
-      // --json puts NOTHING else on stdout. Narration, progress and warnings
-      // go to stderr, always.
       stdout: flags.json ? serialise(env) : human(env),
       stderr: flags.json ? '' : narrate(env),
       calls: calls.all(),
@@ -543,15 +453,6 @@ export async function run (ctx: Ctx): Promise<Result> {
   }
 }
 
-/* Turn any thrown value into an envelope.
- *
- * THE LAST BRANCH IS THE IMPORTANT ONE. It used to rethrow, and an SDK
- * transport error - an unreachable source, a rejected credential, anything
- * that was not a 404 - escaped `run` as an unhandled rejection: the process
- * died with a stack trace even under `--json`, where the caller was promised
- * one line of JSON. Every failure now leaves through here, under a code the
- * registry knows.
- */
 function errorEnvelope (name: string, err: unknown, calls: Calls): Envelope {
   if (err instanceof SelectorError) {
     return envelope([name], 'invalid-selector', null, { calls: calls.count() }, {
@@ -576,7 +477,6 @@ function errorEnvelope (name: string, err: unknown, calls: Calls): Envelope {
   })
 }
 
-/* The error path for a failure raised before `flags` exists. */
 function finish (
   ctx: Ctx, name: string, err: unknown, calls: Calls, started: number,
   opts: { json: boolean, deterministic: boolean },
@@ -591,7 +491,6 @@ function finish (
   }
 }
 
-// -- human output -----------------------------------------------------------
 
 function human (env: Envelope): string {
   if (null === env.data) return ''

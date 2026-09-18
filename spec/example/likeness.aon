@@ -10,8 +10,6 @@ project: {
   source: docs: { instance:"docs" space:"Engineering" }
   source: vault: { instance:"vault" space:"launch" }
 
-  # Two declarations, three members: the closure makes plan, docs and vault one
-  # group without a third line.
   same: [
     { plan:"CORE-412" docs:"9f2c1a7b" }
     { docs:"9f2c1a7b" vault:"launch/retention.md" }

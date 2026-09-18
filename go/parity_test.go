@@ -1,15 +1,3 @@
-/* The parity emitter.
- *
- * Writes each transcript entry's RAW stdout - unstripped, exactly the bytes
- * this port produced - into a directory, for `make parity` to compare against
- * another port's. It emits nothing unless LIKENESS_PARITY_OUT names a
- * directory, so an ordinary test run leaves no files behind.
- *
- * RAW, not stripped, on purpose. The comparison needs both forms: the stripped
- * bytes must MATCH between ports, and the raw bytes must DIFFER, because every
- * envelope carries its own `port`.
- */
-
 package likeness
 
 import (

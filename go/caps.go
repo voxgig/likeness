@@ -1,12 +1,3 @@
-/* The capability matrix, read from the compiled ground truth.
- *
- * spec/caps.aon is the source; `make spec-build` compiles it to spec/caps.json
- * and `make spec-fresh` fails on drift. Nothing here restates a limit or an
- * operation: what a source can do is declared data, read by the runtime and by
- * the tests, and a number copied into an adapter is a number nobody
- * regenerates.
- */
-
 package likeness
 
 import (

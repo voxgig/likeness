@@ -1,11 +1,3 @@
-/*
-Package likeness is the Go port: a second implementation held to the same
-bytes as the canonical TypeScript one by two corpora in spec/.
-
-The port is a LIBRARY with a thin argv shell over it, for the same reason the
-TypeScript port is: a whole command has to be runnable in-process, with every
-impure input as a parameter, or the transcript corpus cannot exist.
-*/
 package likeness
 
 import (
@@ -17,23 +9,12 @@ import (
 	"strings"
 )
 
-// Port is the declared non-parity field every envelope carries. Five raw
-// outputs can never be identical because of it, and never should be: a run
-// where they were would mean a port was lying about which port it is.
 const Port = "go"
 
-// Version is shared across the ports: they are one program, five times.
 const Version = "0.1.0"
 
-// ParityExceptions are the two fields removed BY NAME AND RECURSIVELY from
-// both sides before the byte comparison (SPEC 9.3). The list is exhaustive by
-// construction, so a difference in any other field is a failing check rather
-// than a footnote.
 var ParityExceptions = []string{"port", "elapsed_ms"}
 
-// SerialiseError is a refusal to render, not a rendering failure. Each case
-// below is a value five languages would render differently, and picking one
-// silently is how the ports drift.
 type SerialiseError struct {
 	Msg  string
 	Path string
@@ -47,15 +28,6 @@ func (e *SerialiseError) Error() string {
 	return e.Msg + " at " + p
 }
 
-/*
-EscapeString escapes a string for the envelope.
-
-Deliberately narrow: two literals and the C0 control range, as lowercase
-\u00xx. No \n, \t or \r shorthands - one form for every control character
-removes a whole class of per-port disagreement. Non-ASCII is emitted
-LITERALLY as UTF-8, which is where Go's own encoding/json differs (it escapes
-U+2028, U+2029 and, with HTML escaping on, < > &) and why nothing here uses it.
-*/
 func EscapeString(s string) string {
 	var b strings.Builder
 	b.WriteByte('"')
@@ -75,14 +47,6 @@ func EscapeString(s string) string {
 	return b.String()
 }
 
-/*
-CompareCodePoints orders two strings by Unicode code point.
-
-Go's own `<` on strings compares bytes, which for valid UTF-8 gives the same
-order - but only for valid UTF-8, and the equivalence is not obvious to a
-reader. Iterating runes says what is meant, and matches the other four ports
-line for line.
-*/
 func CompareCodePoints(a, b string) int {
 	ar := []rune(a)
 	br := []rune(b)
@@ -107,12 +71,6 @@ func CompareCodePoints(a, b string) int {
 	return 0
 }
 
-/*
-num reads a number that may have arrived as any of the four types JSON
-decoding and the generated SDKs between them produce. One reader, so that a
-timestamp read from a seed file and the same timestamp read from an SDK
-response are the same value rather than two near-misses.
-*/
 func num(v any) (int64, bool) {
 	switch n := v.(type) {
 	case json.Number:
@@ -131,12 +89,6 @@ func num(v any) (int64, bool) {
 	return 0, false
 }
 
-// renderNumber renders a number, or refuses.
-//
-// Numbers arrive as int, int64, float64 or json.Number depending on where the
-// value came from, and all four have to answer the same question: is this an
-// exact integer inside int64? Anything else is refused rather than rendered,
-// because there is no rendering of 0.1 that five languages agree on.
 func renderNumber(v any, path string) (string, error) {
 	switch n := v.(type) {
 	case int:

@@ -1,20 +1,3 @@
-/* Identity: the likeness id, derived and never stored anywhere.
- *
- *   lid = 'lk_' + crockford32_lower(sha256(source 0x00 account 0x00 entity 0x00 id))[0:12]
- *
- * `account` is the SOURCE'S OWN stable identifier for the workspace - a Linear
- * organisation id, a Notion workspace id, a vault id - discovered at connect
- * time and cached. Deliberately NOT the instance name: instance names are
- * user-chosen and get renamed, and renaming a connection from `work` to `plan`
- * must not silently change the identity of every note in it.
- *
- * CROCKFORD BASE32, which omits i, l, o and u because they are misread. Every
- * port needs SHA-256 and this alphabet; four have the hash in their standard
- * library and the C port carries a small in-tree implementation. The known
- * vectors are in the unit corpus, because a port that gets this subtly wrong
- * produces plausible-looking identifiers that silently fail to match another
- * port's.
- */
 
 import { createHash } from 'node:crypto'
 

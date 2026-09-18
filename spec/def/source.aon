@@ -1,26 +1,3 @@
-# likeness: the source registry shape.
-#
-# A "source" is a notes application likeness speaks to. Every source is reached
-# through a GENERATED SDK from github.com/voxgig-sdk - never a hand-written HTTP
-# client - and this file is where that binding is declared rather than assumed.
-#
-# Three things live here that used to live in people's heads:
-#
-#   1. WHICH SDK, AT WHICH REVISION. The SDK repositories publish no packages to
-#      npm, PyPI, RubyGems or Go's proxy yet, and carry no git tags, so a commit
-#      sha is the only pin that actually pins. `rev` is therefore required and
-#      `semver` alone is not sufficient.
-#
-#   2. THE OFFLINE TEST CONTRACT. Every generated SDK ships a `test` feature
-#      that swaps its HTTP transport for an in-memory mock, seeded from a map of
-#      records. likeness unit-tests against that feature rather than against a
-#      live server or a hand-rolled fake, so the seeding shape is part of the
-#      source declaration and is checked here.
-#
-#   3. THE ENTITY AND OPERATION SURFACE, as the SDK actually exposes it. This is
-#      the raw material the capability matrix is checked against: a capability
-#      likeness claims for a source must correspond to an operation the SDK has.
-
 @"./base.aon"
 
 # One language target of a generated SDK, and how a port depends on it.
@@ -29,141 +6,62 @@
 # than a structure because each ecosystem spells a git pin differently and
 # inventing a common form here would only have to be un-invented per port.
 SdkTarget: type(close({
-  # Path within the SDK repository holding this target's source.
   dir: string & re("^[a-z-]+$")
 
-  # The package name in that ecosystem, once it is published. Declared before
-  # publication on purpose: the name is decided now, the registry entry is not.
   package: string & re("^[@A-Za-z0-9_./-]+$")
 
-  # True once the package resolves from that ecosystem's registry. While this is
-  # false, `pin` is the only way in, and a port must not claim a registry
-  # dependency it cannot install.
   published: boolean
 
-  # The exact dependency line, pinned by revision - or, where the ecosystem
-  # cannot express the pin, the exact steps that produce it.
-  #
-  # NOT EVERY ECOSYSTEM CAN ADDRESS THESE PACKAGES. Each SDK repository holds
-  # its package in a language subdirectory, and npm is alone in having no way
-  # to install from a subdirectory of a git repository: `github:owner/repo#sha`
-  # resolves the repository ROOT, which has no package.json at all. Go's module
-  # path carries the subdirectory natively, pip takes `#subdirectory=py`, and
-  # bundler takes a `glob:`. So the npm entries record a clone-then-install
-  # rather than a dependency line, and that is a fact about npm rather than a
-  # gap here.
   pin: string & re("^.+$")
 }))
 
-# The offline unit-test contract for one source.
-#
-# The SDK's `test` feature is seeded with a map of records per entity, keyed by
-# the record's own identifier: `{entity: {<entity>: {<id>: <record>}}}`. The SDK
-# stamps that key onto a field it DERIVES from the entity's route rather than
-# one that is fixed, so `idfield` is declared per source rather than assumed.
-# For all four sources here it derives to `id`, verified by running each SDK's
-# own resolver; an entity whose route ended in another parameter would differ,
-# and a seed written against the wrong field is silently never found.
 SdkTest: type(close({
-  # How a test client is constructed, per port. Recorded because the five ports
-  # spell it differently and a port that guesses gets a live client.
-  # Keyed by port, and open for the same reason `target` is: a source with no
-  # target in some language cannot be constructed there either.
   construct: { &: string }
 
-  # The seed key path, per entity: the field the seeding walk stamps.
   idfield: { &: $.Ident }
 
-  # Whether the mock mints an identifier when a create supplies none. Where this
-  # is true, likeness MUST supply an explicit id on every seeded create, because
-  # a minted identifier is not reproducible and byte-identical output across
-  # five ports is the whole claim of this project.
   mints_id: boolean
 
-  # Network-condition simulation the `test` feature offers over the mock
-  # transport, used for the retry, timeout and rate-limit paths.
-  # The option names are recorded AS THE PORTS SPELL THEM, which is camelCase -
-  # `failTimes`, not `failtimes`. A port passing the lowercase form gets
-  # `net.failTimes | 0` and a silently disabled simulation, so this must not be
-  # held to the lowercase identifier shape the rest of this file uses.
   netsim: close({
     available: boolean
     option: [&: string & re("^[a-zA-Z][a-zA-Z0-9]*$")]
   })
 }))
 
-# One operation of one entity, as the SDK exposes it.
 SdkOp: type(close({
   name: $.Ident
   method: $.Method
-  # EVERY route this op resolves to, not just the first. Several ops have more
-  # than one point: joplin's `note.list` is `/notes` AND `/notes/{id}/tags`, and
-  # obsidian's `vault.load` is `/vault/{filename}` AND `/vault/{pathToDirectory}/`.
-  # Recording one route apiece hid the three joplin cross-reference routes
-  # entirely - exactly the ones any claim about reading a note's tags rests on.
   route: [&: string]
-  # WHETHER THE API PAGES THIS OPERATION - not whether the SDK follows the pages
-  # for you. Nothing here does: all four ship the same `paging` feature, it is
-  # inactive by default in every config, and it only records the signals. So one
-  # call is one page everywhere, and likeness pages explicitly. What this field
-  # buys is knowing WHERE it has to, which is what the call budget turns on.
-  # An earlier version defined it as "the SDK follows pages", under which every
-  # value would have to be false and the field would say nothing.
   pages: boolean
 }))
 
-# One entity of one source, as the SDK exposes it.
 SdkEntity: type(close({
-  # The SDK's accessor name, e.g. `Folder` in `client.Folder()`.
   accessor: string & re("^[A-Z][A-Za-z0-9]*$")
-  # The model's own name for it, e.g. `folder`.
   name: $.Ident
-  # The record's own identifier field.
   idfield: $.Ident
   op: { &: $.SdkOp }
 }))
 
-# How a source authenticates on the wire. Recorded as the WIRE FORM, because
-# three of the four sources disagree with their own definitions about it, and an
-# adapter written from the definition rather than from the generated client
-# sends a credential the server ignores.
 SdkAuth: type(close({
   kind: "bearer"|"raw-header"|"query"|"none"
-  # The header or query parameter carrying the credential.
   carrier: string
-  # Any scheme prefix, empty where there is none.
   prefix: string
 }))
 
-# A source: one notes application, one generated SDK, one adapter.
 Source: type(close({
   name: $.Ident
 
-  # The SDK repository, e.g. 'voxgig-sdk/joplin-sdk'.
   repo: $.RepoRef
 
-  # The API definition inside that repository, under `.sdk/def/`. An OpenAPI
-  # document or a GraphQL SDL - sdkgen consumes both, so a GraphQL source needs
-  # no hand-written wrapper.
   def: string & re("^[A-Za-z0-9_.-]+$")
   defkind: "openapi"|"graphql"
 
-  # The version the SDK declares, and the revision that version was read at.
-  # Both, because the declared version does not move between revisions yet.
   semver: $.Semver
   rev: $.Sha
 
   protocol: "http"|"graphql"|"file"
   auth: $.SdkAuth
 
-  # KEYED BY TARGET NAME, AND OPEN. An earlier version closed this over the five
-  # likeness ports, which forced a fabrication the moment a source did not ship
-  # one: notion-sdk has no `rb` target at all, and a closed shape left nowhere
-  # to say so except by inventing a Ruby package that does not exist. Open, a
-  # missing target is an absent key - a fact worth recording rather than a hole
-  # to fill. That every likeness port has a target for every source is a
-  # separate claim, checked in tooling rather than assumed here, because it is
-  # currently FALSE.
   target: { &: $.SdkTarget }
 
   entity: { &: $.SdkEntity }
@@ -175,5 +73,4 @@ Source: type(close({
   local: boolean
 }))
 
-# The registry itself: every source likeness knows, keyed by name.
 source: { &: $.Source }

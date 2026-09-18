@@ -1,12 +1,3 @@
-/* The common entity shape, as the envelope carries it.
- *
- * A projection loses things, so the rules are in the shape rather than left to
- * an adapter's judgement: `raw` is a STRING carrying the source payload
- * verbatim, `version` is absent where a source has no concurrency token rather
- * than invented, and `tags` is absent where the adapter did not fetch them
- * rather than reported as empty.
- */
-
 package likeness
 
 import "sort"
@@ -34,10 +25,6 @@ type Note struct {
 	Raw     *string
 }
 
-// Value renders the note as the envelope's own value model, omitting every
-// absent field. Building a map by hand rather than tagging a struct is
-// deliberate: `omitempty` cannot tell an empty list from a missing one, which
-// is the exact distinction this shape exists to keep.
 func (n Note) Value() map[string]any {
 	m := map[string]any{
 		"lid":      n.Lid,
@@ -77,17 +64,6 @@ func (n Note) Value() map[string]any {
 	return m
 }
 
-/* The total sort order (SPEC 14.2), written out rather than inherited.
- *
- * Requested key, then `updated` DESCENDING, then `lid` ASCENDING. The
- * tiebreakers are what make concurrent fetches unobservable in the output and
- * the byte diff possible at all: a key plus two tiebreakers is not a total
- * order while the primary comparison is undefined.
- *
- * sort.SliceStable is not enough on its own - a stable sort preserves the
- * order notes arrived in, which is fetch order, which is exactly the thing
- * that must not reach stdout.
- */
 func SortNotes(notes []Note, key string) []Note {
 	out := make([]Note, len(notes))
 	copy(out, notes)
@@ -120,18 +96,8 @@ func fieldOf(n Note, key string) any {
 	return absent{}
 }
 
-// absent is the "this note has no such field" marker. A distinct type rather
-// than nil, because nil is the JSON null that a field may legitimately hold,
-// and the two sort differently on purpose.
 type absent struct{}
 
-/*
-Type precedence for the primary comparison, so that a requested key which is
-absent in one row and present in another still yields a total order. ABSENT
-SORTS AFTER NULL, AND NEITHER INVERTS UNDER A DESCENDING SORT - which is
-arbitrary, and an arbitrary rule written down beats a natural-looking one that
-differs per port.
-*/
 func rank(v any) int {
 	switch v.(type) {
 	case absent:

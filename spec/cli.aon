@@ -1,33 +1,4 @@
-# likeness: the transcript corpus.
-#
-# Whole commands, one entry each. This is the contract that matters, because it
-# is the CLI's behaviour written down: argv in, exit status and bytes out, and
-# the list of calls it was allowed to make on the way.
-#
-# A LIKENESS COMMAND IS A PURE FUNCTION. Everything impure is declared in `ctx`
-# - the clock, the fixture, the identifier seed, the configured connections and
-# the environment - so an entry means the same thing on a laptop, in CI and in
-# five years. Nothing here reads a config file, the wall clock or a network.
-#
-# THE CALL LIST IS HALF THE TEST. An entry that checked only stdout would pass
-# for a command that produced the right answer by making forty requests, and
-# "a refusal never reaches the network" - the single most important claim in
-# the spec's design - could not be written down at all. Two entries below make
-# exactly that claim, and they make it by asserting an EMPTY call list.
-#
-# `make spec-build` compiles this to spec/cli.json, which every port runs
-# through its own harness. Never hand-edit the JSON, and never hand-edit an
-# expectation file under spec/expect/ either: regenerate it, read the diff, and
-# commit it only if the change was the one you meant to make.
-
 primary: cli: {
-  # ------------------------------------------------------------------- list
-  #
-  # The clock is 2026-09-18T00:00:00Z throughout and the fixture's three notes
-  # were last updated on the 16th, the 12th and the 11th of the same month.
-  # That spread is deliberate: it is what makes `updated>3d` select one note
-  # rather than all of them or none, so a port that resolved a duration against
-  # the wrong end of the window fails here instead of passing by luck.
   list: set: [
     {
       id: "list/all"
@@ -41,9 +12,6 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/all.json"
-        # ONE call for three notes. The generated paging feature records page
-        # signals but does not follow them, so a list is a single request - and
-        # this is where that stops being an assumption.
         calls: [{ instance:"jot" method:"GET" path:"/notes" }]
       }
     }
@@ -68,9 +36,6 @@ primary: cli: {
 
     {
       id: "list/relative-duration"
-      # `updated>3d` reads as "changed within the last three days", so the
-      # duration is a LOWER BOUND ON THE TIMESTAMP. A port that read it as an
-      # upper bound returns the other two notes and fails here.
       args: ["list" "updated>3d" "--json"]
       ctx: {
         fixture: "joplin"
@@ -96,8 +61,6 @@ primary: cli: {
       }
       out: {
         exit: 0
-        # `meta.truncated` is true. A limit that silently dropped rows without
-        # saying so is how a caller concludes a source holds two notes.
         stdout: "spec/expect/list/limit-truncates.json"
         calls: [{ instance:"jot" method:"GET" path:"/notes" }]
       }
@@ -161,12 +124,6 @@ primary: cli: {
 
     {
       id: "list/invalid-selector-refuses-before-the-network"
-      # THE ENTRY THIS CORPUS EXISTS FOR. `bogusfield` is not in the closed
-      # field list, so the command refuses - and the assertion that matters is
-      # `calls: []`. A port that parsed the selector after fetching would
-      # produce this exact stdout and this exact exit code, and would still be
-      # wrong, because it spent a request to answer a question it could have
-      # refused for free.
       args: ["list" "bogusfield:x" "--json"]
       ctx: {
         fixture: "joplin"
@@ -179,15 +136,6 @@ primary: cli: {
 
     {
       id: "list/unanswerable-field-refused-before-the-network"
-      # THE THIRD REFUSAL-BEFORE-THE-NETWORK ENTRY, and the subtlest. `tag` is
-      # a real field and this parses cleanly; what is missing is a source that
-      # can answer it. The Joplin adapter does not fetch tag associations, so a
-      # note's `tags` is ABSENT rather than `[]` - and filtering an absent
-      # field would have produced a confident "no matches" for notes that may
-      # well be tagged.
-      #
-      # `calls: []` again. The refusal is knowable from declared capability, so
-      # it costs nothing to find out.
       args: ["list" "tag:anything" "--json"]
       ctx: {
         fixture: "joplin"
@@ -204,11 +152,6 @@ primary: cli: {
 
     {
       id: "list/unknown-instance-filter"
-      # A FILTER THAT MATCHES NOTHING IS AN ERROR, not an empty set. A mistyped
-      # `--instance` used to leave no connections at all, so `list` answered
-      # `no-match` - which says the query was fine and there is nothing there,
-      # when in fact the command never looked at anything. `calls: []`, because
-      # the names are checked against configuration, not against the network.
       args: ["list" "--instance" "jto" "--json"]
       ctx: {
         fixture: "joplin"
@@ -241,8 +184,6 @@ primary: cli: {
 
     {
       id: "list/invalid-limit"
-      # `--limit nope` used to become NaN, and every comparison against NaN is
-      # false, so the limit silently did nothing at all.
       args: ["list" "--limit" "nope" "--json"]
       ctx: {
         fixture: "joplin"
@@ -255,10 +196,6 @@ primary: cli: {
 
     {
       id: "list/no-adapter-refused-before-the-network"
-      # A source with no adapter in this stage. The fan-out used to send EVERY
-      # connection through the Joplin SDK whatever its source said, which either
-      # called the wrong API and reported a misleading partial failure, or
-      # projected another source's records as Joplin notes. `calls: []`.
       args: ["list" "--json"]
       ctx: {
         fixture: "joplin"
@@ -271,10 +208,6 @@ primary: cli: {
 
     {
       id: "list/all-sources-down"
-      # NOT EVERY SOURCE FAILING IS A PARTIAL ANSWER. `partial` means some
-      # sources answered; when none did, an envelope saying `ok: true` with
-      # empty data lets a total outage read as a valid empty result. Both
-      # connections are still called - the failure is discovered, not predicted.
       args: ["list" "--json"]
       ctx: {
         fixture: "joplin"
@@ -321,11 +254,6 @@ primary: cli: {
 
     {
       id: "list/partial"
-      # Two connections, one of them offline. The rows that exist are printed,
-      # `meta.incomplete` names the omission, and the exit status is 2 rather
-      # than 0: a smaller answer with no warning is the worst of the three
-      # options. BOTH connections are called - the failure is discovered, not
-      # predicted.
       args: ["list" "--json"]
       ctx: {
         fixture: "joplin"
@@ -373,11 +301,6 @@ primary: cli: {
 
     {
       id: "list/strict-halts-the-fanout"
-      # `--strict` refuses to call a partial answer a success: exit 4, `ok`
-      # false. It still PRINTS the rows, because `fanout-halted` is one of the
-      # two codes the registry marks as permitted to carry data - the work was
-      # already done and paid for, and a caller branching on `ok` alone
-      # discards it correctly anyway.
       args: ["list" "--strict" "--json"]
       ctx: {
         fixture: "joplin"
@@ -433,9 +356,6 @@ primary: cli: {
       }
       out: {
         exit: 0
-        # The lid in this file is a derived value, not a stored one: it is a
-        # SHA-256 over source, account, entity and the source-native id, in
-        # Crockford base32. Five ports agreeing on it is not free.
         stdout: "spec/expect/get/one.json"
         calls: [
           {
@@ -491,10 +411,6 @@ primary: cli: {
 
     {
       id: "get/empty-id"
-      # `jot:` passes the colon check and used to be SENT, fetched and reported
-      # as not-found, which blamed the source for a typo. An empty
-      # source-native id is malformed under the declared SourceId contract, and
-      # knowing that costs no request.
       args: ["get" "jot:" "--json"]
       ctx: {
         fixture: "joplin"
@@ -540,10 +456,6 @@ primary: cli: {
 
     {
       id: "doctor/unreachable"
-      # `detail` is a FIXED SENTENCE, never the SDK's own message: each port's
-      # generated client words a transport failure differently and embeds the
-      # URL it tried, so passing it through would put five different strings on
-      # stdout for one condition. This entry is what holds that line.
       args: ["doctor" "--json"]
       ctx: {
         fixture: "joplin"
@@ -562,9 +474,6 @@ primary: cli: {
 
     {
       id: "doctor/auth-rejected"
-      # A rejected token and an unreachable application are one experience and
-      # two remedies. Telling someone whose credential expired to go and start
-      # an application that is already running is the failure this separates.
       args: ["doctor" "--json"]
       ctx: {
         fixture: "joplin"
@@ -609,10 +518,6 @@ primary: cli: {
 
     {
       id: "doctor/mixed-failures"
-      # Two connections failing for two different reasons. The envelope's code
-      # is the WORST ROW - highest exit status, then code name ascending to
-      # break a tie - so the rule is stated rather than felt, and the per-row
-      # codes still carry the detail.
       args: ["doctor" "--json"]
       ctx: {
         fixture: "joplin"
@@ -639,13 +544,6 @@ primary: cli: {
     }
   ]
 
-  # ------------------------------------------------------- version and which
-  #
-  # Neither touches a source, so both assert an empty call list. `version` also
-  # carries a `port` inside `data` as well as at the top level, which is why the
-  # parity exceptions are removed BY NAME AND RECURSIVELY: a rule that stripped
-  # only the outer one would leave these two entries impossible for any second
-  # port to pass.
   meta: set: [
     {
       id: "meta/version"
@@ -661,10 +559,6 @@ primary: cli: {
 
     {
       id: "meta/which"
-      # An INJECTED PATH. `which` used to answer with a placeholder row saying
-      # "(this port)" whatever was installed, which meant it could never answer
-      # the question it exists to answer. The argv shell probes PATH and hands
-      # the rows over; this is that shape.
       args: ["which" "--json"]
       ctx: {
         fixture: "joplin"
@@ -696,11 +590,6 @@ primary: cli: {
 
     {
       id: "meta/help"
-      # `help` EXISTS, because two error remedies name it. An error that sends
-      # the reader to an option the program does not parse is worse than one
-      # with no remedy at all: `--help` used to be dispatched as an unknown
-      # command and answered with another error recommending the same unusable
-      # option.
       args: ["help" "--json"]
       ctx: {
         fixture: "joplin"

@@ -1,15 +1,3 @@
-/* The Joplin adapter: the only file in the port that may name Joplin.
- *
- * NO SOURCE IDENTIFIER APPEARS IN CORE CODE. What a source can and cannot do
- * is a row in spec/caps.aon, read by both the runtime and the tests; a
- * conditional on a source name in the core is the beginning of the rot.
- *
- * Every call goes through the generated SDK from voxgig-sdk, pinned by
- * revision in spec/sources.aon. Nothing here hand-writes an HTTP request: the
- * point of the project is that a generated SDK can carry a real application in
- * five languages, and a hand-rolled client here would put that in doubt.
- */
-
 package likeness
 
 import (
@@ -21,29 +9,16 @@ import (
 
 const joplinSource = "joplin"
 
-/*
-JoplinSupplies is the set of Note fields this adapter actually populates.
-
-DECLARED, not inferred. The core asks an adapter what it supplies and refuses a
-selector that asks about anything else, so `tag:x` against this source is a
-refusal rather than a confident "no matches" computed from a field nobody
-fetched. `status` and `state` are absent because Joplin has no status concept,
-and `version` because its Data API has no concurrency token - the same reason
-the capability matrix records `version_token` false for it.
-*/
 var JoplinSupplies = []string{
 	"source", "instance", "space", "title", "body", "created", "updated",
 }
 
-// SourceOpts is what an adapter needs to answer for one connection.
 type SourceOpts struct {
 	Instance string
 	Account  string
-	// Seed for the SDK's offline test mode. Present in every test and absent
-	// in production, which is the whole of the difference between them.
-	Seed   map[string]any
-	APIKey string
-	Base   string
+	Seed     map[string]any
+	APIKey   string
+	Base     string
 }
 
 func joplinClient(o SourceOpts) *joplin.JoplinSDK {
@@ -85,8 +60,6 @@ func sval(m map[string]any, k string) string {
 	return ""
 }
 
-// msval reads an epoch-millisecond field, which arrives as an int from the
-// SDK's own map and as a float64 or json.Number from a seed read off disk.
 func msval(m map[string]any, k string) int64 {
 	if n, ok := num(m[k]); ok {
 		return n
@@ -94,15 +67,6 @@ func msval(m map[string]any, k string) int64 {
 	return 0
 }
 
-/*
-projectNote maps a Joplin note onto the common shape.
-
-`status` is absent rather than invented: Joplin has no status concept, the
-capability matrix says so, and a three-value normalisation of nothing would be
-a lie the envelope carries. `version` is absent for the same reason. `tags` is
-absent because this adapter does not read tag associations - and absent is not
-the same answer as empty.
-*/
 func projectNote(raw map[string]any, instance, account string, withRaw bool) (Note, error) {
 	id := sval(raw, "id")
 	// REFUSED, not fabricated. An empty id derives a valid-LOOKING lid from the
@@ -135,9 +99,6 @@ func projectNote(raw map[string]any, instance, account string, withRaw bool) (No
 		n.Body = &s
 	}
 	if withRaw {
-		// A STRING, never nested structure. The envelope sorts keys
-		// recursively and forbids floating point; a real source payload
-		// violates both, and canonicalising it would stop it being verbatim.
 		b, err := json.Marshal(raw)
 		if nil == err {
 			s := string(b)
@@ -160,36 +121,6 @@ func entData(v any) map[string]any {
 	return map[string]any{}
 }
 
-/*
-JoplinList fetches one page of notes, and reports whether there may be another.
-
-THE SECOND RETURN IS THE POINT, and the reason it is a heuristic rather than a
-signal is three separate gaps in the generated SDK - all verified against
-voxgig/sdkgen@4089761, and written up as upstream/issue/11.
-
- 1. The paging feature ships `active: false`. Nothing paginates unless a caller
-    turns it on, which is not what a reader of the feature list would assume.
- 2. Turned on, its body-level detection reads `hasMore`, `next`, `cursor` and
-    `nextCursor` - and never `has_more`. Joplin's own API definition, the one
-    sdkgen consumed to generate this client, declares `has_more`. So for THIS
-    source the feature is blind to the server's own flag and would report
-    `hasMore: false` on a short page, which is worse than no signal: it is a
-    confident wrong answer.
- 3. What it does compute lands on `client._paging.last` - an undocumented
-    underscore field holding the LAST call's state on the shared client, not a
-    per-call result - and `ctrl` is not written back.
-
-So: a full page is treated as possibly-short, the answer is marked truncated
-and the instance is named in `meta.incomplete`. A silently short list is the
-one outcome that must not happen, because every selector result computed from
-it is then wrong and nothing says so.
-
-This heuristic is right for a full page and wrong for a final page that happens
-to equal the limit - it over-reports rather than under-reports, which is the
-correct direction to be wrong in. It goes away when (2) is fixed upstream.
-
-The page size is read from the capability matrix, not written here.
-*/
 func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) {
 	client := joplinClient(o)
 	calls.Record(o.Instance, "GET", "/notes")
@@ -210,10 +141,6 @@ func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) 
 	return out, 0 < limit && limit <= len(rows), nil
 }
 
-// JoplinLoad fetches one note, or reports that it does not exist.
-//
-// A GraphQL source resolves a missing record to empty data where a REST one
-// answers 404; normalising both to the same answer is the adapter's job.
 func JoplinLoad(o SourceOpts, calls *Calls, id string, withRaw bool) (*Note, error) {
 	client := joplinClient(o)
 	calls.Record(o.Instance, "GET", "/notes/"+id)
@@ -257,10 +184,5 @@ func JoplinCheck(o SourceOpts, calls *Calls) (ok bool, code, detail string) {
 	if 429 == statusOf(err) {
 		return false, "rate-limited", "the source is rate limiting this client"
 	}
-	// A FIXED SENTENCE, never the underlying message. Each port's generated
-	// SDK words its transport failures differently and embeds the URL it
-	// tried, so passing the message through would put five different strings
-	// on stdout for one condition - and would print the configured base URL to
-	// anywhere the output is pasted.
 	return false, "source-unavailable", "the application did not answer"
 }

@@ -1,10 +1,3 @@
-/* The common entity shape, as the envelope carries it.
- *
- * A projection loses things, so two rules are in the shape rather than left to
- * an adapter's judgement: `raw` is a STRING carrying the source payload
- * verbatim, and `version` is absent where a source has no concurrency token
- * rather than invented.
- */
 
 export type Note = {
   lid: string
@@ -26,14 +19,6 @@ export type Note = {
   raw?: string
 }
 
-/* The total sort order (SPEC 14.2), written out rather than inherited.
- *
- * Requested key, then `updated` DESCENDING, then `lid` ASCENDING. The
- * tiebreakers are what make four concurrent fetches unobservable in the output
- * and the byte diff possible at all - a key plus two tiebreakers is not a total
- * order while the primary comparison is undefined, so the string comparison is
- * by code point and is pinned here too.
- */
 export function compareCodePoints (a: string, b: string): number {
   const ai = Array.from(a); const bi = Array.from(b)
   const n = Math.min(ai.length, bi.length)
@@ -63,12 +48,6 @@ export function sortNotes (notes: Note[], key?: string): Note[] {
   return out
 }
 
-/* Type precedence for the primary comparison, so that a requested key which is
- * absent in one row and present in another still yields a total order. ABSENT
- * SORTS AFTER NULL, AND NEITHER INVERTS UNDER A DESCENDING SORT - which is
- * arbitrary, and an arbitrary rule written down beats a natural-looking one
- * that differs per port.
- */
 function rank (v: unknown): number {
   if (undefined === v) return 4
   if (null === v) return 3

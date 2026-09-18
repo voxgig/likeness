@@ -1,21 +1,3 @@
-/* Proof that the SDK's offline test mode carries a whole CRUD cycle, and that
- * the run touches NO NETWORK.
- *
- * This is the claim the entire testing strategy rests on: if the generated
- * SDK's `test` feature could not seed, list, load, create and update without a
- * server, the transcript corpus would have to run against a live source or a
- * hand-written mock, and both would stop the corpus being about the SDK at all.
- *
- * THE NETWORK IS BLOCKED AT THE PROCESS LEVEL, not assumed absent. `fetch`,
- * `http.request` and `https.request` are replaced with throwing stubs for the
- * duration. A run that reached the network fails loudly here instead of
- * quietly succeeding on a machine where something happened to be listening.
- *
- * The create supplies an EXPLICIT identifier. The SDKs mint a random one
- * otherwise, and the minted form differs between ports - see
- * upstream/issue/01 - so a corpus entry that let the SDK choose could never be
- * byte-compared.
- */
 
 import { test, before, after } from 'node:test'
 import assert from 'node:assert'

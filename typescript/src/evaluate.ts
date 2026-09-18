@@ -1,14 +1,3 @@
-/* Evaluate a parsed selector against a projected note, locally.
- *
- * Structured terms are evaluated IDENTICALLY EVERYWHERE: pushed down to the
- * source where the capability matrix says it can filter on them, and applied
- * here where it cannot - same answer either way, which is a corpus case rather
- * than a claim. For Stage 1 no source can filter, so everything lands here.
- *
- * Durations are relative to the INJECTED clock, never to the wall clock. An
- * entry that asserted on `now` would pass for one second and fail forever
- * after.
- */
 
 import type { Node, Value } from './selector.js'
 import type { Note } from './note.js'
@@ -19,9 +8,6 @@ function durationMs (v: Extract<Value, { k: 'dur' }>): number {
   switch (v.unit) {
     case 'd': return v.n * DAY
     case 'w': return v.n * 7 * DAY
-    // A month is 30 days and a year is 365. Calendar arithmetic differs between
-    // language standard libraries in ways nobody agrees on, and a selector
-    // window is a rough question. Fixed multipliers are pinned in the corpus.
     case 'mo': return v.n * 30 * DAY
     case 'y': return v.n * 365 * DAY
   }
@@ -81,8 +67,6 @@ export function evaluate (node: Node, note: Note, clockMs: number): boolean {
         const haveMs = Date.parse(have)
         const wantMs = resolveDate(want, clockMs)
         if (null === wantMs || Number.isNaN(haveMs)) return false
-        // `updated>14d` reads as "changed within the last 14 days", so a
-        // duration on the right of `>` is a LOWER BOUND ON THE TIMESTAMP.
         switch (node.op) {
           case '>': return haveMs > wantMs
           case '>=': return haveMs >= wantMs

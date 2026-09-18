@@ -1,10 +1,3 @@
-/* The error and exit code registry, read from the compiled ground truth.
- *
- * spec/errors.aon is the source; `make spec` compiles it to spec/errors.json
- * and CI fails on drift. Nothing here restates a code or an exit status: a
- * second copy is a second source of truth, and the one nobody regenerates is
- * the one that goes stale.
- */
 
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -18,12 +11,6 @@ export type ErrorDef = {
   retryable: boolean
 }
 
-/* Find the compiled ground truth by walking up until it appears, rather than
- * counting `..` from here. A fixed count encodes the compiler's output layout
- * in the source, and the two drift silently: the count that was right for
- * `dist/` is wrong for `dist/src/`, and the symptom is a stack trace from
- * inside a command rather than a clear failure at startup.
- */
 function specDir (): string {
   let dir = dirname(fileURLToPath(import.meta.url))
   for (let i = 0; i < 8; i++) {

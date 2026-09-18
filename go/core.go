@@ -1,14 +1,3 @@
-/* The core: a likeness command as a pure function.
- *
- *   (argv, env, config, fixture-state, clock) -> (exit, stdout, stderr, calls)
- *
- * Everything impure is a parameter. The clock is injected, the network is the
- * SDK's offline test transport, identifiers come from a seeded source, and
- * concurrency is unobservable because results are sorted. Given that, a whole
- * command is a corpus entry - which is the reason the argv shell is thin and
- * this is a library.
- */
-
 package likeness
 
 import (
@@ -79,10 +68,6 @@ func parseFlags(args []string) (flags, []string, error) {
 		case "--deterministic":
 			f.deterministic = true
 		case "--limit":
-			// VALIDATED, not coerced. A mistyped limit used to be dropped
-			// silently, disabling limiting altogether; a negative one sliced
-			// off the last row and zero turned a non-empty match set into
-			// `no-match`.
 			i++
 			raw := ""
 			if i < len(args) {
@@ -139,16 +124,6 @@ type meta struct {
 	calls      int
 }
 
-/*
-newEnvelope builds the envelope.
-
-`ok` IS FALSE EXACTLY WHEN THE ENVELOPE CARRIES AN `error`. One sentence, no
-second copy of the registry, and it is the question a caller is actually
-asking: is there something to read in `error`? A definition based on the code
-made `no-match` an error when the registry's own first line says exit 1 is not
-one; a definition based on the exit status made `not-found` a success whose
-`data` was null.
-*/
 func newEnvelope(cmd []string, code string, data any, mt meta, errBody map[string]any) *envelope {
 	m := map[string]any{
 		"ok":   nil == errBody,
@@ -161,9 +136,6 @@ func newEnvelope(cmd []string, code string, data any, mt meta, errBody map[strin
 			"sources":    strList(mt.sources),
 			"incomplete": strList(mt.incomplete),
 			"calls":      mt.calls,
-			// A declared non-parity field, removed by name before the byte
-			// diff, and zero here so the two legitimate exceptions do not
-			// defeat the comparison.
 			"elapsed_ms": 0,
 		},
 		"port":    Port,
@@ -178,24 +150,12 @@ func newEnvelope(cmd []string, code string, data any, mt meta, errBody map[strin
 func (e *envelope) code() string { s, _ := e.m["code"].(string); return s }
 func (e *envelope) data() any    { return e.m["data"] }
 
-// fails attaches an error to an already-built envelope, keeping `ok` in step.
-// Two commands decide their error only after assembling their data, and
-// setting the key directly would leave `ok` saying the opposite.
 func (e *envelope) fails(message, remedy string) *envelope {
 	e.m["error"] = map[string]any{"message": message, "remedy": remedy}
 	e.m["ok"] = false
 	return e
 }
 
-/*
-selected returns the connections a command runs against, after `--instance` and
-`--source`.
-
-A FILTER THAT MATCHES NOTHING IS AN ERROR, not an empty set. A mistyped
-`--instance jto` used to leave no connections at all, so `list` answered
-`no-match` and `doctor` answered `ok` with zero rows - both of which say the
-configuration is fine when the command never looked at it.
-*/
 func (c Ctx) selected(f flags) ([]Connection, error) {
 	var unknownInstance []string
 	for _, want := range f.instance {
@@ -254,14 +214,6 @@ func (c Ctx) selected(f flags) ([]Connection, error) {
 	return out, nil
 }
 
-/*
-hasAdapter reports whether a source has an adapter in this port.
-
-Dispatch is BY THE CONNECTION'S DECLARED SOURCE. The fan-out used to send every
-connection through the Joplin SDK whatever its source said, which either called
-the wrong API and reported a misleading partial failure, or projected another
-source's records as Joplin notes.
-*/
 func hasAdapter(c Connection) bool { return joplinSource == c.Source }
 
 func contains(ss []string, s string) bool {
@@ -283,11 +235,6 @@ func (c Ctx) optsFor(conn Connection) SourceOpts {
 	}
 }
 
-/*
-The Note fields every adapter populates whatever the source is: an identity, a
-title, a URL and the two timestamps. An adapter adds to this; none may subtract
-from it, which is why `title` is here and `tag` is not.
-*/
 var universalFields = []string{
 	"lid", "id", "title", "url", "created", "updated", "source", "instance",
 }
@@ -333,12 +280,6 @@ func unanswerable(conns []Connection, fields []string) []string {
 	return out
 }
 
-/*
-gather fetches from every selected connection, carrying a failure the whole
-length of the pipeline rather than dropping it. Silently dropping a source
-gives a confident, smaller, wrong answer, which is much worse than a partial
-one that says so.
-*/
 func gather(c Ctx, conns []Connection, calls *Calls, withRaw, strict bool) (
 	notes []Note, ok []string, failed []string, short []string, err error) {
 	for _, conn := range conns {
@@ -397,15 +338,6 @@ func cmdList(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 			return nil, err
 		}
 		filter = n
-		// BEFORE THE NETWORK, and before anything is fetched that would then
-		// be filtered against a field nobody populated. An adapter declares
-		// what it supplies; a question about anything else is refused rather
-		// than answered with a confident, wrong "no matches".
-		//
-		// Every selected source must supply the field, not just one of them:
-		// an answer assembled from the sources that could answer and silently
-		// missing the ones that could not is the same wrong answer in a longer
-		// form.
 		if bad := unanswerable(conns, FieldsOf(filter)); 0 < len(bad) {
 			return nil, &LikenessError{
 				Code:   "unsupported-capability",
@@ -445,14 +377,6 @@ func cmdList(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 	incomplete := append(append([]string{}, failed...), short...)
 	sort.Strings(incomplete)
 
-	// `--strict` refuses to call a partial answer a success. It still PRINTS
-	// the rows it has: `fanout-halted` is one of the two codes the registry
-	// marks as permitted to carry data, because the work was already done and
-	// paid for, and a caller branching on `ok` alone discards it correctly.
-	// NOT EVERY SOURCE FAILING IS A PARTIAL ANSWER. `partial` means some
-	// sources answered; when none did, an envelope saying `ok: true` with empty
-	// data lets a total outage or a rejected credential read as a valid empty
-	// result.
 	noneAnswered := 0 < len(failed) && 0 == len(okSources)
 
 	code := "ok"
@@ -510,10 +434,6 @@ func cmdGet(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 				"a ref is <instance>:<id>, a lid, #n or @alias", nil}
 		}
 		instance, id := ref[:idx], ref[idx+1:]
-		// An empty source-native id is malformed under the declared SourceId
-		// contract, and knowing that costs no request. It used to be sent,
-		// fetched and reported as `not-found`, which blamed the source for a
-		// typo.
 		if "" == id {
 			return nil, &LikenessError{"invalid-ref", "not a ref: " + ref + " (no id after the colon)",
 				"a ref is <instance>:<id>, a lid, #n or @alias", nil}
@@ -656,13 +576,6 @@ func cmdWhich(c Ctx) *envelope {
 	return newEnvelope([]string{"which"}, code, rows, meta{count: len(rows)}, nil)
 }
 
-/*
-cmdHelp exists because two error remedies named it.
-
-An error that sends the reader to an option the program does not parse is worse
-than one with no remedy: `--help` was dispatched as an unknown command and
-answered with another error recommending the same unusable option.
-*/
 func cmdHelp() *envelope {
 	commands := []any{
 		map[string]any{"command": "list", "takes": "[selector]", "does": "list notes across the configured sources"},
