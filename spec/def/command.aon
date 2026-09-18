@@ -1,0 +1,52 @@
+# likeness: the command surface shape.
+#
+# The command surface is DECLARED, not discovered by reading argv parsers in
+# five languages. `describe` is generated from this data, the agent-facing
+# documentation is generated from the same source, and the human help text is
+# free to be reworded without breaking a machine consumer - which is the whole
+# point of having both.
+
+@"./base.aon"
+@"./note.aon"
+
+FlagType: hide("boolean"|"string"|"integer"|"path"|"selector"|"ref")
+
+Flag: type(close({
+  name: $.Ident
+  type: $.FlagType
+  short: string
+  # Absent means the flag has no default and is simply present or not.
+  default?: string
+  # A flag an agent may never set. The human-decision floors are refusals in
+  # the code, and this marks the same ground in the data so the MCP tool
+  # descriptions and `describe` cannot drift from them.
+  human_only: boolean
+}))
+
+Command: type(close({
+  name: $.Ident
+  short: string
+
+  # Which likeness operation this command performs, where it maps to one. A
+  # command with no single operation - `doctor`, `which`, `describe` - says
+  # `false` rather than pretending.
+  op: $.OpKind|false
+
+  # Whether the command can change anything in a source. Drives the write
+  # consent rule and the read-only default of the tool server.
+  writes: boolean
+
+  # Whether it is exposed as a tool to an agent. Hard delete is absent from the
+  # tool list AND refused on the command line in agent mode, because excluding
+  # a tool does not cover the path where an agent simply types the command.
+  agent: boolean
+
+  arg: [&: close({ name:$.Ident type:$.FlagType required:boolean })]
+  flag: { &: $.Flag }
+
+  # The exit codes this command can produce. A command that can exit 2 is one
+  # that can answer partially.
+  exits: [&: $.Exit]
+}))
+
+command: { &: $.Command }

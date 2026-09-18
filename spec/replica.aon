@@ -1,0 +1,62 @@
+# likeness: the local replica, declared.
+#
+# GROUND TRUTH for how the replica is reached and what each port pays for it.
+# The numbers below were measured, not assumed: Node 22.22 was asked for
+# `node:sqlite`, Python for `sqlite3` and FTS5, Ruby for a stdlib sqlite3, and
+# Go's standard library has no driver at all.
+#
+# THE HONEST HEADLINE: three of five ports need a dependency for this, and the
+# project's rule is that no port has one. That is why `dependency` is a field
+# rather than a footnote, and why this is a declared parity exception with a
+# reason per port rather than a quiet import.
+
+replica: {
+  repo: "voxgig-sdk/likeness-replica-sdk"
+  semver: "0.0.0"
+  # Not yet generated. This entry exists so the shape, the rules and the cost
+  # are settled before any code is written, and the revision is filled by the
+  # commit that generates the SDK.
+  rev: "0000000000000000000000000000000000000000"
+
+  entity: ["note" "space" "tag" "link"]
+
+  port: {
+    py: {
+      driver: "sqlite3 (standard library)"
+      dependency: false
+      note: "stdlib since 2.5; FTS5 present in the build tested (SQLite 3.45.1)"
+      fts5: true
+    }
+    ts: {
+      driver: "node:sqlite (standard library)"
+      dependency: false
+      # Measured on Node 22.22: the module loads and exports DatabaseSync,
+      # StatementSync, constants and backup - but it prints an
+      # ExperimentalWarning, so the API may move under us. That is a smaller
+      # risk than a package, and a real one.
+      note: "stdlib from Node 22.5, still flagged experimental - pin the Node major"
+      fts5: true
+    }
+    c: driver: "sqlite3 amalgamation, vendored in-tree"
+    c: dependency: false
+    # The C port already carries in-tree implementations of what its standard
+    # library lacks - SHA-256 and base32 - and the amalgamation is one
+    # public-domain source file. Vendoring it is the existing precedent
+    # rather than a new kind of decision, and it avoids linking a system
+    # library whose presence and build options vary.
+    c: note: "one public-domain .c file, same precedent as the in-tree sha256"
+    c: fts5: true
+    go: {
+      driver: "a third-party module - no standard library driver exists"
+      dependency: true
+      note: "database/sql is an interface only; needs cgo or a pure-Go translation"
+      fts5: true
+    }
+    rb: driver: "the sqlite3 gem - not in the standard library"
+    rb: dependency: true
+    rb: note: "no stdlib sqlite in Ruby; the gem builds a native extension"
+    rb: fts5: true
+  }
+
+  rule: { write_through:true disposable:true reads_are_marked:true opt_in:true }
+}

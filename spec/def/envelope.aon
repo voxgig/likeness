@@ -1,0 +1,62 @@
+# likeness: the output envelope shape.
+#
+# One shape for every command's stdout under --json, and the thing five ports
+# must agree on byte for byte. The serialisation rules that make that possible
+# are not expressible as a shape - sorted keys, no floating point, UTF-8, LF,
+# exactly one trailing newline - so they live in the unit corpus instead, with
+# a case for each way five languages diverge for free.
+
+@"./base.aon"
+
+Meta: type(close({
+  count: $.Count
+  truncated: boolean
+  # Instances that answered.
+  sources: [&: $.Ident]
+  # Instances that did not. Non-empty is what makes the exit code 2 rather
+  # than 0: the answer is printed AND its incompleteness is named, because
+  # silently dropping a source gives a confident, smaller, wrong answer.
+  incomplete: [&: $.Ident]
+  # Outbound calls made. In the envelope because a case study should make its
+  # own traffic visible, and because the transcript corpus asserts on it:
+  # "the right answer, in forty requests" is a bug, and this is where it is
+  # caught.
+  calls: $.Count
+  # A declared non-parity field: excluded by name from the byte diff.
+  elapsed_ms: $.Millis
+  # Present and true only on an idempotent create that replayed.
+  idempotent_replay?: boolean
+}))
+
+ErrorBody: type(close({
+  message: string
+  # Every error names a remedy. Not optional: an error without one sends the
+  # reader to a search engine.
+  remedy: string
+  source?: string
+  instance?: string
+  entity?: string
+  op?: string
+}))
+
+Envelope: type(close({
+  ok: boolean
+  # Shape only. This is NOT tied to the error registry: an envelope carrying a
+  # code absent from errors.aon still validates, because a shape file must not
+  # import a data file. Closing that gap needs a check in tooling; until there
+  # is one, this is a kebab-case string and nothing stronger.
+  code: $.Code
+  cmd: [&: string]
+  # `data` is deliberately unconstrained here: it is a note, a list of notes, a
+  # capability matrix or null depending on the command, and pinning it in one
+  # shape would either be a lie or a union so wide it says nothing. The
+  # per-command shapes live with the commands.
+  data: top
+  error?: $.ErrorBody
+  meta: $.Meta
+  # The second declared non-parity field. Every envelope carries it, which is
+  # exactly why five raw outputs can never hash alike and never should: a run
+  # where they did would mean a port was lying about which port it is.
+  port: $.Port
+  version: $.Semver
+}))

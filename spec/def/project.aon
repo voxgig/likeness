@@ -1,0 +1,54 @@
+# likeness: the project file shape.
+#
+# A project is a DECLARED composition: which sources, scoped how, merged by what
+# rules, viewed in what shapes. `likeness project check` unifies a project file
+# with this shape, so a typo fails with an error code, a path and a source line
+# rather than with a confusing empty result.
+#
+# MERGING IS DECLARED, NEVER INFERRED. There is no similarity threshold here and
+# there will not be one: deciding that two notes are the same thing is the
+# owner's judgement, and a wrong merge is a data-integrity problem rather than a
+# display problem. `--suggest-same` proposes pairs and writes nothing.
+
+@"./base.aon"
+
+ProjectSource: type(close({
+  # The connection name, as configured. Must be a connection that exists;
+  # `project check` resolves it and refuses a name that does not.
+  instance: $.Ident
+  # Scope within that source: a team key, a database, a folder path.
+  space?: string
+}))
+
+View: type(close({
+  # A selector, in likeness's own grammar. Parsed and validated at check time,
+  # so a malformed view fails before it is ever run.
+  where: string
+  # `<field> asc|desc`. The sort is completed by a total order - updated
+  # descending, then lid ascending - which is what makes four concurrent
+  # fetches unobservable in the output and the byte diff possible at all.
+  sort: string
+}))
+
+Project: type(close({
+  name: $.Ident
+
+  source: { &: $.ProjectSource }
+
+  # Declared identity across sources. Each entry maps instance name to the
+  # source-native id of the same thing. Closure is computed from these, so a
+  # three-way group needs only two declarations.
+  same: [&: { &: $.SourceId }]
+
+  # Field-level precedence when merged members disagree. Instance names, most
+  # preferred first. Where precedence does not settle a field, the field
+  # becomes a CONFLICT OBJECT listing every value - it is never resolved by
+  # picking the first, because most conflicts are information.
+  prefer: [&: $.Ident]
+
+  alias?: { &: string }
+
+  view: { &: $.View }
+}))
+
+project: $.Project

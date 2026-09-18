@@ -1,0 +1,251 @@
+# likeness: the capability matrix.
+#
+# GROUND TRUTH for what each source can and cannot do. Read at runtime to refuse
+# an unsupported operation BEFORE any network call, and read by the conformance
+# tests to check that every `true` works and every `false` is refused with an
+# empty call list.
+#
+# DERIVED FROM THE SDKs, NOT FROM THE VENDORS' APIs. Each entry below says what
+# is reachable through the generated SDK pinned in sources.aon. Where a vendor's
+# API can do something its SDK definition does not cover, this file says `false`
+# and the gap is an issue against the SDK repository - not a conditional in an
+# adapter, and not a quiet call made some other way.
+#
+# THE SCOPED-DEFINITION PROBLEM. All four definitions are deliberate subsets:
+# `joplin-notes-folders-tags`, `obsidian-vault-only`, `notion-pages-databases-only`,
+# `linear-issues-only`. The largest consequence is that NO SOURCE SUPPORTS SEARCH,
+# because no definition includes a search operation. Every `search: false` below
+# is that, not a limitation of the vendor.
+#
+# Verified 2026-09-17 against the four repositories at the revisions in sources.aon.
+
+capability: joplin: name: "joplin"
+capability: joplin: entity: note: kind: "note"
+capability: joplin: entity: note: term: "note"
+capability: joplin: entity: note: sdk: "note"
+capability: joplin: entity: note: op: {
+  list: true
+  get: true
+  # `replica`, not false. No source's SDK has a search operation, but every
+  # entity listed here is mirrored into the local replica, and the replica
+  # has FTS5. So search IS available - served from a cache, marked as such
+  # in the envelope, and refused rather than guessed at when the replica is
+  # off or does not hold the entity. This is the whole reason the replica
+  # earns its cost.
+  search: "replica"
+  create: true
+  update: true
+  move: "parent-id"
+  # FALSE, not true. The definition's complete route set has /notes/{id}/tags
+  # and /tags/{id}/notes as GET ONLY: no POST or PUT anywhere associates a tag
+  # with a note. Reading a note's tags works and belongs to `get`; applying one
+  # does not exist through this SDK.
+  tag: false
+  link: "markdown"
+  archive: false
+  delete: true
+}
+capability: joplin: entity: space: kind: "space"
+capability: joplin: entity: space: term: "notebook"
+capability: joplin: entity: space: sdk: "folder"
+capability: joplin: entity: space: op: {
+  list: true
+  get: true
+  # The replica indexes NOTES only - note_fts is built over the note table -
+  # so a space or a tag is not searchable through it either. Claiming
+  # otherwise would be the same overclaim as the ones already corrected here.
+  search: false
+  create: true
+  update: true
+  move: "parent-id"
+  tag: false
+  link: false
+  archive: false
+  delete: true
+}
+capability: joplin: entity: tag: kind: "tag"
+capability: joplin: entity: tag: term: "tag"
+capability: joplin: entity: tag: sdk: "tag"
+capability: joplin: entity: tag: op: {
+  list: true
+  get: true
+  # The replica indexes NOTES only - note_fts is built over the note table -
+  # so a space or a tag is not searchable through it either. Claiming
+  # otherwise would be the same overclaim as the ones already corrected here.
+  search: false
+  create: true
+  update: true
+  move: false
+  tag: false
+  link: false
+  archive: false
+  delete: true
+}
+# Joplin has no archive: a deleted note goes to its own trash, which the
+# Data API does not model. `likeness archive` must therefore refuse here,
+# and the refusal names `delete` as the only reversible-ish alternative.
+capability: joplin: limit: {
+  page_max: 100
+  body: "markdown"
+  search: "none"
+  rate: 0
+  version_token: false
+}
+
+capability: obsidian: name: "obsidian"
+capability: obsidian: entity: note: kind: "note"
+capability: obsidian: entity: note: term: "file"
+capability: obsidian: entity: note: sdk: "vault"
+# move is false because copy and move are OpenAPI 3.2
+# additionalOperations, absent from the model and from every
+# generated client. Out of contract, not merely unimplemented.
+capability: obsidian: entity: note: op: {
+  list: true
+  get: true
+  search: "replica"
+  create: true
+  update: true
+  move: false
+  tag: "frontmatter"
+  link: "wikilink"
+  archive: false
+  delete: true
+}
+capability: obsidian: entity: tag: kind: "tag"
+capability: obsidian: entity: tag: term: "tag"
+capability: obsidian: entity: tag: sdk: "tag"
+capability: obsidian: entity: tag: op: {
+  list: true
+  get: false
+  # The replica indexes NOTES only - note_fts is built over the note table -
+  # so a space or a tag is not searchable through it either. Claiming
+  # otherwise would be the same overclaim as the ones already corrected here.
+  search: false
+  create: false
+  update: false
+  move: false
+  tag: false
+  link: false
+  archive: false
+  delete: false
+}
+# A vault list returns every file in one response; there is no paging and
+# no server-side filter, so a large vault is one big call rather than many
+# small ones. That is a budget fact, not a performance aside.
+capability: obsidian: limit: {
+  # Off the shape's ceiling, where it was both meaningless and unable to grow.
+  # A vault list returns every file in one response, so this is a budgeting
+  # figure for how large that response may get, not a page size.
+  page_max: 5000
+  body: "markdown"
+  search: "none"
+  rate: 0
+  # TRUE, and obsidian is the only one of the four. A vault read returns a
+  # `version` content-hash token - the definition says "pass it back as a PATCH
+  # `ifMatch` to make an edit conditional on the file being unchanged" - and the
+  # generated model carries the `ifMatch` field. False here documented
+  # `precondition-failed` as unavailable for the one source that implements it.
+  version_token: true
+}
+
+capability: notion: name: "notion"
+capability: notion: entity: note: kind: "note"
+capability: notion: entity: note: term: "page"
+capability: notion: entity: note: sdk: "page"
+# NO list AND NO delete. The SDK has neither operation, so
+# likeness cannot enumerate a Notion workspace or hard-delete a
+# page. `archive` is a flag on update, which is why it is a
+# string here rather than `true`.
+capability: notion: entity: note: op: {
+  list: false
+  get: true
+  search: "replica"
+  create: true
+  update: true
+  # FALSE: `parent` is in PageInput, the CREATE body. PageUpdateInput is
+  # `[archived, properties]`, so a page can be created under a parent and not
+  # moved to another. `archive` below stands - `archived` IS in the update.
+  move: false
+  tag: "property"
+  link: "mention"
+  archive: "archived-flag"
+  delete: false
+}
+capability: notion: entity: space: kind: "space"
+capability: notion: entity: space: term: "database"
+capability: notion: entity: space: sdk: "database"
+capability: notion: entity: space: op: {
+  list: false
+  get: true
+  # The replica indexes NOTES only - note_fts is built over the note table -
+  # so a space or a tag is not searchable through it either. Claiming
+  # otherwise would be the same overclaim as the ones already corrected here.
+  search: false
+  create: true
+  update: true
+  # DatabaseUpdateInput is `[properties, title]`: no `parent` and no
+  # `archived`, so neither move nor archive is reachable for a database,
+  # though both are for a page.
+  move: false
+  tag: false
+  link: false
+  archive: false
+  delete: false
+}
+capability: notion: limit: {
+  page_max: 100
+  body: "blocks"
+  search: "none"
+  rate: 3
+  version_token: false
+}
+
+capability: linear: name: "linear"
+capability: linear: entity: note: kind: "note"
+capability: linear: entity: note: term: "issue"
+capability: linear: entity: note: sdk: "issue"
+# No remove operation exists, so a hard delete is refused from
+# data rather than attempted. Linear archives instead.
+capability: linear: entity: note: op: {
+  list: true
+  get: true
+  search: "replica"
+  create: true
+  update: true
+  move: "team-id"
+  # THREE REMOVED after reading the SDL instead of the vendor API.
+  # IssueUpdateInput is [title, description, priority, stateId, assigneeId,
+  # teamId]; `type Issue` has no labels and no relations; `archivedAt` is
+  # output-only and Mutation is only issueCreate and issueUpdate. So tag,
+  # link and archive are unreachable. `move` survives: teamId is in the input.
+  tag: false
+  link: false
+  archive: false
+  delete: false
+}
+capability: linear: entity: space: kind: "space"
+capability: linear: entity: space: term: "team"
+capability: linear: entity: space: sdk: "team"
+# Read-only: the SDL subset exposes only `team` and `teams`.
+capability: linear: entity: space: op: {
+  list: true
+  get: true
+  # The replica indexes NOTES only - note_fts is built over the note table -
+  # so a space or a tag is not searchable through it either. Claiming
+  # otherwise would be the same overclaim as the ones already corrected here.
+  search: false
+  create: false
+  update: false
+  move: false
+  tag: false
+  link: false
+  archive: false
+  delete: false
+}
+capability: linear: limit: {
+  page_max: 100
+  body: "markdown"
+  search: "none"
+  rate: 0
+  version_token: false
+}

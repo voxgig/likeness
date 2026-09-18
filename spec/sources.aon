@@ -1,0 +1,550 @@
+# likeness: the source registry.
+#
+# GROUND TRUTH for which SDK each source is reached through, at which revision,
+# and how that SDK's offline test mode is seeded. Checked against
+# `def/source.aon` by `make spec-check`; nothing here is a comment that can
+# quietly go stale.
+#
+# ON PINNING BY REVISION. None of the four SDK repositories carries a git tag,
+# and none of their packages resolves from npm, PyPI, RubyGems or the Go module
+# proxy. Their READMEs offer "install from git tag" and the tag list is empty.
+# Until that changes, a commit sha is the only pin that pins, so `rev` is
+# required and every `pin` line below names one.
+#
+# Verified 2026-09-17 against github.com/voxgig-sdk by reading each repository's
+# language manifests and `git ls-remote --tags`.
+
+source: {
+  joplin: {
+    name: "joplin"
+    repo: "voxgig-sdk/joplin-sdk"
+    def: "joplin-notes-folders-tags.json"
+    defkind: "openapi"
+    semver: "0.0.1"
+    rev: "4504c82ae6502ef24b582a528bcd747d485d0a1e"
+    protocol: "http"
+    local: false
+
+    # A QUERY PARAMETER, not a header. The generated client has no header
+    # branch at all: PrepareAuthUtility sets `query.token`, and Config declares
+    # `auth: { prefix: '', in: 'query', name: 'token' }`. An earlier version of
+    # this entry said the opposite - raw credential in an Authorization header -
+    # which was read from a historical note about an older sdkgen rather than
+    # from the client in the pinned revision. Definition and client agree here;
+    # only the note was out of date.
+    auth: { kind:"query" carrier:"token" prefix:"" }
+
+    target: {
+      ts: {
+        dir: "ts"
+        package: "@voxgig-sdk/joplin"
+        published: false
+        pin: "github:voxgig-sdk/joplin-sdk#4504c82ae6502ef24b582a528bcd747d485d0a1e"
+      }
+      go: {
+        dir: "go"
+        package: "github.com/voxgig-sdk/joplin-sdk/go"
+        published: false
+        pin: "github.com/voxgig-sdk/joplin-sdk/go@4504c82ae6502ef24b582a528bcd747d485d0a1e"
+      }
+      py: {
+        dir: "py"
+        package: "voxgig-sdk-joplin"
+        published: false
+        pin: "git+https://github.com/voxgig-sdk/joplin-sdk@4504c82ae6502ef24b582a528bcd747d485d0a1e#subdirectory=py"
+      }
+      rb: {
+        dir: "rb"
+        package: "voxgig-sdk-joplin"
+        published: false
+        pin: "git: 'https://github.com/voxgig-sdk/joplin-sdk', ref: '4504c82ae6502ef24b582a528bcd747d485d0a1e', glob: 'rb/*.gemspec'"
+      }
+      c: {
+        dir: "c"
+        package: "voxgig-sdk-joplin"
+        published: false
+        pin: "vendored from voxgig-sdk/joplin-sdk@4504c82ae6502ef24b582a528bcd747d485d0a1e c/"
+      }
+    }
+
+    entity: note: accessor: "Note"
+    entity: note: name: "note"
+    entity: note: idfield: "id"
+    entity: note: op: list: {
+      name: "list"
+      method: "GET"
+      route: ["/notes" "/notes/{id}/tags"]
+      pages: true
+    }
+    entity: note: op: load: {
+      name: "load"
+      method: "GET"
+      route: ["/notes/{id}"]
+      pages: false
+    }
+    entity: note: op: create: {
+      name: "create"
+      method: "POST"
+      route: ["/notes"]
+      pages: false
+    }
+    entity: note: op: update: {
+      name: "update"
+      method: "PUT"
+      route: ["/notes/{id}"]
+      pages: false
+    }
+    entity: note: op: remove: {
+      name: "remove"
+      method: "DELETE"
+      route: ["/notes/{id}"]
+      pages: false
+    }
+    entity: folder: accessor: "Folder"
+    entity: folder: name: "folder"
+    entity: folder: idfield: "id"
+    entity: folder: op: list: {
+      name: "list"
+      method: "GET"
+      route: ["/folders" "/folders/{id}/notes"]
+      pages: true
+    }
+    entity: folder: op: load: {
+      name: "load"
+      method: "GET"
+      route: ["/folders/{id}"]
+      pages: false
+    }
+    entity: folder: op: create: {
+      name: "create"
+      method: "POST"
+      route: ["/folders"]
+      pages: false
+    }
+    entity: folder: op: update: {
+      name: "update"
+      method: "PUT"
+      route: ["/folders/{id}"]
+      pages: false
+    }
+    entity: folder: op: remove: {
+      name: "remove"
+      method: "DELETE"
+      route: ["/folders/{id}"]
+      pages: false
+    }
+    entity: tag: accessor: "Tag"
+    entity: tag: name: "tag"
+    entity: tag: idfield: "id"
+    entity: tag: op: list: {
+      name: "list"
+      method: "GET"
+      route: ["/tags" "/tags/{id}/notes"]
+      pages: true
+    }
+    entity: tag: op: load: {
+      name: "load"
+      method: "GET"
+      route: ["/tags/{id}"]
+      pages: false
+    }
+    entity: tag: op: create: {
+      name: "create"
+      method: "POST"
+      route: ["/tags"]
+      pages: false
+    }
+    entity: tag: op: update: {
+      name: "update"
+      method: "PUT"
+      route: ["/tags/{id}"]
+      pages: false
+    }
+    entity: tag: op: remove: {
+      name: "remove"
+      method: "DELETE"
+      route: ["/tags/{id}"]
+      pages: false
+    }
+
+    test: {
+      construct: {
+        ts: "JoplinSDK.test({entity: {note: {n1: {id: 'n1'}}}})"
+        go: "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)"
+        py: "JoplinSDK.test({'entity': {'note': {'n1': {'id': 'n1'}}}})"
+        rb: "JoplinSDK.test({'entity' => {'note' => {'n1' => {'id' => 'n1'}}}})"
+        c: "test_sdk(seed, NULL)"
+      }
+      idfield: { note:"id" folder:"id" tag:"id" }
+      mints_id: true
+      netsim: {
+        available: true
+        option: [
+          "latency"
+          "failTimes"
+          "failStatus"
+          "errorTimes"
+          "offline"
+          "sleep"
+        ]
+      }
+    }
+  }
+
+  obsidian: {
+    name: "obsidian"
+    repo: "voxgig-sdk/obsidian-sdk"
+    def: "obsidian-vault-only.json"
+    defkind: "openapi"
+    semver: "0.0.1"
+    rev: "958b620f1ef9ecdfc6c9d553cda94029e060c523"
+    protocol: "http"
+    # The REST plugin is one path to a vault; the vault is also just files, and
+    # that second path makes no outbound call at all.
+    local: true
+    auth: { kind:"bearer" carrier:"authorization" prefix:"Bearer" }
+
+    target: {
+      ts: {
+        dir: "ts"
+        package: "@voxgig-sdk/obsidian"
+        published: false
+        pin: "github:voxgig-sdk/obsidian-sdk#958b620f1ef9ecdfc6c9d553cda94029e060c523"
+      }
+      go: {
+        dir: "go"
+        package: "github.com/voxgig-sdk/obsidian-sdk/go"
+        published: false
+        pin: "github.com/voxgig-sdk/obsidian-sdk/go@958b620f1ef9ecdfc6c9d553cda94029e060c523"
+      }
+      py: {
+        dir: "py"
+        package: "voxgig-sdk-obsidian"
+        published: false
+        pin: "git+https://github.com/voxgig-sdk/obsidian-sdk@958b620f1ef9ecdfc6c9d553cda94029e060c523#subdirectory=py"
+      }
+      rb: {
+        dir: "rb"
+        package: "voxgig-sdk-obsidian"
+        published: false
+        pin: "git: 'https://github.com/voxgig-sdk/obsidian-sdk', ref: '958b620f1ef9ecdfc6c9d553cda94029e060c523', glob: 'rb/*.gemspec'"
+      }
+      c: {
+        dir: "c"
+        package: "voxgig-sdk-obsidian"
+        published: false
+        pin: "vendored from voxgig-sdk/obsidian-sdk@958b620f1ef9ecdfc6c9d553cda94029e060c523 c/"
+      }
+    }
+
+    entity: {
+      vault: accessor: "Vault"
+      vault: name: "vault"
+      vault: idfield: "id"
+      vault: op: list: {
+        name: "list"
+        method: "GET"
+        route: ["/vault/"]
+        pages: false
+      }
+      vault: op: load: {
+        name: "load"
+        method: "GET"
+        route: ["/vault/{filename}" "/vault/{pathToDirectory}/"]
+        pages: false
+      }
+      vault: op: create: {
+        name: "create"
+        method: "POST"
+        route: ["/vault/{filename}"]
+        pages: false
+      }
+      vault: op: update: {
+        name: "update"
+        method: "PUT"
+        route: ["/vault/{filename}"]
+        pages: false
+      }
+      vault: op: patch: {
+        name: "patch"
+        method: "PATCH"
+        route: ["/vault/{filename}"]
+        pages: false
+      }
+      vault: op: remove: {
+        name: "remove"
+        method: "DELETE"
+        route: ["/vault/{filename}"]
+        pages: false
+      }
+      tag: accessor: "Tag"
+      tag: name: "tag"
+      tag: idfield: "id"
+      tag: op: list: { name:"list" method:"GET" route: ["/tags/"] pages:false }
+    }
+
+    test: {
+      construct: {
+        ts: "ObsidianSDK.test({entity: {vault: {'a.md': {id: 'a.md'}}}})"
+        go: "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)"
+        py: "ObsidianSDK.test({'entity': {'vault': {'a.md': {'id': 'a.md'}}}})"
+        rb: "ObsidianSDK.test({'entity' => {'vault' => {'a.md' => {'id' => 'a.md'}}}})"
+        c: "test_sdk(seed, NULL)"
+      }
+      # All four SDKs derive the seeding key from the entity route, and for
+      # every entity of all four it comes out as `id`. Declared per source
+      # anyway: it is derived rather than fixed, so a future entity whose
+      # route ends in another parameter would differ, and a seed written
+      # against the wrong field is silently never found.
+      idfield: { vault:"id" tag:"id" }
+      mints_id: true
+      netsim: {
+        available: true
+        option: [
+          "latency"
+          "failTimes"
+          "failStatus"
+          "errorTimes"
+          "offline"
+          "sleep"
+        ]
+      }
+    }
+  }
+
+  notion: {
+    name: "notion"
+    repo: "voxgig-sdk/notion-sdk"
+    def: "notion-pages-databases-only.json"
+    defkind: "openapi"
+    semver: "0.0.1"
+    rev: "785fb7e1e6c1ec3369a001956d1d14eefca0c16d"
+    protocol: "http"
+    local: false
+    auth: { kind:"bearer" carrier:"authorization" prefix:"Bearer" }
+
+    target: {
+      ts: {
+        dir: "ts"
+        package: "@voxgig-sdk/notion"
+        published: false
+        pin: "github:voxgig-sdk/notion-sdk#785fb7e1e6c1ec3369a001956d1d14eefca0c16d"
+      }
+      go: {
+        dir: "go"
+        package: "github.com/voxgig-sdk/notion-sdk/go"
+        published: false
+        pin: "github.com/voxgig-sdk/notion-sdk/go@785fb7e1e6c1ec3369a001956d1d14eefca0c16d"
+      }
+      py: {
+        dir: "py"
+        package: "voxgig-sdk-notion"
+        published: false
+        pin: "git+https://github.com/voxgig-sdk/notion-sdk@785fb7e1e6c1ec3369a001956d1d14eefca0c16d#subdirectory=py"
+      }
+      # NO RUBY TARGET. notion-sdk ships `js` where the other three ship `rb`;
+      # there is no rb/ directory and no gemspec anywhere in the repository. So
+      # likeness's RUBY PORT CANNOT REACH NOTION AT ALL, which is a gap in the
+      # five-port claim rather than an omission here. An absent key is the
+      # honest record; an earlier version invented a package to fill the hole a
+      # closed shape left.
+      c: {
+        dir: "c"
+        package: "voxgig-sdk-notion"
+        published: false
+        pin: "vendored from voxgig-sdk/notion-sdk@785fb7e1e6c1ec3369a001956d1d14eefca0c16d c/"
+      }
+    }
+
+    # NO `list` AND NO `remove` ON EITHER ENTITY. That is not an omission here:
+    # the generated SDK has neither, so likeness cannot list or delete a Notion
+    # page through it, and the capability matrix must say so rather than let a
+    # refusal become a lie.
+    entity: page: accessor: "Page"
+    entity: page: name: "page"
+    entity: page: idfield: "id"
+    entity: page: op: load: {
+      name: "load"
+      method: "GET"
+      route: ["/pages/{id}"]
+      pages: false
+    }
+    entity: page: op: create: {
+      name: "create"
+      method: "POST"
+      route: ["/pages"]
+      pages: false
+    }
+    entity: page: op: update: {
+      name: "update"
+      method: "PATCH"
+      route: ["/pages/{id}"]
+      pages: false
+    }
+    entity: database: accessor: "Database"
+    entity: database: name: "database"
+    entity: database: idfield: "id"
+    entity: database: op: load: {
+      name: "load"
+      method: "GET"
+      route: ["/databases/{id}"]
+      pages: false
+    }
+    entity: database: op: create: {
+      name: "create"
+      method: "POST"
+      route: ["/databases"]
+      pages: false
+    }
+    entity: database: op: update: {
+      name: "update"
+      method: "PATCH"
+      route: ["/databases/{id}"]
+      pages: false
+    }
+
+    test: {
+      construct: {
+        ts: "NotionSDK.test({entity: {page: {p1: {id: 'p1'}}}})"
+        go: "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)"
+        py: "NotionSDK.test({'entity': {'page': {'p1': {'id': 'p1'}}}})"
+        c: "test_sdk(seed, NULL)"
+      }
+      idfield: { page:"id" database:"id" }
+      mints_id: true
+      netsim: {
+        available: true
+        option: [
+          "latency"
+          "failTimes"
+          "failStatus"
+          "errorTimes"
+          "offline"
+          "sleep"
+        ]
+      }
+    }
+  }
+
+  linear: {
+    name: "linear"
+    repo: "voxgig-sdk/linear-sdk"
+    # A GraphQL SDL, consumed DIRECTLY by sdkgen. There is no hand-written
+    # OpenAPI wrapper over /graphql, and none is needed.
+    def: "linear-issues-only.graphql"
+    defkind: "graphql"
+    semver: "0.0.1"
+    rev: "046371226512e1faa497905086b254f9ba41b563"
+    protocol: "graphql"
+    local: false
+    # NO SCHEME PREFIX, unlike obsidian and notion. linear's Config declares
+    # `auth: { prefix: '' }`, and PrepareAuthUtility only prepends a scheme when
+    # one is configured, so the header carries the raw credential - which is
+    # what Linear's API wants.
+    auth: { kind:"raw-header" carrier:"authorization" prefix:"" }
+
+    target: {
+      ts: {
+        dir: "ts"
+        package: "@voxgig-sdk/linear"
+        published: false
+        pin: "github:voxgig-sdk/linear-sdk#046371226512e1faa497905086b254f9ba41b563"
+      }
+      go: {
+        dir: "go"
+        package: "github.com/voxgig-sdk/linear-sdk/go"
+        published: false
+        pin: "github.com/voxgig-sdk/linear-sdk/go@046371226512e1faa497905086b254f9ba41b563"
+      }
+      py: {
+        dir: "py"
+        package: "voxgig-sdk-linear"
+        published: false
+        pin: "git+https://github.com/voxgig-sdk/linear-sdk@046371226512e1faa497905086b254f9ba41b563#subdirectory=py"
+      }
+      rb: {
+        dir: "rb"
+        package: "voxgig-sdk-linear"
+        published: false
+        pin: "git: 'https://github.com/voxgig-sdk/linear-sdk', ref: '046371226512e1faa497905086b254f9ba41b563', glob: 'rb/*.gemspec'"
+      }
+      c: {
+        dir: "c"
+        package: "voxgig-sdk-linear"
+        published: false
+        pin: "vendored from voxgig-sdk/linear-sdk@046371226512e1faa497905086b254f9ba41b563 c/"
+      }
+    }
+
+    # Every operation is a POST to the one endpoint; `route` names the GraphQL
+    # field rather than a path, because that is what distinguishes them.
+    entity: issue: accessor: "Issue"
+    entity: issue: name: "issue"
+    entity: issue: idfield: "id"
+    entity: issue: op: list: {
+      name: "list"
+      method: "POST"
+      route: ["issues"]
+      pages: true
+    }
+    entity: issue: op: load: {
+      name: "load"
+      method: "POST"
+      route: ["issue"]
+      pages: false
+    }
+    entity: issue: op: create: {
+      name: "create"
+      method: "POST"
+      route: ["issueCreate"]
+      pages: false
+    }
+    entity: issue: op: update: {
+      name: "update"
+      method: "POST"
+      route: ["issueUpdate"]
+      pages: false
+    }
+    entity: team: accessor: "Team"
+    entity: team: name: "team"
+    entity: team: idfield: "id"
+    entity: team: op: list: {
+      name: "list"
+      method: "POST"
+      route: ["teams"]
+      # `teams(first, after): [Team!]!` is a plain list, not a relay connection:
+      # there is no pageInfo, and the op's model carries no `graphql.page`, so
+      # nothing can be followed. `issues` is the connection; this is not.
+      pages: false
+    }
+    entity: team: op: load: {
+      name: "load"
+      method: "POST"
+      route: ["team"]
+      pages: false
+    }
+
+    test: {
+      construct: {
+        ts: "LinearSDK.test({entity: {issue: {i1: {id: 'i1'}}}})"
+        go: "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)"
+        py: "LinearSDK.test({'entity': {'issue': {'i1': {'id': 'i1'}}}})"
+        rb: "LinearSDK.test({'entity' => {'issue' => {'i1' => {'id' => 'i1'}}}})"
+        c: "test_sdk(seed, NULL)"
+      }
+      idfield: { issue:"id" team:"id" }
+      mints_id: true
+      netsim: {
+        available: true
+        option: [
+          "latency"
+          "failTimes"
+          "failStatus"
+          "errorTimes"
+          "offline"
+          "sleep"
+        ]
+      }
+    }
+  }
+}

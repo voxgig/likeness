@@ -1,0 +1,106 @@
+# likeness: the parity corpus shapes.
+#
+# Two corpora, one mechanism. Both are written here, compiled to committed JSON,
+# and run in-process by every port through its own library.
+#
+#   unit  - pure functions. Fast, precise, and where cross-language drift
+#           actually starts.
+#   cli   - whole commands. The contract that matters, because it is the CLI's
+#           behaviour written down.
+#
+# The idea underneath both: A LIKENESS COMMAND IS A PURE FUNCTION.
+#
+#   (argv, env, config, fixture-state, clock) -> (exit, stdout, stderr, calls)
+#
+# Everything impure is a parameter. The clock is injected, the network is the
+# SDK's own offline test transport, identifiers are seeded, and concurrency is
+# unobservable because results are sorted. Given that, a whole command fits in
+# a corpus entry.
+
+@"./base.aon"
+
+# One outbound call the command is expected to have attempted.
+#
+# ASSERTING CALLS IS THE POINT. An entry that checked only stdout would pass for
+# a command that produced the right answer by making forty requests. It is also
+# how "a no-op sync makes zero write calls" becomes a test rather than a hope.
+Call: type(close({ instance:$.Ident method:$.Method path:string }))
+
+# The context a transcript entry runs in. Every impure input, named.
+Ctx: type(close({
+  # The fixture set: a map of seed records handed to the SDK's offline test
+  # mode, by source. Recorded once and frozen.
+  fixture: string
+
+  # Injected. Never the wall clock: an entry that asserted on `now` would pass
+  # for one second and fail forever after.
+  clock: $.Rfc3339
+
+  # Seeds the identifier source. REQUIRED, and this is not a formality: the
+  # SDKs' offline test mode mints a random identifier for a create that
+  # supplies none, and the minted form differs between ports. An entry that
+  # creates a record must supply the identifier explicitly.
+  seed: integer & min(0)
+
+  # Environment overrides, if any.
+  env?: { &: string }
+}))
+
+# What the command must produce.
+Out: type(close({
+  exit: $.Exit
+  # A path to a committed expectation file. Compared as BYTES - key order,
+  # spacing, escaping and the trailing newline are all part of the contract -
+  # after the declared non-parity fields have been removed BY NAME from both
+  # sides. Those fields are `port` and `elapsed_ms`, and that removal is what
+  # lets ONE committed expectation serve five ports: every envelope is required
+  # to carry its own `port`, so five raw outputs can never be identical and
+  # never should be. A run where they were would mean a port was lying about
+  # which port it is.
+  #
+  # The removal is by name and the list is exhaustive by construction, so a
+  # difference in any other field is a failing check rather than a footnote.
+  # `--deterministic` handles the clock separately.
+  stdout: string
+  stderr?: string
+  calls: [&: $.Call]
+}))
+
+# One whole-command entry.
+CliEntry: type(close({
+  id: string & re("^[a-z0-9/-]+$")
+  args: [&: string]
+  ctx: $.Ctx
+  out: $.Out
+}))
+
+# One pure-function entry. `in` and `out` are unconstrained because the corpus
+# covers functions of many signatures; the shape's job here is to make sure
+# every entry is addressable, named and accounted for.
+# EXACTLY ONE OF `out` AND `err`, expressed as a disjunction of two closed
+# shapes rather than as an optional field. An earlier version made `out`
+# mandatory and `err` optional, which meant every negative case had to invent a
+# meaningless output value, and left two runners free to disagree about whether
+# a throwing case should also match its `out`. Written this way, an entry
+# carrying both is refused and so is one carrying neither.
+UnitEntry: type(
+  close({
+    id: string & re("^[a-z0-9/-]+$")
+    # The canonical function under test, as the TypeScript port exports it.
+    fn: string & re("^[a-zA-Z][a-zA-Z0-9_.]*$")
+    in: top
+    out: top
+  })
+  | close({
+    id: string & re("^[a-z0-9/-]+$")
+    fn: string & re("^[a-zA-Z][a-zA-Z0-9_.]*$")
+    in: top
+    # The entry asserts a throw INSTEAD OF a value, so there is no `out` here.
+    err: string
+  })
+)
+
+primary: close({
+  unit: { &: close({ set: [&: $.UnitEntry] }) }
+  cli: { &: close({ set: [&: $.CliEntry] }) }
+})
