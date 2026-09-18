@@ -28,7 +28,9 @@ VET_PAIRS := \
 # which is the exact failure this target exists to prevent. Exit 1, or it is a
 # build failure.
 VET_MUSTFAIL := \
-	$(DEF)/project.aon:$(SPEC)/example/likeness-broken.aon
+	$(DEF)/project.aon:$(SPEC)/example/likeness-broken.aon \
+	$(DEF)/corpus.aon:$(SPEC)/example/unit-broken.aon \
+	$(DEF)/corpus.aon:$(SPEC)/example/cli-broken.aon
 
 
 .PHONY: help

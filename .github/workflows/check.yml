@@ -1,0 +1,47 @@
+# The gate. One job, because `make check` already is the gate: a second
+# workflow that ran half of it would be a second definition of "passing" for
+# someone to forget to update.
+#
+# Everything here mirrors what a contributor runs locally. If CI and a laptop
+# can disagree about whether a change is good, the corpus has stopped being the
+# contract and the build has become it.
+
+name: check
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      # The generated SDKs are not published to any language registry yet, so
+      # there is no lockfile that can hold them. `make sdk` clones each at the
+      # revision spec/sources.aon pins, and `sdk-check` - which every port
+      # target depends on - fails the build if a clone drifts off its pin.
+      - name: Clone the generated SDKs at their pinned revisions
+        run: make sdk
+
+      - name: Install the TypeScript port's dependencies
+        run: npm install
+        working-directory: typescript
+
+      # The schema and its data, both ports against both corpora, the
+      # cross-port byte comparison, and the comparison's own self-test.
+      - name: make check
+        run: make check
