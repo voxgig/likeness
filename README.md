@@ -17,18 +17,40 @@ The reasoned specification lives in
 
 | Part | State |
 |---|---|
-| `spec/` — the aontu ground-truth schema | shapes complete; source, capability and error data populated |
+| `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
+| `spec/unit.aon` — the pure-function corpus | 53 entries, run by both ports |
+| `spec/cli.aon` — the transcript corpus | 27 whole commands, run by both ports |
+| `typescript/` — the canonical port | `list`, `get`, `doctor`, `version`, `which`; offline through the real generated SDK |
+| `go/` — the second port | the same, passing the same corpora and the same committed bytes |
+| The parity comparison | `make parity`: the ports agree, each names itself, and the comparison is proved to go red |
 | `mock/` — a Fastify server emulating all four sources on one port | working, smoke-tested |
 | `replica/` — a local SQLite copy reached through a generated SDK | designed; schema and search verified, SDK not generated |
-| The five ports | not started |
-| The parity corpora | shapes defined, entries not written |
+| Python, Ruby and C | not started |
 
 ## Start here
 
 ```sh
-make spec        # check the schema and its data
+make sdk         # clone the generated SDKs at their pinned revisions
+make check       # the schema, both ports, both corpora and the parity comparison
 make mock        # run the source mock server on 127.0.0.1:7777
 ```
+
+`make check` is the whole gate. `make help` lists the parts of it.
+
+### Running a command
+
+Both ports are libraries with a thin argv shell, so a whole command is a pure
+function of its inputs and the transcript corpus can run it in-process. From a
+built tree:
+
+```sh
+node typescript/bin/likeness.js list 'updated>7d' --json
+cd go && go run ./cmd/likeness list 'updated>7d' --json
+```
+
+Both read `~/.config/likeness/station.json` for connections. With none
+configured they answer `no-match` and exit 1, which is the answer "none" rather
+than an error.
 
 - [PROCESS.md](PROCESS.md) — how this repository is developed, and why
   unit tests use the SDKs' own offline test mode

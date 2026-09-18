@@ -46,7 +46,9 @@ help:
 	@echo '  sdk           clone the generated SDKs at their pinned revisions'
 	@echo '  sdk-check     fail if a clone is missing or off its pin'
 	@echo '  test-ts       build and run the TypeScript port against both corpora'
-	@echo '  check         spec and every port'
+	@echo '  test-go       build and run the Go port against both corpora'
+	@echo '  parity        the ports produce the same bytes, and each names itself'
+	@echo '  check         spec, every port, and the parity comparison'
 	@echo '  expect        REGENERATE the committed expectations - read the diff'
 	@echo '  mock          run the local source mock server'
 
@@ -57,7 +59,7 @@ spec: spec-fmt spec-check spec-fresh spec-agree
 
 # Everything. What CI runs, and what a change should run before it is pushed.
 .PHONY: check
-check: spec test-ts
+check: spec test-ts test-go parity
 
 
 .PHONY: spec-build
@@ -91,6 +93,35 @@ sdk-check:
 .PHONY: test-ts
 test-ts: sdk-check
 	@cd typescript && npm run build && npm test
+
+
+.PHONY: test-go
+test-go: sdk-check
+	@cd go && gofmt -l . | (! grep .) && go vet ./... && go test ./...
+
+
+# The cross-port byte comparison. Each port's suite writes its RAW transcript
+# output when LIKENESS_PARITY_OUT is set; the comparison then requires the
+# stripped bytes to MATCH and the raw bytes to DIFFER, because every envelope
+# carries its own `port` and two that were byte-identical would mean one was
+# reporting the other's name.
+#
+# --selftest runs immediately after, introducing a deliberate single-port
+# difference and requiring it to be reported: a comparison nobody has seen go
+# red might be comparing nothing at all.
+PARITY_DIR := build/parity
+
+.PHONY: parity
+parity: sdk-check
+	@rm -rf $(PARITY_DIR) && mkdir -p $(PARITY_DIR)
+	@cd typescript && npm run build >/dev/null && \
+	  LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" npm test >/dev/null
+	@# -count=1 defeats the test cache. Without it Go reports a cached PASS and
+	@# writes no files, and the comparison then finds one port and says so -
+	@# which is at least loud, but only because the comparison checks for it.
+	@cd go && LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" go test -count=1 -run TestEmitParity ./... >/dev/null
+	@node tools/parity.mjs $(PARITY_DIR)
+	@node tools/parity.mjs $(PARITY_DIR) --selftest 2>/dev/null
 
 
 # NOT A TEST, and never run to make one pass. It rewrites the contract to agree
