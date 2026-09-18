@@ -1,3 +1,5 @@
+**Filed:** [voxgig/sdkgen#166](https://github.com/voxgig/sdkgen/issues/166)
+
 **Repository:** `voxgig-sdk/joplin-sdk` — and identically `obsidian-sdk`, `notion-sdk`, `linear-sdk`
 **Observed at:** `4504c82ae6502ef24b582a528bcd747d485d0a1e`
 **Fix belongs in:** `voxgig/sdkgen` — `.sdk/tm/<lang>/src/feature/test/`, since the behaviour is the same for every API

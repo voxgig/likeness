@@ -16,8 +16,49 @@ boundary, not a judgement about whether they should be raised — they should.
 
 ## Filed
 
+Every issue whose fix belongs in **`voxgig/sdkgen`** is now filed there, re-verified
+against `sdkgen@4089761` before filing rather than against the generated output where
+it was noticed — which is the rule in [PROCESS.md](../PROCESS.md) §6, and which changed
+one of them substantially.
+
+| Draft | Filed as | What |
+|---|---|---|
+| `issue/10` | [sdkgen#163](https://github.com/voxgig/sdkgen/issues/163) | every numeric feature option is silently dropped when it arrives as `json.Number` |
+| `issue/11` | [sdkgen#164](https://github.com/voxgig/sdkgen/issues/164) | paging is inactive by default, blind to `has_more`, and reachable only via `client._paging` |
+| `issue/05` | [sdkgen#165](https://github.com/voxgig/sdkgen/issues/165) | the shared corpus tests only `cost`, which no SDK generates |
+| `issue/01` | [sdkgen#166](https://github.com/voxgig/sdkgen/issues/166) | test mode mints a random id whose TypeScript form differs from every other target |
+| `issue/07` | [sdkgen#167](https://github.com/voxgig/sdkgen/issues/167) | the test feature diverges per target; C and Ruby cannot run a GraphQL SDK at all |
+
 - `issue/03` — **filed as [aontu-lang/aontu#245](https://github.com/aontu-lang/aontu/issues/245)**, by a session rooted at that repository, which reproduced the bug against its own build before filing.
 - `issue/08` — **filed as [aontu-lang/aontu#246](https://github.com/aontu-lang/aontu/issues/246)**, same way. It re-derived the counts rather than taking mine: 29 of 168 registered codes have no text, and the `compat` class is 13 of 13.
+
+## Still unfiled, and why
+
+Three drafts belong in `voxgig-sdk/*` repositories rather than in sdkgen, and the
+sessions doing this work cannot attach that organisation — a tooling boundary, not a
+judgement about whether they should be raised.
+
+| Draft | Belongs in | Why it is not a sdkgen issue |
+|---|---|---|
+| `issue/02` | each SDK repository | no git tags and no published packages: a release-process gap in the repositories that would cut the releases |
+| `issue/04` | each SDK's `.sdk/def/` | the API definitions are subsets narrow enough that no source can offer search; the definition is per-SDK input, not generator behaviour |
+| `issue/09` | `voxgig-sdk/notion-sdk` | `.sdk/model/target/target-index.aon` imports nine targets and `rb` is not among them, where joplin-sdk's does include it. One import line, per SDK |
+
+## A correction worth keeping
+
+`issue/11` was rewritten before filing. Its first draft said the paging signal was
+"computed and exposed nowhere a caller can reach". That was **wrong**: it was measured
+with the feature at its default `active: false`, and the absence of `client._paging` was
+read as absence of the mechanism rather than absence of the run.
+
+The real defects are worse than the reported one — chiefly that the feature never
+recognises `has_more`, which Joplin's own definition declares, so an active paging
+feature reports `hasMore: false` on a short page. A missing signal is a gap; a confident
+wrong one is a bug.
+
+The lesson is the same one this directory already records about an exit code read through
+a pipe: **measure the thing at the setting it actually ships with, and check whether a
+null result means "absent" or "never ran".**
 
 ## Retracted
 

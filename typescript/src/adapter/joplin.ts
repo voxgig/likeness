@@ -117,16 +117,32 @@ function data (ent: any): JoplinNote {
 
 /* One page of notes, and whether there may be another.
  *
- * THE SECOND HALF IS THE POINT. The generated paging feature computes a
- * `hasMore` signal but exposes it nowhere a caller can reach: `ctrl` comes
- * back untouched and the returned entities carry no result context, so an
- * adapter cannot follow pages or even ask whether there are any. Reported
- * upstream; see upstream/issue/11.
+ * THE SECOND HALF IS THE POINT, and the reason it is a heuristic rather than a
+ * signal is three separate gaps in the generated SDK - all verified against
+ * voxgig/sdkgen@4089761, and written up as upstream/issue/11.
  *
- * Until it can, a full page is treated as possibly-short: the caller marks the
- * answer truncated and names the instance in `meta.incomplete`. A silently
- * short list is the one outcome that must not happen, because every selector
- * result computed from it is then wrong and nothing says so.
+ *   1. The paging feature ships `active: false`. Nothing paginates unless a
+ *      caller turns it on, which is not what a reader of the feature list
+ *      would assume.
+ *   2. Turned on, its body-level detection reads `hasMore`, `next`, `cursor`
+ *      and `nextCursor` - and never `has_more`. Joplin's own API definition,
+ *      the one sdkgen consumed to generate this client, declares `has_more`.
+ *      So for THIS source the feature is blind to the server's own flag and
+ *      would report `hasMore: false` on a short page, which is worse than no
+ *      signal: it is a confident wrong answer.
+ *   3. What it does compute lands on `client._paging.last` - an undocumented
+ *      underscore field holding the LAST call's state on the shared client,
+ *      not a per-call result - and `ctrl` is not written back.
+ *
+ * So: a full page is treated as possibly-short, the answer is marked truncated
+ * and the instance is named in `meta.incomplete`. A silently short list is the
+ * one outcome that must not happen, because every selector result computed
+ * from it is then wrong and nothing says so.
+ *
+ * This heuristic is right for a full page and wrong for a final page that
+ * happens to equal the limit - it over-reports rather than under-reports,
+ * which is the correct direction to be wrong in. It goes away when (2) is
+ * fixed upstream.
  *
  * `pageMax` is read from the capability matrix, not written here - the number
  * is a property of the source and belongs in declared data.
