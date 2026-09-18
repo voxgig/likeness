@@ -1,3 +1,5 @@
+**Filed:** [voxgig/sdkgen#165](https://github.com/voxgig/sdkgen/issues/165)
+
 **Repository:** `voxgig-sdk/joplin-sdk` — and identically the other three
 **Observed at:** `4504c82ae6502ef24b582a528bcd747d485d0a1e`
 **Fix belongs in:** `voxgig/sdkgen` — the shared test corpus under `.sdk/test/feature/`
