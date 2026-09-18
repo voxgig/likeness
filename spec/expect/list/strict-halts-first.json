@@ -1,0 +1,1 @@
+{"cmd":["list"],"code":"fanout-halted","data":[],"error":{"message":"down did not answer and --strict was given","remedy":"drop --strict to accept a partial answer, or fix the named connection"},"meta":{"calls":1,"count":0,"incomplete":["down"],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

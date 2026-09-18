@@ -17,7 +17,9 @@ VET_PAIRS := \
 	$(DEF)/capability.aon:$(SPEC)/caps.aon \
 	$(DEF)/error.aon:$(SPEC)/errors.aon \
 	$(DEF)/project.aon:$(SPEC)/example/likeness.aon \
-	$(DEF)/replica.aon:$(SPEC)/replica.aon
+	$(DEF)/replica.aon:$(SPEC)/replica.aon \
+	$(DEF)/corpus.aon:$(SPEC)/unit.aon \
+	$(DEF)/corpus.aon:$(SPEC)/cli.aon
 
 # Files that MUST fail to vet, AND MUST FAIL FOR THE RIGHT REASON. `aontu vet`
 # exits 1 for a contradiction, 2 for a usage error and 3 for an incomplete
@@ -26,7 +28,9 @@ VET_PAIRS := \
 # which is the exact failure this target exists to prevent. Exit 1, or it is a
 # build failure.
 VET_MUSTFAIL := \
-	$(DEF)/project.aon:$(SPEC)/example/likeness-broken.aon
+	$(DEF)/project.aon:$(SPEC)/example/likeness-broken.aon \
+	$(DEF)/corpus.aon:$(SPEC)/example/unit-broken.aon \
+	$(DEF)/corpus.aon:$(SPEC)/example/cli-broken.aon
 
 
 .PHONY: help
@@ -35,15 +39,102 @@ help:
 	@echo '  spec-check    every data file satisfies its shape, and the red tests go red'
 	@echo '  spec-agree    the registry is present, and capability rows match it'
 	@echo '                (set LIKENESS_SDK_ROOT to also check against real SDKs)'
+	@echo '  spec-build    compile the data files to the JSON every port reads'
+	@echo '  spec-fresh    fail if a committed JSON file is stale'
 	@echo '  spec-json     export the shapes as JSON Schema'
 	@echo '  spec-fmt      check schema formatting'
 	@echo '  spec-hash     print a content hash per schema file'
-	@echo '  spec          spec-fmt, spec-check and spec-agree (not json or hash)'
+	@echo '  spec          spec-fmt, spec-check, spec-fresh and spec-agree'
+	@echo '  sdk           clone the generated SDKs at their pinned revisions'
+	@echo '  sdk-check     fail if a clone is missing or off its pin'
+	@echo '  test-ts       build and run the TypeScript port against both corpora'
+	@echo '  test-go       build and run the Go port against both corpora'
+	@echo '  parity        the ports produce the same bytes, and each names itself'
+	@echo '  check         spec, every port, and the parity comparison'
+	@echo '  expect        REGENERATE the committed expectations - read the diff'
 	@echo '  mock          run the local source mock server'
 
 
 .PHONY: spec
-spec: spec-fmt spec-check spec-agree
+spec: spec-fmt spec-check spec-fresh spec-agree
+
+
+# Everything. What CI runs, and what a change should run before it is pushed.
+.PHONY: check
+check: spec test-ts test-go parity
+
+
+.PHONY: spec-build
+spec-build:
+	@AONTU="$(AONTU)" node tools/build-spec.mjs
+
+
+# Drift between a .aon file and the JSON committed beside it fails a build here
+# rather than being discovered a month later, when a port disagrees with the
+# spec it claims to implement.
+.PHONY: spec-fresh
+spec-fresh:
+	@AONTU="$(AONTU)" node tools/build-spec.mjs --check
+
+
+# The generated SDKs are not published to any language registry yet, so there
+# is no lockfile to hold them and this does the job instead. The revisions come
+# from spec/sources.json and are never restated in the Makefile.
+.PHONY: sdk
+sdk:
+	@node tools/fetch-sdk.mjs
+
+
+.PHONY: sdk-check
+sdk-check:
+	@node tools/fetch-sdk.mjs --check
+
+
+# sdk-check first: a port built against a drifted clone produces a corpus
+# result about an SDK nobody else has.
+.PHONY: test-ts
+test-ts: sdk-check
+	@cd typescript && npm run build && npm test
+
+
+.PHONY: test-go
+test-go: sdk-check
+	@cd go && gofmt -l . | (! grep .) && go vet ./... && go test ./...
+
+
+# The cross-port byte comparison. Each port's suite writes its RAW transcript
+# output when LIKENESS_PARITY_OUT is set; the comparison then requires the
+# stripped bytes to MATCH and the raw bytes to DIFFER, because every envelope
+# carries its own `port` and two that were byte-identical would mean one was
+# reporting the other's name.
+#
+# --selftest runs immediately after, introducing a deliberate single-port
+# difference and requiring it to be reported: a comparison nobody has seen go
+# red might be comparing nothing at all.
+PARITY_DIR := build/parity
+
+.PHONY: parity
+parity: sdk-check
+	@rm -rf $(PARITY_DIR) && mkdir -p $(PARITY_DIR)
+	@cd typescript && npm run build >/dev/null && \
+	  LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" npm test >/dev/null
+	@# -count=1 defeats the test cache. Without it Go reports a cached PASS and
+	@# writes no files, and the comparison then finds one port and says so -
+	@# which is at least loud, but only because the comparison checks for it.
+	@cd go && LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" go test -count=1 -run TestEmitParity ./... >/dev/null
+	@node tools/parity.mjs $(PARITY_DIR)
+	@node tools/parity.mjs $(PARITY_DIR) --selftest 2>/dev/null
+
+
+# NOT A TEST, and never run to make one pass. It rewrites the contract to agree
+# with whatever the code now does, which is the opposite of what the corpus is
+# for. Run it deliberately, read the diff, and commit it only if the change was
+# the one you meant to make. CI never runs this; it runs `make check`.
+.PHONY: expect
+expect:
+	@echo '  Regenerating committed expectations from the CANONICAL (ts) port.' >&2
+	@echo '  READ THE DIFF before committing: this rewrites the contract.' >&2
+	@node tools/regen-expect.mjs
 
 
 .PHONY: spec-check

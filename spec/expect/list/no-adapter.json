@@ -1,0 +1,1 @@
+{"cmd":["list"],"code":"unsupported-capability","data":null,"error":{"message":"no adapter for source \"notion\" (connection \"pages\")","remedy":"drop that connection, or narrow to one that is supported with --source"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

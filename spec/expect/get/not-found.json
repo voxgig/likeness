@@ -1,0 +1,1 @@
+{"cmd":["get"],"code":"not-found","data":null,"error":{"message":"jot:nosuchnote does not exist","remedy":"check the ref, or run `likeness list` to see what is there"},"meta":{"calls":1,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

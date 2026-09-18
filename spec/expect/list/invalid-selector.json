@@ -1,0 +1,1 @@
+{"cmd":["list"],"code":"invalid-selector","data":null,"error":{"message":"unknown field \"bogusfield\" at byte 0","remedy":"check the selector grammar with `likeness describe`"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

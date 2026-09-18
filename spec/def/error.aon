@@ -23,6 +23,13 @@ ErrorDef: type(close({
   # and a caller never has to guess whether to look in `data`. A caller that
   # branches on `ok` alone stays correct; it just discards results it could
   # have kept.
+  #
+  # THIS IS ABOUT SOURCE RESULTS, and `doctor` is the one command whose `data`
+  # is not source results at all: its rows are the report, and reporting them
+  # under the worst row's code is what makes its exit status actionable. So a
+  # failing `doctor` carries rows whatever this flag says for the code it
+  # chose. That is a property of the command, not of the code, which is why it
+  # is written here rather than by marking half the registry partial.
   partial: boolean
 
   # Whether retrying the same command unchanged could plausibly succeed. An

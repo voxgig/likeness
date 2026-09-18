@@ -1,3 +1,17 @@
 node_modules/
 *.log
 .DS_Store
+
+# Scratch files written by the harness meta-tests, deleted in a finally.
+spec/expect/.meta-*
+
+# Compiled output. `make test-ts` builds it; nothing reads it from the tree.
+typescript/dist/
+
+# The dependency on the generated SDK is a `file:` path to a clone, so a lock
+# here pins a directory on one machine rather than a revision. `make sdk` and
+# spec/sources.aon are what actually hold the SDKs still.
+typescript/package-lock.json
+
+# Parity comparison output, rebuilt by `make parity` on every run.
+build/

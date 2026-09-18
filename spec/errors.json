@@ -1,0 +1,172 @@
+{
+  "error": {
+    "ambiguous-instance": {
+      "code": "ambiguous-instance",
+      "exit": 3,
+      "means": "more than one instance could serve this and none was named",
+      "partial": false,
+      "retryable": false
+    },
+    "auth-failed": {
+      "code": "auth-failed",
+      "exit": 3,
+      "means": "the credential resolved and the source rejected it",
+      "partial": false,
+      "retryable": false
+    },
+    "budget-exceeded": {
+      "code": "budget-exceeded",
+      "exit": 5,
+      "means": "the call or spend budget is spent",
+      "partial": true,
+      "retryable": false
+    },
+    "conflict": {
+      "code": "conflict",
+      "exit": 4,
+      "means": "the remote changed under an update",
+      "partial": false,
+      "retryable": false
+    },
+    "fanout-halted": {
+      "code": "fanout-halted",
+      "exit": 4,
+      "means": "a fan-out stopped after a member failed",
+      "partial": true,
+      "retryable": true
+    },
+    "invalid-project": {
+      "code": "invalid-project",
+      "exit": 3,
+      "means": "the project file does not satisfy its shape",
+      "partial": false,
+      "retryable": false
+    },
+    "invalid-ref": {
+      "code": "invalid-ref",
+      "exit": 3,
+      "means": "the ref is malformed",
+      "partial": false,
+      "retryable": false
+    },
+    "invalid-selector": {
+      "code": "invalid-selector",
+      "exit": 3,
+      "means": "the selector could not be parsed",
+      "partial": false,
+      "retryable": false
+    },
+    "limit-exceeded": {
+      "code": "limit-exceeded",
+      "exit": 4,
+      "means": "the operation would affect more records than the limit allows",
+      "partial": false,
+      "retryable": false
+    },
+    "lossy-write": {
+      "code": "lossy-write",
+      "exit": 4,
+      "means": "the write cannot be represented without dropping content",
+      "partial": false,
+      "retryable": false
+    },
+    "no-match": {
+      "code": "no-match",
+      "exit": 1,
+      "means": "the question was valid and the answer is nothing",
+      "partial": false,
+      "retryable": false
+    },
+    "no-such-source": {
+      "code": "no-such-source",
+      "exit": 3,
+      "means": "no source is registered under that name",
+      "partial": false,
+      "retryable": false
+    },
+    "not-connected": {
+      "code": "not-connected",
+      "exit": 3,
+      "means": "the source is known but no connection is configured",
+      "partial": false,
+      "retryable": false
+    },
+    "not-found": {
+      "code": "not-found",
+      "exit": 1,
+      "means": "a named ref does not exist",
+      "partial": false,
+      "retryable": false
+    },
+    "ok": {
+      "code": "ok",
+      "exit": 0,
+      "means": "the command succeeded",
+      "partial": false,
+      "retryable": false
+    },
+    "partial": {
+      "code": "partial",
+      "exit": 2,
+      "means": "some sources answered and some failed",
+      "partial": false,
+      "retryable": true
+    },
+    "path-escape": {
+      "code": "path-escape",
+      "exit": 4,
+      "means": "the path resolves outside the vault root",
+      "partial": false,
+      "retryable": false
+    },
+    "precondition-failed": {
+      "code": "precondition-failed",
+      "exit": 4,
+      "means": "the record changed after it was read",
+      "partial": false,
+      "retryable": false
+    },
+    "rate-limited": {
+      "code": "rate-limited",
+      "exit": 3,
+      "means": "the source refused after the SDK retries were exhausted",
+      "partial": false,
+      "retryable": true
+    },
+    "secret-backend-unavailable": {
+      "code": "secret-backend-unavailable",
+      "exit": 3,
+      "means": "the secret store could not be reached",
+      "partial": false,
+      "retryable": true
+    },
+    "source-unavailable": {
+      "code": "source-unavailable",
+      "exit": 3,
+      "means": "the local application is not running or the bridge is unreachable",
+      "partial": false,
+      "retryable": true
+    },
+    "stale-result-set": {
+      "code": "stale-result-set",
+      "exit": 3,
+      "means": "a positional ref was resolved against a result set that has changed",
+      "partial": false,
+      "retryable": false
+    },
+    "unsupported-capability": {
+      "code": "unsupported-capability",
+      "exit": 4,
+      "means": "the source cannot perform this operation",
+      "partial": false,
+      "retryable": false
+    },
+    "write-refused": {
+      "code": "write-refused",
+      "exit": 4,
+      "means": "a human-decision floor refused this write",
+      "partial": false,
+      "retryable": false
+    }
+  }
+}

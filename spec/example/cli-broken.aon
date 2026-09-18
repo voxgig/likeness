@@ -1,0 +1,25 @@
+# A DELIBERATELY BROKEN transcript entry. `make spec-check` requires this file
+# to FAIL with exit 1.
+#
+# The mistake is a method the enumeration does not contain. `Method` is closed
+# on purpose: a corpus that accepted any string would happily record `FETCH` or
+# `Get` and two ports would assert against different spellings of the same
+# request forever.
+
+primary: cli: broken: set: [
+  {
+    id: "broken/unknown-method"
+    args: ["list" "--json"]
+    ctx: {
+      fixture: "joplin"
+      connections: [{ instance:"jot" source:"joplin" account:"local" }]
+      clock: "2026-09-18T00:00:00Z"
+      seed: 1
+    }
+    out: {
+      exit: 0
+      stdout: "spec/expect/list/all.json"
+      calls: [{ instance:"jot" method:"FETCH" path:"/notes" }]
+    }
+  }
+]

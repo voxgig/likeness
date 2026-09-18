@@ -1,0 +1,51 @@
+{
+  "replica": {
+    "entity": [
+      "note",
+      "space",
+      "tag",
+      "link"
+    ],
+    "port": {
+      "c": {
+        "dependency": false,
+        "driver": "sqlite3 amalgamation, vendored in-tree",
+        "fts5": true,
+        "note": "one public-domain .c file, same precedent as the in-tree sha256"
+      },
+      "go": {
+        "dependency": true,
+        "driver": "a third-party module - no standard library driver exists",
+        "fts5": true,
+        "note": "database/sql is an interface only; needs cgo or a pure-Go translation"
+      },
+      "py": {
+        "dependency": false,
+        "driver": "sqlite3 (standard library)",
+        "fts5": true,
+        "note": "stdlib since 2.5; FTS5 present in the build tested (SQLite 3.45.1)"
+      },
+      "rb": {
+        "dependency": true,
+        "driver": "the sqlite3 gem - not in the standard library",
+        "fts5": true,
+        "note": "no stdlib sqlite in Ruby; the gem builds a native extension"
+      },
+      "ts": {
+        "dependency": false,
+        "driver": "node:sqlite (standard library)",
+        "fts5": true,
+        "note": "stdlib from Node 22.5, still flagged experimental - pin the Node major"
+      }
+    },
+    "repo": "voxgig-sdk/likeness-replica-sdk",
+    "rev": "0000000000000000000000000000000000000000",
+    "rule": {
+      "disposable": true,
+      "opt_in": true,
+      "reads_are_marked": true,
+      "write_through": true
+    },
+    "semver": "0.0.0"
+  }
+}

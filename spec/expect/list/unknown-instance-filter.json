@@ -1,0 +1,1 @@
+{"cmd":["list"],"code":"no-such-source","data":null,"error":{"message":"no connection named \"jto\"","remedy":"run `likeness doctor` to see the configured connections"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

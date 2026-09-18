@@ -1,0 +1,1 @@
+{"cmd":["get"],"code":"invalid-ref","data":null,"error":{"message":"not a ref: nocolonhere","remedy":"a ref is <instance>:<id>, a lid, #n or @alias"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

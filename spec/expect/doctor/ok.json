@@ -1,0 +1,1 @@
+{"cmd":["doctor"],"code":"ok","data":[{"check":"ok","detail":"ok","instance":"jot","source":"joplin"}],"meta":{"calls":1,"count":1,"incomplete":[],"sources":["jot"],"truncated":false},"ok":true,"version":"0.1.0"}

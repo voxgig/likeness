@@ -1,0 +1,1 @@
+{"cmd":["which"],"code":"ok","data":[{"path":"/usr/local/bin/likeness","version":""},{"path":"/usr/local/bin/likeness-go","version":""},{"path":"/usr/local/bin/likeness-ts","version":""}],"meta":{"calls":0,"count":3,"incomplete":[],"sources":[],"truncated":false},"ok":true,"version":"0.1.0"}

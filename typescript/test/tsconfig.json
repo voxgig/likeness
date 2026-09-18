@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "sourceMap": true,
+    "outDir": "../dist/test",
+    "rootDir": ".",
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  },
+  "include": ["**/*.ts"],
+  "references": [{ "path": "../src" }]
+}
