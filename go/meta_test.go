@@ -1,14 +1,3 @@
-/* The meta-tests: proof that this port's harness goes red.
- *
- * A HARNESS NOBODY HAS SEEN FAIL MIGHT BE REPORTING NOTHING AT ALL. Every one
- * of these takes an entry that passes, breaks exactly one thing about what is
- * expected of it, and requires the harness to say so.
- *
- * Each port needs its own copy. That is not duplication for its own sake: a
- * port's corpus result means nothing until its runner has been seen to fail,
- * and the runners are five separate pieces of code.
- */
-
 package likeness
 
 import (
@@ -150,8 +139,6 @@ func TestMetaUnexpectedStderrIsReported(t *testing.T) {
 	}
 }
 
-// The harness does not short-circuit. Seeing all of them at once is the
-// difference between one fix and four rounds.
 func TestMetaEveryFailureIsReported(t *testing.T) {
 	root := Root(t)
 	e := entryByID(t, root, "list/all")
@@ -173,15 +160,6 @@ func TestMetaMissingExpectationFileIsReported(t *testing.T) {
 	}
 }
 
-/*
-The netsim guard.
-
-The generated SDK accepts int and float64 for a `net` option and SILENTLY
-IGNORES a json.Number, so a `failTimes` set that way does nothing and a request
-that should fail succeeds. Two transcript entries caught it once; this states
-it directly, so a regression in the normalisation is reported here rather than
-as a puzzling `doctor` diff.
-*/
 func TestMetaNetOptionsReachTheSdk(t *testing.T) {
 	seed := map[string]any{
 		"entity": map[string]any{"note": map[string]any{"x1": map[string]any{"id": "x1"}}},

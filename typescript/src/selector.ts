@@ -1,24 +1,3 @@
-/* The selector grammar: one parser, ported five times, pinned by the corpus.
- *
- *   selector := or
- *   or       := and ( ('OR'|'or') and )*
- *   and      := not ( ('AND'|'and')? not )*      -- adjacency implies AND
- *   not      := ('NOT'|'not'|'-')? atom
- *   atom     := '(' or ')' | field op value | bareword
- *   op       := ':' | '=' | '!=' | '>' | '<' | '>=' | '<='
- *   value    := bareword | '"' escaped '"' | date | duration
- *   date     := YYYY-MM-DD | 'today' | 'yesterday'
- *   duration := <n>('d'|'w'|'mo'|'y')
- *
- * It is a pure string-to-AST function with an endless supply of awkward cases,
- * which is exactly why it is written first: it sets the pattern for everything
- * after it, and five languages will each get it subtly wrong in their own way.
- *
- * EVERY ERROR CARRIES A BYTE OFFSET AND THE OFFENDING TOKEN. Not a character
- * offset: the ports do not agree on what a character is, and a UTF-16 index
- * would put the caret in the wrong place the first time someone searches in a
- * language that is not English.
- */
 
 export const FIELDS = [
   'assignee', 'author', 'body', 'created', 'has', 'instance', 'source',
@@ -27,11 +6,6 @@ export const FIELDS = [
 
 export const OPS = [':', '=', '!=', '>', '<', '>=', '<='] as const
 
-/* The ops that order their operand. A word cannot be ordered against a date in
- * a way five ports would agree on, so these demand a date or a duration and
- * refuse anything else - which is what gives "malformed duration" a meaning
- * precise enough to test.
- */
 export const ORDERING_OPS = ['>', '<', '>=', '<=']
 
 export type Field = typeof FIELDS[number]
@@ -49,13 +23,6 @@ export type Node =
   | { t: 'cmp', field: Field, op: Op, value: Value }
   | { t: 'text', v: string }
 
-/* Every field a selector asks about, sorted and deduplicated.
- *
- * The core uses this to refuse a question no selected source can answer,
- * BEFORE any request is made. A bare text term asks about title and body, so
- * it contributes both rather than nothing: a source that supplied neither
- * could not answer it either.
- */
 export function fieldsOf (n: Node): string[] {
   const seen = new Set<string>()
   const walk = (x: Node): void => {
@@ -214,22 +181,12 @@ export function daysIn (y: number, m: number): number {
 }
 const DUR_RE = /^(\d+)(mo|d|w|y)$/
 
-/* A QUOTED value is always a word and is never reinterpreted. That is the
- * escape hatch: `title:"2026-01-01"` searches for the text, where
- * `title:2026-01-01` is a date.
- */
 export function classify (tok: Tok): Value {
   if (tok.kind === 'quoted') return { k: 'word', v: tok.text }
   const t = tok.text
   if (t === 'today' || t === 'yesterday') return { k: 'date', v: t }
   if (DATE_RE.test(t)) {
     const [y, m, d] = t.split('-').map(Number)
-    // THE ACTUAL CALENDAR, not `d <= 31`. `2026-02-31` passed the loose check
-    // and was then normalised by the host's date parser into a day in March,
-    // so the selector silently compared against a date the user never wrote.
-    // Leap years are computed rather than approximated, because 2100 is not
-    // one and a port that used `y % 4` would disagree with this one in 74
-    // years and with nothing in between to catch it.
     if (m < 1 || 12 < m || d < 1 || daysIn(y, m) < d) {
       throw new SelectorError('date is out of range', tok.offset, t)
     }

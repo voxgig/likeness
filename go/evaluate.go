@@ -1,15 +1,3 @@
-/* Evaluate a parsed selector against a projected note, locally.
- *
- * Structured terms are evaluated IDENTICALLY EVERYWHERE: pushed down to the
- * source where the capability matrix says it can filter on them, and applied
- * here where it cannot - same answer either way, which is a corpus case rather
- * than a claim. For Stage 1 no source can filter, so everything lands here.
- *
- * Durations are relative to the INJECTED clock, never to the wall clock. An
- * entry that asserted on `now` would pass for one second and fail forever
- * after.
- */
-
 package likeness
 
 import (
@@ -26,10 +14,6 @@ func durationMs(v *Value) int64 {
 		return int64(v.N) * dayMs
 	case "w":
 		return int64(v.N) * 7 * dayMs
-	// A month is 30 days and a year is 365. Calendar arithmetic differs
-	// between language standard libraries in ways nobody agrees on, and a
-	// selector window is a rough question. Fixed multipliers, pinned in the
-	// corpus.
 	case "mo":
 		return int64(v.N) * 30 * dayMs
 	case "y":
@@ -161,8 +145,6 @@ func Evaluate(node *Node, note Note, clockMs int64) bool {
 		if !ok {
 			return false
 		}
-		// `updated>14d` reads as "changed within the last 14 days", so a
-		// duration on the right of `>` is a LOWER BOUND ON THE TIMESTAMP.
 		switch node.Op {
 		case ">":
 			return wantMs < haveMs

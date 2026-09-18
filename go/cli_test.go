@@ -1,16 +1,3 @@
-/* The transcript corpus runner.
- *
- * spec/cli.aon compiles to spec/cli.json; this runs every entry in it as a
- * whole command, IN PROCESS. No subprocess, no shell quoting and no five
- * different ways of capturing output - which is possible only because the argv
- * shell is thin and the core is a library taking every impure input as a
- * parameter.
- *
- * The comparison itself lives in harness_test.go, so that meta_test.go can
- * drive exactly the same code with a deliberately broken entry and prove it
- * reports.
- */
-
 package likeness
 
 import (
@@ -43,13 +30,6 @@ func TestCliCorpus(t *testing.T) {
 	}
 }
 
-/*
-No orphaned expectations.
-
-Renaming an entry leaves its old expectation file behind, and a stale file that
-nothing reads is indistinguishable from one that everything reads until someone
-edits the wrong one.
-*/
 func TestNoUnreferencedExpectations(t *testing.T) {
 	root := Root(t)
 	used := map[string]bool{}

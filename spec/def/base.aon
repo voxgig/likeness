@@ -1,81 +1,27 @@
-# likeness: primitive named types.
-#
-# Every other shape file is built from these. They are `type(...)` definitions,
-# so they generate nothing: this file contributes no value to any document that
-# includes it, only truths that a value must satisfy.
-#
-# Reference one as `$.Ident`, meet it as `$.Ident & 'plan'`.
-#
-# STRUCTURES USE `type()`, ENUMERATIONS USE `hide()`. Both keep a definition out
-# of generated output, but a bare disjunction wrapped in `type()` still reports
-# `disjunct_no_gen`, so the enumerations below are `hide()`. `aontu jsonschema`
-# omits a `hide()` name from its export and says so on stderr; that is a known
-# cost of the export, not of the check.
-
-# A lowercase, hyphenated name. Sources, instances, entities, commands and
-# project names are all spelled this way, so a reader never has to remember
-# which of them allows what. 32 characters is a limit nobody meets by accident
-# and every port can size a buffer for.
-# Bounded to 32 characters and forbidden to end in a hyphen. It does NOT forbid
-# a doubled hyphen: `a--b` passes. Excluding that needs a quantifier on a group
-# that contains one, which re() refuses because it backtracks exponentially in
-# one of the two host engines - so the pattern claims only what it enforces.
 Ident: type(string & re("^[a-z]$")|string & re("^[a-z][a-z0-9-]{0,30}[a-z0-9]$"))
 
-# A likeness identifier: derived, never stored in any source (SPEC 12.2).
-# `lk_` then twelve characters of Crockford base32, lowercase, over a SHA-256 of
-# source, account, entity and the source-native id.
-#
-# THE ALPHABET IS THE POINT, and an earlier version of this pattern got it
-# wrong: it admitted `[0-9a-z]`, which is base36, while the comment said base32.
-# Crockford omits i, l, o and u precisely because they are misread, and a port
-# written from the comment would have produced identifiers a port written from
-# the pattern accepted but never generated.
 Lid: type(string & re("^lk_[0-9a-hjkmnp-tv-z]{12}$"))
 
-# RFC 3339, UTC, second precision, `Z` suffix. Never local, never an offset.
-# This is the ONLY timestamp form likeness emits (SPEC 10.5), and writing the
-# pattern down here is what stops a port reaching for its own formatter.
-# The ranges are bounded, not just the shape. A pattern of bare digit runs
-# admits `2026-13-45T99:99:99Z`, so five ports could disagree about month 13 and
-# all pass the check that was meant to keep them in step. The seconds field
-# allows 60 for a leap second, which RFC 3339 permits.
 Rfc3339: type(string & re("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)Z$"))
 
-# A source-native identifier, carried opaquely. Never parsed, never split,
-# never pattern-matched to infer a type (SPEC 12.1). The only constraint is that
-# it is non-empty, because a source returning an empty id has returned nothing
-# usable and the adapter should have said so. Note that `.` excludes a newline,
-# so an id containing one is refused - which is the behaviour wanted, but is
-# narrower than "non-empty" and is written down rather than left to surprise.
 SourceId: type(string & re("^.+$"))
 
 # A duration in whole milliseconds. Never a float: `%g`, `Float#to_s` and
 # `JSON.stringify` do not agree on fractions and never will (SPEC 10.5).
 Millis: type(integer & min(0))
 
-# A count of things. Bounded below at zero so a negative count is a schema
-# error rather than a subtraction bug that reaches stdout.
 Count: type(integer & min(0))
 
-# The five ports. Closed on purpose: adding a port is a deliberate act that
-# touches packaging, CI and the parity gate, and it should fail here first.
 Port: hide("ts"|"go"|"py"|"rb"|"c")
 
 # The process exit codes (SPEC 13.5). `1` is not an error - it is the answer
 # "none" - and a script that treats it as a crash will be wrong constantly.
 Exit: hide(0|1|2|3|4|5)
 
-# An HTTP method, as asserted in a transcript corpus entry's call list.
-# `-` records an attempt that never reached the wire.
 Method: hide("GET"|"POST"|"PUT"|"PATCH"|"DELETE"|"-")
 
-# A semantic version, for pinning a generated SDK.
 Semver: hide(string & re("^\\d+\\.\\d+\\.\\d+$")|string & re("^\\d+\\.\\d+\\.\\d+-[0-9a-z.-]+$"))
 
-# A full-length git commit sha. Generated SDKs are pinned by revision as well
-# as by version, because the packages are not published to the language
-# registries yet and a tag can move.
 Sha: type(string & re("^[0-9a-f]{40}$"))
 
 # An `owner/repo` pair on GitHub.
@@ -84,8 +30,4 @@ Sha: type(string & re("^[0-9a-f]{40}$"))
 # GitHub" should not admit a path traversal.
 RepoRef: type(string & re("^[A-Za-z0-9_-][A-Za-z0-9_.-]*/[A-Za-z0-9_-][A-Za-z0-9_.-]*$"))
 
-# A stable, kebab-case code: an error code, and the shape a capability uses when
-# it names a mechanism rather than answering yes or no. Defined ONCE, here. It
-# was written out four times - in base, error, capability and inline in envelope
-# - which is four places to change together and three chances to miss one.
 Code: type(string & re("^[a-z][a-z0-9-]{0,31}$"))

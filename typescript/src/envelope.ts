@@ -1,35 +1,3 @@
-/* The envelope writer: the one place a likeness value becomes bytes.
- *
- * Every command's output passes through here. It is the only way five
- * languages emit the same bytes, so each rule below corresponds to a specific
- * way they diverge for free, and each has a unit corpus case that would have
- * caught it.
- *
- *   sorted keys, recursively, by Unicode code point
- *     Go map iteration is randomised, Python dicts are insertion-ordered, C is
- *     whatever you wrote. Sorting is the only order five languages agree on.
- *
- *   no floating point, anywhere
- *     printf("%g"), Float#to_s and JSON.stringify do not agree and never will.
- *     A non-integer number is REFUSED rather than rendered: durations are
- *     integer milliseconds and anything fractional is carried as a string.
- *
- *   integers exact and bounded to int64
- *     A cursor or a row count must not become 1.0e+15.
- *
- *   UTF-8 literal; escape only '"', '\' and U+0000-U+001F, as \u00xx lowercase
- *     JavaScript emits literal non-ASCII, several C JSON writers escape
- *     everything. Pick one, write it down, test it.
- *
- *   LF endings, exactly one trailing newline
- *     Windows ports and here-documents both get this wrong.
- *
- *   null is emitted; absent is absent
- *     A field that is null and a field that is missing mean different things,
- *     and must not be normalised into each other.
- *
- *   empty containers are emitted as [] and {}, never omitted
- */
 
 export const INT64_MAX = 9223372036854775807n
 export const INT64_MIN = -9223372036854775808n
@@ -43,13 +11,6 @@ export class SerialiseError extends Error {
   }
 }
 
-/* Escape a string for the envelope.
- *
- * Deliberately narrow: two literals and the C0 control range. No \n, \t or \r
- * shorthands - one form for every control character removes a whole class of
- * per-port disagreement, at the cost of slightly longer output for text that
- * contains newlines. The corpus pins it.
- */
 export function escapeString (s: string): string {
   let out = '"'
   for (const ch of s) {
@@ -66,13 +27,6 @@ function isPlainObject (v: unknown): v is Record<string, unknown> {
   return null !== v && 'object' === typeof v && !Array.isArray(v)
 }
 
-/* Sort keys by Unicode code point, not by locale and not by UTF-16 code unit.
- *
- * JavaScript's default Array#sort compares UTF-16 code units, which disagrees
- * with a code-point sort for astral characters: U+1D400 is one code point above
- * U+FFFD but its surrogate pair sorts below it. Five ports would not agree, so
- * the comparison is written out rather than inherited.
- */
 export function compareCodePoints (a: string, b: string): number {
   const ai = Array.from(a)
   const bi = Array.from(b)
@@ -97,8 +51,6 @@ function renderNumber (v: number | bigint, path: string): string {
     throw new SerialiseError('non-finite number', path)
   }
   if (!Number.isInteger(v)) {
-    // Not a formatting choice: there is no rendering of 0.1 that five
-    // languages agree on. Carry it as a string, or scale it to an integer.
     throw new SerialiseError('floating point is not representable in the envelope', path)
   }
   if (!Number.isSafeInteger(v)) {
@@ -175,11 +127,6 @@ export type Envelope = {
   version: string
 }
 
-/* The two declared non-parity fields (SPEC 9.3). The byte comparison removes
- * these BY NAME from both sides before comparing, and the list is exhaustive
- * by construction - anything else differing is a failing check rather than a
- * footnote.
- */
 export const PARITY_EXCEPTIONS = ['port', 'elapsed_ms']
 
 /* Remove the declared exceptions, wherever they appear. Used by the corpus

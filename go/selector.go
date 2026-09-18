@@ -1,22 +1,3 @@
-/* The selector grammar: one parser, ported five times, pinned by the corpus.
- *
- *   selector := or
- *   or       := and ( ('OR'|'or') and )*
- *   and      := not ( ('AND'|'and')? not )*      -- adjacency implies AND
- *   not      := ('NOT'|'not'|'-')? atom
- *   atom     := '(' or ')' | field op value | bareword
- *   op       := ':' | '=' | '!=' | '>' | '<' | '>=' | '<='
- *   value    := bareword | '"' escaped '"' | date | duration
- *   date     := YYYY-MM-DD | 'today' | 'yesterday'
- *   duration := <n>('d'|'w'|'mo'|'y')
- *
- * EVERY ERROR CARRIES A BYTE OFFSET AND THE OFFENDING TOKEN. Not a character
- * offset: the ports do not agree on what a character is, and a UTF-16 index
- * would put the caret in the wrong place the first time someone searches in a
- * language that is not English. Go makes this easy and the others do not,
- * which is exactly why the corpus pins it in bytes.
- */
-
 package likeness
 
 import (
@@ -34,8 +15,6 @@ var Fields = []string{
 	"space", "state", "status", "tag", "title", "updated",
 }
 
-// OrderingOps order their operand. A word cannot be ordered against a date in
-// a way five ports would agree on, so these demand a date or a duration.
 var OrderingOps = []string{">", "<", ">=", "<="}
 
 // Value is a selector's right-hand side: a word, a date or a duration.
@@ -71,14 +50,6 @@ func (e *SelectorError) Error() string { return e.Msg }
 // Code is the envelope code this refusal produces.
 func (e *SelectorError) Code() string { return "invalid-selector" }
 
-/*
-FieldsOf lists every field a selector asks about, sorted and deduplicated.
-
-The core uses this to refuse a question no selected source can answer, BEFORE
-any request is made. A bare text term asks about title and body, so it
-contributes both rather than nothing: a source that supplied neither could not
-answer it either.
-*/
 func FieldsOf(n *Node) []string {
 	seen := map[string]bool{}
 	var walk func(*Node)
@@ -281,17 +252,8 @@ func DaysIn(y, m int) int {
 	return monthDays[m-1]
 }
 
-// `mo` BEFORE `d|w|y`, or `3mo` tokenises as 3 months in one port and as an
-// unparseable `3m` in another.
 var durRe = regexp.MustCompile(`^(\d+)(mo|d|w|y)$`)
 
-/*
-classify decides what a value token means.
-
-A QUOTED value is always a word and is never reinterpreted. That is the escape
-hatch: `title:"2026-01-01"` searches for the text, where `title:2026-01-01` is
-a date.
-*/
 func classify(t tok) (*Value, error) {
 	if "quoted" == t.kind {
 		return &Value{K: "word", V: t.text}, nil
@@ -305,12 +267,6 @@ func classify(t tok) (*Value, error) {
 		y, _ := strconv.Atoi(parts[0])
 		m, _ := strconv.Atoi(parts[1])
 		d, _ := strconv.Atoi(parts[2])
-		// THE ACTUAL CALENDAR, not `d <= 31`. `2026-02-31` passed the loose
-		// check and was then normalised by the host's date parser into a day in
-		// March, so the selector silently compared against a date the user
-		// never wrote. Leap years are computed rather than approximated,
-		// because 2100 is not one and a port using `y % 4` would disagree with
-		// the others in 74 years with nothing in between to catch it.
 		if m < 1 || 12 < m || d < 1 || DaysIn(y, m) < d {
 			return nil, &SelectorError{"date is out of range", t.offset, s}
 		}
@@ -514,15 +470,6 @@ func ParseSelector(input string) (*Node, error) {
 	return node, nil
 }
 
-/*
-Model renders the AST in the envelope's own value model, which is what the unit
-corpus compares against.
-
-The Go Node is one struct with a kind tag, so it carries fields that do not
-apply to the kind in hand; this emits only the ones that do. Without it the
-corpus would be comparing Go's zero values against a JSON document that never
-had those keys, and every entry would fail for the wrong reason.
-*/
 func (n *Node) Model() any {
 	switch n.T {
 	case "or", "and":

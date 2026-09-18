@@ -1,16 +1,3 @@
-/* The meta-tests: proof that the harness goes red.
- *
- * A HARNESS NOBODY HAS SEEN FAIL MIGHT BE REPORTING NOTHING AT ALL. Every one
- * of these takes an entry that passes, breaks exactly one thing about what is
- * expected of it, and requires the harness to say so. Without them, a mistake
- * anywhere in harness.ts - a comparison against the wrong variable, a `calls`
- * check that silently returns early, a `stdout` read that swallows ENOENT -
- * turns the whole corpus green and means nothing.
- *
- * Each port needs its own copy of this file before its corpus results can be
- * believed. That is not duplication for its own sake: it is the only evidence
- * that a port's runner is a runner rather than a stub.
- */
 
 import { test } from 'node:test'
 import assert from 'node:assert'
@@ -49,8 +36,6 @@ test('meta: stdout differing by ONE BYTE is reported', async () => {
   const tmpRel = 'spec/expect/.meta-one-byte.json'
   const tmp = join(ROOT, tmpRel)
 
-  // One character of one title, changed. Not a different file and not a
-  // reordering: the smallest difference the contract claims to catch.
   const text = readFileSync(real, 'utf8').replace('Retention', 'Retentiom')
   assert.ok(!text.includes('Retention policy'), 'the mutation did not apply')
 
@@ -72,9 +57,6 @@ test('meta: a MISSING call is reported', async () => {
 })
 
 test('meta: an EXTRA call is reported', async () => {
-  // The failure that matters most: a command producing the right answer by
-  // making more requests than it should. An entry asserting only stdout would
-  // pass for it.
   const e = entry('list/all')
   e.out.calls = [...e.out.calls, { instance: 'jot', method: 'GET', path: '/notes' }]
   const f = await check(e)
@@ -103,8 +85,6 @@ test('meta: a missing expectation file is an error, not a pass', async () => {
 })
 
 test('meta: every failure is reported, not just the first', async () => {
-  // The harness does not short-circuit. Seeing all of them at once is the
-  // difference between one fix and four rounds.
   const e = entry('list/all')
   e.out.exit = 3
   e.out.calls = []

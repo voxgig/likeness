@@ -1,14 +1,3 @@
-# likeness: the error code registry.
-#
-# GROUND TRUTH for every code likeness can emit, the exit status it produces,
-# whether it may carry partial results, and whether retrying could help.
-# `describe` publishes this; the reference documentation is generated from it;
-# and `aontu breaking --against` makes renaming one a visible breaking change.
-#
-# EXIT 1 IS NOT AN ERROR. It is the answer "none". A script that treats it as a
-# crash will be wrong constantly, which is why it has its own code rather than
-# sharing one with a failure.
-
 error: {
   ok: code: "ok"
   ok: exit: 0
@@ -28,9 +17,6 @@ error: {
   not-found: retryable: false
   not-found: means: "a named ref does not exist"
 
-  # A SUCCESS-SIDE code: some sources answered and some did not, the rows that
-  # exist are printed, and meta.incomplete names the omission. Printing a
-  # smaller answer with no warning would be the worst of the three options.
   partial: code: "partial"
   partial: exit: 2
   partial: partial: false
@@ -58,9 +44,6 @@ error: {
   secret-backend-unavailable: retryable: true
   secret-backend-unavailable: means: "the secret store could not be reached"
 
-  # DISTINCT FROM auth-failed ON PURPOSE. A tool that reported an auth failure
-  # when Joplin simply is not running sends someone to regenerate a token that
-  # was never the problem.
   source-unavailable: {
     code: "source-unavailable"
     exit: 3
@@ -146,8 +129,6 @@ error: {
     means: "the operation would affect more records than the limit allows"
   }
 
-  # ONE OF THE TWO CODES THAT MAY CARRY DATA. Work already paid for is emitted
-  # rather than discarded; meta.truncated is true and ok is false.
   budget-exceeded: code: "budget-exceeded"
   budget-exceeded: exit: 5
   budget-exceeded: partial: true

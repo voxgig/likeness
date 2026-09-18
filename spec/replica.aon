@@ -1,21 +1,6 @@
-# likeness: the local replica, declared.
-#
-# GROUND TRUTH for how the replica is reached and what each port pays for it.
-# The numbers below were measured, not assumed: Node 22.22 was asked for
-# `node:sqlite`, Python for `sqlite3` and FTS5, Ruby for a stdlib sqlite3, and
-# Go's standard library has no driver at all.
-#
-# THE HONEST HEADLINE: three of five ports need a dependency for this, and the
-# project's rule is that no port has one. That is why `dependency` is a field
-# rather than a footnote, and why this is a declared parity exception with a
-# reason per port rather than a quiet import.
-
 replica: {
   repo: "voxgig-sdk/likeness-replica-sdk"
   semver: "0.0.0"
-  # Not yet generated. This entry exists so the shape, the rules and the cost
-  # are settled before any code is written, and the revision is filled by the
-  # commit that generates the SDK.
   rev: "0000000000000000000000000000000000000000"
 
   entity: ["note" "space" "tag" "link"]
@@ -30,10 +15,6 @@ replica: {
     ts: {
       driver: "node:sqlite (standard library)"
       dependency: false
-      # Measured on Node 22.22: the module loads and exports DatabaseSync,
-      # StatementSync, constants and backup - but it prints an
-      # ExperimentalWarning, so the API may move under us. That is a smaller
-      # risk than a package, and a real one.
       note: "stdlib from Node 22.5, still flagged experimental - pin the Node major"
       fts5: true
     }

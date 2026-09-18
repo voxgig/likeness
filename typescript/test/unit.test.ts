@@ -1,16 +1,3 @@
-/* The unit corpus runner.
- *
- * spec/unit.aon compiles to spec/unit.json; this runs every entry in it
- * through the TypeScript port's own exports. THE UNIT CORPUS IS THE ANCHOR OF
- * THE WHOLE PARITY SCHEME: the transcript corpus strips and re-renders output
- * through the port's own writer, so only this file holds `serialise` to bytes
- * that no port produced.
- *
- * Every function under test is registered explicitly rather than looked up
- * dynamically. A registry is one more thing to keep in step, and that is the
- * point: adding a corpus entry for an unregistered function fails loudly here
- * instead of being silently skipped.
- */
 
 import { test } from 'node:test'
 import assert from 'node:assert'
@@ -28,11 +15,6 @@ const REGISTRY: Record<string, Fn> = {
   serialise: (v) => serialise(v),
   parseSelector: (s) => parseSelector(s as string),
 
-  /* The error itself is the answer. An entry asserts the BYTE OFFSET it
-   * reports and the token it blames, because an error without them sends the
-   * reader to count characters by hand - and because the offset is in bytes,
-   * not characters, which is the one part five languages will not agree on
-   * unless it is written down. */
   parseSelectorError: (s) => {
     try {
       parseSelector(s as string)

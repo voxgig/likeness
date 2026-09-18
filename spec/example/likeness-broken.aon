@@ -1,9 +1,3 @@
-# DELIBERATELY BROKEN. CI asserts that vetting this FAILS, which is how the
-# schema proves it can go red. A gate that cannot fail proves nothing.
-#
-# Four faults, one per line: a name that is not name-shaped, a misspelled key,
-# a view missing its sort, and a prefer entry that is not an identifier.
-
 project: name: "Launch Project"
 project: source: plan: { instanse:"plan" space:"CORE" }
 project: same: []

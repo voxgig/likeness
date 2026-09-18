@@ -1,33 +1,8 @@
-# likeness: the capability matrix shape.
-#
-# What a source can and cannot do is DECLARED DATA, read by the runtime and by
-# the tests from one file. It is never a conditional in code. The rule that no
-# source name may appear outside this data, its adapter directory and the
-# fixtures is enforced by a CI grep, because this is the abstraction an
-# assistant reliably breaks: asked to "handle the Obsidian case" it writes the
-# conditional rather than the row.
-#
-# The matrix is CHECKED AGAINST THE SDK, not merely asserted. Every capability
-# declared true must correspond to an operation the generated SDK actually has
-# (see sources.aon), and a conformance test exercises it; every capability
-# declared false must be refused with an empty call list. A matrix that drifts
-# from reality is worse than no matrix, because the refusals become lies.
-
 @"./base.aon"
 @"./note.aon"
 
-# How a source supports one operation on one entity.
-#
-# `false` and a STRING are deliberately different. `false` means the source
-# cannot do this and likeness must refuse before the network. A string means it
-# can, by a named mechanism worth writing down - Notion's status lives in a
-# page property, not a first-class field, and an adapter that assumes otherwise
-# is wrong in a way no boolean would have caught.
 Support: hide(boolean|$.Code)
 
-# The per-entity capability row. Every likeness operation appears, so a source
-# that gains one is a changed value rather than a new key, and a source that
-# has never supported one still says so out loud.
 EntityCaps: type(close({
   list: $.Support
   get: $.Support
@@ -41,26 +16,14 @@ EntityCaps: type(close({
   delete: $.Support
 }))
 
-# Limits that change how likeness must call a source, rather than whether it
-# may. A page size decides how many calls a list costs; a rate decides whether
-# a fan-out needs pacing.
 Limits: type(close({
-  # Largest page the source will return. Drives the call budget.
   page_max: integer & min(1) & max(10000)
-  # How a note body is represented, which decides what a lossy-write refuses.
   body: "markdown"|"blocks"|"html"|"text"
-  # Search support: absent means likeness must filter client-side, which costs
-  # calls and must be visible in the budget rather than a surprise.
   search: "fulltext"|"filter"|"none"
-  # Requests per second the source tolerates, 0 where it is unpublished.
   rate: $.Count
-  # Whether the source carries a concurrency token. Where false, the
-  # `precondition-failed` guard is documented as unavailable for this source
-  # rather than silently skipped.
   version_token: boolean
 }))
 
-# One source's capabilities.
 SourceCaps: type(close({
   # Must name a source declared in the source registry. The registry is the
   # list of SDKs likeness is built against, so a capability row for a source
@@ -72,14 +35,7 @@ SourceCaps: type(close({
   # wrong: a Joplin folder and a Linear team are both a `space`, and an
   # adapter that forgets which is which produces plausible nonsense.
   entity: {
-    &: close({
-      kind: $.EntityKind
-      # The source's own word, as its users say it: "issue", "page", "notebook".
-      term: string
-      # The SDK entity this is reached through, as named in sources.aon.
-      sdk: $.Ident
-      op: $.EntityCaps
-    })
+    &: close({ kind:$.EntityKind term:string sdk:$.Ident op:$.EntityCaps })
   }
 
   limit: $.Limits

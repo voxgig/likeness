@@ -1,68 +1,21 @@
-# likeness: the local replica.
-#
-# A SQLite copy of what the sources hold, reached THROUGH A GENERATED SDK like
-# any other source, so that the core has no special case for it and the ORM
-# layer is generated rather than written five times.
-#
-# WHAT MAKES THIS SAFE. likeness is not a notes application and does not own
-# anything (SPEC 5). The replica is a CACHE AND NEVER A SOURCE OF TRUTH:
-# deleting the file loses nothing, every row records where it came from and
-# when, and a write always goes to the source first. The moment the replica
-# answers a question the sources would answer differently, and likeness prefers
-# it, likeness has become the thing it says it is not.
-#
-# WHY AN SDK RATHER THAN A DATABASE LAYER. Five ports would otherwise hand-write
-# five query layers over one schema, and they would diverge - which is the
-# failure this whole project exists to prevent, reappearing inside it. Generated
-# from one definition, the queries, the row mapping and the entity surface are
-# the same artefact everywhere, and the only per-port code is the one primitive
-# below.
-
 @"./base.aon"
 @"./note.aon"
 
-# The single primitive each port must supply: run a statement, get rows back.
-# Everything above it is generated. This is the same seam the SDKs' own test
-# feature occupies - a `transport: 'base'` feature replacing the HTTP fetcher -
-# so the replica is not a new mechanism, it is an existing one pointed at a file.
-#
-# `dependency` is the honest field. The project's rule is no third-party runtime
-# dependency in any port, and SQLite is not in every standard library, so where
-# this is true it is a DECLARED EXCEPTION with a reason rather than a quiet
-# import.
 ReplicaDriver: type(close({
-  # How this port reaches SQLite.
   driver: string
 
-  # False where the port's standard library provides it. True where a package
-  # or a system library is required - which is a departure from the
-  # no-dependency rule and must be declared as a parity exception.
   dependency: boolean
 
-  # Why, in one line, for the ports where `dependency` is true.
   note: string
 
-  # Whether FTS5 is available through this driver. Search over the replica is
-  # the feature's main purpose, so a port without FTS5 falls back to a declared
-  # slower path rather than silently returning different results.
   fts5: boolean
 }))
 
 # How a row's freshness is judged. A cache that cannot say how old it is invites
 # exactly the mistake this design is trying to avoid.
-Freshness: type(close({
-  # When the row was last written from its source.
-  synced: $.Rfc3339
-  # The source's own version token where it has one, so a sync can tell an
-  # unchanged record from a changed one without refetching its body.
-  version?: string
-  # True where the row was written locally and has not yet been confirmed by a
-  # read-back from the source. Such a row is never served as authoritative.
-  pending: boolean
-}))
+Freshness: type(close({ synced:$.Rfc3339 version?:string pending:boolean }))
 
 Replica: type(close({
-  # The generated SDK this replica is reached through, pinned like any other.
   repo: $.RepoRef
   semver: $.Semver
   rev: $.Sha
@@ -81,19 +34,10 @@ Replica: type(close({
     c: $.ReplicaDriver
   })
 
-  # THE RULES THAT KEEP IT A CACHE. Declared rather than described, so a port
-  # that breaks one fails a check rather than a code review.
   rule: close({
-    # A write goes to the source first and reaches the replica only after the
-    # source accepts it. Never the other way round.
     write_through: true
-    # Deleting the replica file is always safe and never loses data.
     disposable: true
-    # A read served from the replica says so in the envelope, so a caller can
-    # tell a cached answer from a fetched one.
     reads_are_marked: true
-    # The replica is off unless asked for. A cache that turns itself on changes
-    # what every existing command means.
     opt_in: true
   })
 }))

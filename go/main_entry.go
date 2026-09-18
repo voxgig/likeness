@@ -1,9 +1,3 @@
-/* The process boundary: argv and the environment in, bytes and a status out.
- *
- * Both binaries call this, so `likeness` and `likeness-go` cannot drift into
- * two programs that merely look alike.
- */
-
 package likeness
 
 import (
@@ -17,20 +11,6 @@ import (
 	"time"
 )
 
-/*
-loadConnections reads the station file.
-
-Identity is bound to the source's OWN account key, never to the user-chosen
-instance name, so renaming a connection from `work` to `plan` does not silently
-change the identity of every note in it.
-*/
-/*
-stripOption removes an option and its value from argv.
-
-`--config` is read here and must NOT reach the core: left in place it is parsed
-as a selector term, so `likeness list --config x.json` matched nothing, and
-`likeness --config x.json list` took `--config` as the command.
-*/
 func stripOption(argv []string, name string) []string {
 	out := []string{}
 	for i := 0; i < len(argv); i++ {
@@ -46,14 +26,6 @@ func stripOption(argv []string, name string) []string {
 	return out
 }
 
-/*
-probePath finds every `likeness` and `likeness-<port>` on PATH.
-
-Probed HERE and injected, never in the core: `which` is a corpus entry like
-everything else, and a command that read the real PATH could not be one. The
-core used to carry a placeholder row for production, which meant `which` could
-never answer the question it exists to answer.
-*/
 func probePath(env map[string]string) []map[string]any {
 	nameRe := regexp.MustCompile(`^likeness(?:-([a-z]+))?$`)
 	seen := map[string]bool{}
@@ -133,11 +105,6 @@ func loadConnections(configPath string) ([]Connection, error) {
 		if "" == account {
 			account = e.Org
 		}
-		// REFUSED rather than defaulted. An earlier version fell back to the
-		// instance name, which contradicted the invariant above: renaming such
-		// a connection changed every lid it had ever produced, and nothing said
-		// so. Saying it once at startup is cheaper than discovering it when
-		// stored references stop resolving.
 		if "" == account {
 			return nil, fmt.Errorf(
 				"connection %q has no `account` or `org`, and identity may not be "+

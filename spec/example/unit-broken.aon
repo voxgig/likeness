@@ -1,14 +1,3 @@
-# A DELIBERATELY BROKEN unit corpus entry. `make spec-check` requires this file
-# to FAIL, and to fail with exit 1 - a contradiction - rather than exit 2 or 3,
-# which would mean the file was missing or the model incomplete and would prove
-# nothing.
-#
-# The mistake is the one a reader is most likely to make: an entry carrying
-# BOTH `out` and `err`. It looks harmless - "the function throws, and here is
-# what it would otherwise return" - and it is exactly what the shape refuses,
-# because two runners are then free to disagree about whether a throwing case
-# should also match its value.
-
 primary: unit: broken: set: [
   {
     id: "broken/both-out-and-err"

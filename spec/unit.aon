@@ -1,17 +1,3 @@
-# likeness: the unit corpus.
-#
-# Pure functions, one entry each: the selector grammar, identity, timestamp
-# normalisation, the envelope serialiser and the total sort order. Fast,
-# precise, and where cross-language drift actually starts.
-#
-# EVERY ENTRY IS A CASE THAT WOULD HAVE CAUGHT SOMETHING. The serialisation
-# rules each correspond to a specific way five languages diverge for free; the
-# selector cases each pin a byte offset, because an error without one sends the
-# reader to count characters by hand.
-#
-# `make spec-build` compiles this to spec/unit.json, which every port runs
-# through its own harness. Never hand-edit the JSON.
-
 primary: unit: {
   # ---------------------------------------------------------------- envelope
   envelope: set: [
@@ -62,9 +48,6 @@ primary: unit: {
       id: "envelope/float-is-refused"
       fn: "serialise"
       in: ms: 1.5
-      # There is no rendering of 1.5 that five languages agree on, so the
-      # writer refuses rather than picking one. Durations are integer
-      # milliseconds; anything fractional is carried as a string.
       err: "floating point"
     }
 
@@ -114,8 +97,6 @@ primary: unit: {
       id: "envelope/partial-codes-are-a-closed-set"
       fn: "partialCodes"
       in: null
-      # The only two failure codes permitted to carry data. `describe`
-      # publishes this so a caller never guesses whether to look in `data`.
       out: ["budget-exceeded" "fanout-halted"]
     }
   ]
@@ -387,9 +368,6 @@ primary: unit: {
     }
     {
       id: "selector-err/impossible-day"
-      # THE ACTUAL CALENDAR, not `day <= 31`. An earlier version accepted this
-      # and the host's date parser then normalised it into a day in March, so
-      # the selector silently compared against a date nobody wrote.
       fn: "parseSelectorError"
       in: "updated>2026-02-31"
       out: { offset:8 token:"2026-02-31" }
@@ -404,9 +382,6 @@ primary: unit: {
 
     {
       id: "selector-err/century-is-not-a-leap-year"
-      # 2100 is divisible by 4 and is NOT a leap year. A port that approximated
-      # the rule would disagree with the others in 74 years, with nothing in
-      # between to catch it.
       fn: "parseSelectorError"
       in: "updated>2100-02-29"
       out: { offset:8 token:"2100-02-29" }
@@ -485,9 +460,6 @@ primary: unit: {
     {
       id: "order/code-point-not-utf16"
       fn: "compareCodePoints"
-      # U+1D400 is above U+FFFD by code point, but its UTF-16 surrogate pair
-      # sorts BELOW it. A port that inherits its language's default string
-      # comparison gets this backwards.
       in: ["𝐀" "�"]
       out: 1
     }

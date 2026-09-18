@@ -1,13 +1,3 @@
-/* The argv shell. Deliberately thin.
- *
- * Everything it does is turn a process into the core's parameters and turn the
- * core's result back into a process: read argv and the environment, supply a
- * real clock, write the bytes, set the exit code. That thinness is what lets
- * the transcript corpus run WHOLE COMMANDS in-process, with no subprocess, no
- * shell quoting and no five different ways of capturing output.
- *
- * If logic appears here, it is logic the corpus cannot reach.
- */
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, delimiter } from 'node:path'
@@ -23,16 +13,6 @@ function loadConnections (configPath?: string): Connection[] {
   const raw = JSON.parse(readFileSync(path, 'utf8'))
   const sdk = raw.sdk ?? {}
   return Object.keys(sdk).sort().map(instance => {
-    // Identity is bound to the SOURCE'S OWN account key, never to the
-    // user-chosen instance name, so renaming a connection does not silently
-    // change the identity of every note in it.
-    //
-    // REFUSED rather than defaulted. An earlier version fell back to the
-    // instance name, which contradicted the invariant in the sentence above
-    // it: renaming such a connection changed every lid it had ever produced,
-    // and nothing said so. A connection that cannot name its account is
-    // incomplete, and saying so once at startup is cheaper than discovering it
-    // when stored references stop resolving.
     const account = sdk[instance].account ?? sdk[instance].org
     if (undefined === account || '' === String(account)) {
       throw new ConfigError(
@@ -49,13 +29,6 @@ function loadConnections (configPath?: string): Connection[] {
   })
 }
 
-/* Every `likeness` and `likeness-<port>` on PATH.
- *
- * Probed HERE and injected, never in the core: `which` is a corpus entry like
- * everything else, and a command that read the real PATH could not be one.
- * The core used to carry a placeholder row for production, which meant `which`
- * could never answer the question it exists to answer.
- */
 function probePath (env: Record<string, string>): { path: string, port: string, version: string }[] {
   const seen = new Set<string>()
   const rows: { path: string, port: string, version: string }[] = []
@@ -82,12 +55,6 @@ function probePath (env: Record<string, string>): { path: string, port: string, 
   return rows
 }
 
-/* Remove an option and its value from argv.
- *
- * `--config` is read here and must NOT reach the core: left in place it is
- * parsed as a selector term, so `likeness list --config x.json` matched
- * nothing, and `likeness --config x.json list` took `--config` as the command.
- */
 function takeOption (argv: string[], name: string): { rest: string[], value?: string } {
   const rest: string[] = []
   let value: string | undefined

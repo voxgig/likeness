@@ -1,14 +1,3 @@
-/* The corpus harness: the one place a corpus entry becomes a verdict.
- *
- * THE HARNESS IS ITSELF TESTED. meta_test.go mutates a passing entry - wrong
- * exit code, one byte of stdout, a missing call, an extra call - and requires
- * each mutation to be reported. A harness nobody has seen go red is a harness
- * that might be reporting nothing at all.
- *
- * `Check` RETURNS failures rather than failing the test, which is what makes
- * that possible.
- */
-
 package likeness
 
 import (
@@ -66,8 +55,6 @@ func corpusDoc(t *testing.T, root, name string) map[string]any {
 	return groups
 }
 
-// corpusEntries flattens the groups, sorted by group name so two runs report
-// in the same order.
 func corpusEntries(t *testing.T, root, name string) []map[string]any {
 	t.Helper()
 	groups := corpusDoc(t, root, name)
@@ -100,10 +87,6 @@ func mustNum(t *testing.T, v any) int64 {
 	return n
 }
 
-// canon renders any value through the port's own writer, so two structures can
-// be compared as the bytes they would become. Comparing bytes rather than
-// reflect.DeepEqual is the point: DeepEqual would call json.Number("1") and
-// int64(1) different, and would call two maps with different key order equal.
 func canon(t *testing.T, v any) string {
 	t.Helper()
 	s, err := Serialise(v)
@@ -126,14 +109,6 @@ func fmtCalls(cs []Call) string {
 
 // -- the transcript harness -------------------------------------------------
 
-/*
-buildCtx builds the runtime context from an entry's declared, impure inputs.
-
-The seed handed to each connection is the fixture file plus that connection's
-own `net` conditions. That is how "one source answered and the other is down"
-is expressed without a network, a sleep, or a second fixture that has to be
-kept in step with the first.
-*/
 func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 	t.Helper()
 	ectx, _ := e["ctx"].(map[string]any)
@@ -189,16 +164,6 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 		})
 		own := cloneMap(seed)
 		if net, ok := cm["net"]; ok {
-			// NUMBERS NORMALISED TO int FIRST. The corpus is decoded with
-			// UseNumber so that large integers stay exact, but the generated
-			// SDK's netsim accepts int and float64 and SILENTLY IGNORES a
-			// json.Number: `failTimes` set that way does nothing, the request
-			// succeeds, and an entry that believes it is exercising a failure
-			// is exercising a success. Two transcript entries caught it, which
-			// is the only reason it is not still there.
-			//
-			// Reported upstream; see upstream/. Normalising here rather than
-			// dropping UseNumber keeps the exactness everything else needs.
 			own["net"] = numbersToInt(net)
 		}
 		ctx.Fixture[inst] = own
@@ -256,19 +221,6 @@ func cloneMap(m map[string]any) map[string]any {
 	return out
 }
 
-/*
-checkStdout compares stdout.
-
-A `.json` expectation is an ENVELOPE: parsed, stripped of the declared
-non-parity fields by name and recursively, and re-rendered before the byte
-comparison, so that one committed file serves five ports. A `.txt` expectation
-is human output, which carries no envelope and so is compared with no
-transformation at all.
-
-The stripping is not a hole in the serialiser's coverage: the unit corpus pins
-Serialise against bytes no port produced. This compares CONTENT, given a writer
-already proved correct.
-*/
 func checkStdout(t *testing.T, root, path, actual string, fail func(string)) {
 	t.Helper()
 	// A MISSING EXPECTATION IS A FAILURE, NOT AN EMPTY COMPARISON. Reported
@@ -336,11 +288,6 @@ func sameCalls(want, got []Call) bool {
 	return true
 }
 
-/*
-Check runs one transcript entry and returns every way it failed. An empty slice
-is a pass; it is not short-circuited, because seeing all four failures at once
-is the difference between one fix and four rounds.
-*/
 func Check(t *testing.T, root string, e map[string]any) []string {
 	t.Helper()
 	failures := []string{}
@@ -363,9 +310,6 @@ func Check(t *testing.T, root string, e map[string]any) []string {
 		fail(fmt.Sprintf("stderr %q, expected %q", r.Stderr, wantErr))
 	}
 
-	// ASSERTING CALLS IS THE POINT: without it an entry passes for a command
-	// that produced the right answer by making forty requests, and "a refusal
-	// never reaches the network" could not be written down at all.
 	if wc := wantCalls(e); !sameCalls(wc, r.Calls) {
 		fail("calls " + fmtCalls(r.Calls) + ", expected " + fmtCalls(wc))
 	}

@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc --build src test",
     "pretest": "npm run build",
-    "test": "node --test 'dist/test/**/*.test.js'",
+    "test": "node ../tools/comment-gate.cjs && node --test 'dist/test/**/*.test.js'",
     "clean": "rm -rf dist node_modules package-lock.json"
   },
   "dependencies": {
