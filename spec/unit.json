@@ -518,6 +518,34 @@
                 "v": "done"
               }
             }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/leap-day-accepted",
+            "in": "updated>2024-02-29",
+            "out": {
+              "field": "updated",
+              "op": ">",
+              "t": "cmp",
+              "value": {
+                "k": "date",
+                "v": "2024-02-29"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/century-leap-day-accepted",
+            "in": "updated>2000-02-29",
+            "out": {
+              "field": "updated",
+              "op": ">",
+              "t": "cmp",
+              "value": {
+                "k": "date",
+                "v": "2000-02-29"
+              }
+            }
           }
         ]
       },
@@ -638,6 +666,42 @@
             "out": {
               "offset": 12,
               "token": "bogus"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/impossible-day",
+            "in": "updated>2026-02-31",
+            "out": {
+              "offset": 8,
+              "token": "2026-02-31"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/non-leap-february",
+            "in": "updated>2026-02-29",
+            "out": {
+              "offset": 8,
+              "token": "2026-02-29"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/century-is-not-a-leap-year",
+            "in": "updated>2100-02-29",
+            "out": {
+              "offset": 8,
+              "token": "2100-02-29"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/short-month",
+            "in": "updated>2026-04-31",
+            "out": {
+              "offset": 8,
+              "token": "2026-04-31"
             }
           },
           {

@@ -111,6 +111,41 @@
                 {
                   "account": "local",
                   "instance": "jot",
+                  "source": "joplin"
+                },
+                {
+                  "account": "acme",
+                  "instance": "pages",
+                  "source": "notion"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "doctor/no-adapter-is-reported",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes"
+                }
+              ],
+              "exit": 4,
+              "stdout": "spec/expect/doctor/no-adapter.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
                   "net": {
                     "offline": true
                   },
@@ -260,6 +295,31 @@
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/get/unparseable-ref.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "jot:",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "get/empty-id",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/get/empty-id.json"
             }
           },
           {
@@ -558,6 +618,193 @@
           {
             "args": [
               "list",
+              "--instance",
+              "jto",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/unknown-instance-filter",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/unknown-instance-filter.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--source",
+              "notion",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/unknown-source-filter",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/unknown-source-filter.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--limit",
+              "nope",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/invalid-limit",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/invalid-limit.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme",
+                  "instance": "pages",
+                  "source": "notion"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/no-adapter-refused-before-the-network",
+            "out": {
+              "calls": [],
+              "exit": 4,
+              "stdout": "spec/expect/list/no-adapter.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "net": {
+                    "offline": true
+                  },
+                  "source": "joplin"
+                },
+                {
+                  "account": "spare",
+                  "instance": "spare",
+                  "net": {
+                    "offline": true
+                  },
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/all-sources-down",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes"
+                },
+                {
+                  "instance": "spare",
+                  "method": "GET",
+                  "path": "/notes"
+                }
+              ],
+              "exit": 3,
+              "stdout": "spec/expect/list/all-sources-down.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--strict",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "down",
+                  "instance": "down",
+                  "net": {
+                    "offline": true
+                  },
+                  "source": "joplin"
+                },
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/strict-halts-on-the-first-failure",
+            "out": {
+              "calls": [
+                {
+                  "instance": "down",
+                  "method": "GET",
+                  "path": "/notes"
+                }
+              ],
+              "exit": 4,
+              "stdout": "spec/expect/list/strict-halts-first.json"
+            }
+          },
+          {
+            "args": [
+              "list",
               "--json"
             ],
             "ctx": {
@@ -756,6 +1003,23 @@
               "clock": "2026-09-18T00:00:00Z",
               "connections": [],
               "fixture": "joplin",
+              "path": [
+                {
+                  "path": "/usr/local/bin/likeness",
+                  "port": "",
+                  "version": ""
+                },
+                {
+                  "path": "/usr/local/bin/likeness-go",
+                  "port": "go",
+                  "version": ""
+                },
+                {
+                  "path": "/usr/local/bin/likeness-ts",
+                  "port": "ts",
+                  "version": ""
+                }
+              ],
               "seed": 1
             },
             "id": "meta/which",
@@ -763,6 +1027,60 @@
               "calls": [],
               "exit": 0,
               "stdout": "spec/expect/meta/which.json"
+            }
+          },
+          {
+            "args": [
+              "which",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "meta/which-none",
+            "out": {
+              "calls": [],
+              "exit": 1,
+              "stdout": "spec/expect/meta/which-none.json"
+            }
+          },
+          {
+            "args": [
+              "help",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "meta/help",
+            "out": {
+              "calls": [],
+              "exit": 0,
+              "stdout": "spec/expect/meta/help.json"
+            }
+          },
+          {
+            "args": [
+              "--help",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "meta/help-flag",
+            "out": {
+              "calls": [],
+              "exit": 0,
+              "stdout": "spec/expect/meta/help.json"
             }
           },
           {
@@ -814,7 +1132,7 @@
             "out": {
               "calls": [],
               "exit": 3,
-              "stderr": "error: invalid-selector\n  no command given\n  remedy  try `likeness list` or `likeness --help`\n",
+              "stderr": "error: invalid-selector\n  no command given\n  remedy  try `likeness list`, or `likeness help` for the command list\n",
               "stdout": "spec/expect/meta/no-command.txt"
             }
           }

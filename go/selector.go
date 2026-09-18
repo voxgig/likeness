@@ -262,6 +262,25 @@ func isNotKeyword(t *tok) bool {
 
 var dateRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 
+var monthDays = [12]int{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+
+// IsLeap applies the full Gregorian rule, centuries included.
+func IsLeap(y int) bool { return (0 == y%4 && 0 != y%100) || 0 == y%400 }
+
+// DaysIn is the length of a month in a given year.
+func DaysIn(y, m int) int {
+	if 2 == m {
+		if IsLeap(y) {
+			return 29
+		}
+		return 28
+	}
+	if m < 1 || 12 < m {
+		return 0
+	}
+	return monthDays[m-1]
+}
+
 // `mo` BEFORE `d|w|y`, or `3mo` tokenises as 3 months in one port and as an
 // unparseable `3m` in another.
 var durRe = regexp.MustCompile(`^(\d+)(mo|d|w|y)$`)
@@ -283,9 +302,16 @@ func classify(t tok) (*Value, error) {
 	}
 	if dateRe.MatchString(s) {
 		parts := strings.Split(s, "-")
+		y, _ := strconv.Atoi(parts[0])
 		m, _ := strconv.Atoi(parts[1])
 		d, _ := strconv.Atoi(parts[2])
-		if m < 1 || 12 < m || d < 1 || 31 < d {
+		// THE ACTUAL CALENDAR, not `d <= 31`. `2026-02-31` passed the loose
+		// check and was then normalised by the host's date parser into a day in
+		// March, so the selector silently compared against a date the user
+		// never wrote. Leap years are computed rather than approximated,
+		// because 2100 is not one and a port using `y % 4` would disagree with
+		// the others in 74 years with nothing in between to catch it.
+		if m < 1 || 12 < m || d < 1 || DaysIn(y, m) < d {
 			return nil, &SelectorError{"date is out of range", t.offset, s}
 		}
 		return &Value{K: "date", V: s}, nil

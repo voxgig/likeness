@@ -85,6 +85,17 @@ Ctx: type(close({
 
   # Environment overrides, if any.
   env?: { &: string }
+
+  # What `which` is told is on PATH. INJECTED, never probed: a command that
+  # read the real PATH would answer differently on every machine and could not
+  # be an entry here. The argv shell does the probing in production; this is
+  # the same shape it hands over.
+  #
+  # `port` is a declared non-parity field and is removed from the byte
+  # comparison wherever it appears, so a row's own `port` is not compared - but
+  # it is still written here, because an entry that omitted it would not be
+  # describing what the shell actually supplies.
+  path?: [&: close({ path:string port:string version:string })]
 }))
 
 # What the command must produce.

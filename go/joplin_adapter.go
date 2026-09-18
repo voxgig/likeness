@@ -103,8 +103,19 @@ a lie the envelope carries. `version` is absent for the same reason. `tags` is
 absent because this adapter does not read tag associations - and absent is not
 the same answer as empty.
 */
-func projectNote(raw map[string]any, instance, account string, withRaw bool) Note {
+func projectNote(raw map[string]any, instance, account string, withRaw bool) (Note, error) {
 	id := sval(raw, "id")
+	// REFUSED, not fabricated. An empty id derives a valid-LOOKING lid from the
+	// empty string, so every such row shares one identity and the note violates
+	// the schema's non-empty SourceId invariant. A source that returned a
+	// record with no id has returned nothing usable, and the adapter says so.
+	if "" == id {
+		return Note{}, &LikenessError{
+			Code:   "source-unavailable",
+			Msg:    "the source returned a " + joplinSource + " record with no id",
+			Remedy: "this is a bug in the source or its SDK; run with --raw to capture the payload",
+		}
+	}
 	n := Note{
 		Lid:      Lid(joplinSource, account, "note", id),
 		Source:   joplinSource,
@@ -133,7 +144,7 @@ func projectNote(raw map[string]any, instance, account string, withRaw bool) Not
 			n.Raw = &s
 		}
 	}
-	return n
+	return n, nil
 }
 
 func entData(v any) map[string]any {
@@ -149,20 +160,40 @@ func entData(v any) map[string]any {
 	return map[string]any{}
 }
 
-// JoplinList fetches every note from one connection.
-func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, error) {
+/*
+JoplinList fetches one page of notes, and reports whether there may be another.
+
+THE SECOND RETURN IS THE POINT. The generated paging feature computes a
+`hasMore` signal but exposes it nowhere a caller can reach: the `ctrl` map
+comes back untouched and the returned entities carry no result context, so an
+adapter cannot follow pages or even ask whether there are any. Reported
+upstream; see upstream/issue/11.
+
+Until it can, a full page is treated as possibly-short: the caller marks the
+answer truncated and names the instance in `meta.incomplete`. A silently short
+list is the one outcome that must not happen, because every selector result
+computed from it is then wrong and nothing says so.
+
+The page size is read from the capability matrix, not written here.
+*/
+func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) {
 	client := joplinClient(o)
 	calls.Record(o.Instance, "GET", "/notes")
 	found, err := client.Note(nil).List(map[string]any{}, nil)
 	if nil != err {
-		return nil, err
+		return nil, false, err
 	}
 	rows, _ := found.([]any)
 	out := make([]Note, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, projectNote(entData(r), o.Instance, o.Account, withRaw))
+		n, err := projectNote(entData(r), o.Instance, o.Account, withRaw)
+		if nil != err {
+			return nil, false, err
+		}
+		out = append(out, n)
 	}
-	return out, nil
+	limit := PageMax(joplinSource)
+	return out, 0 < limit && limit <= len(rows), nil
 }
 
 // JoplinLoad fetches one note, or reports that it does not exist.
@@ -183,7 +214,10 @@ func JoplinLoad(o SourceOpts, calls *Calls, id string, withRaw bool) (*Note, err
 	if _, ok := row["id"]; !ok {
 		return nil, nil
 	}
-	n := projectNote(row, o.Instance, o.Account, withRaw)
+	n, err := projectNote(row, o.Instance, o.Account, withRaw)
+	if nil != err {
+		return nil, err
+	}
 	return &n, nil
 }
 
@@ -201,6 +235,13 @@ func JoplinCheck(o SourceOpts, calls *Calls) (ok bool, code, detail string) {
 	}
 	if s := statusOf(err); 401 == s || 403 == s {
 		return false, "auth-failed", "the token was rejected"
+	}
+	// 429 is a DIFFERENT condition with a different remedy, and the registry
+	// has a code for it that is marked retryable. Folding it into "the
+	// application did not answer" tells someone whose requests are being
+	// throttled to go and start a program that is already running.
+	if 429 == statusOf(err) {
+		return false, "rate-limited", "the source is rate limiting this client"
 	}
 	// A FIXED SENTENCE, never the underlying message. Each port's generated
 	// SDK words its transport failures differently and embeds the URL it

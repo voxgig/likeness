@@ -166,6 +166,18 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 		}
 	}
 
+	if ps, ok := ectx["path"].([]any); ok {
+		// Absent stays absent: an entry that declares no PATH is asserting what
+		// `which` does when it was told about nothing, which is a different
+		// case from being told about an empty list.
+		for _, p := range ps {
+			pm, _ := p.(map[string]any)
+			ctx.Path = append(ctx.Path, map[string]any{
+				"path": str(pm, "path"), "port": str(pm, "port"), "version": str(pm, "version"),
+			})
+		}
+	}
+
 	conns, _ := ectx["connections"].([]any)
 	for _, c := range conns {
 		cm := c.(map[string]any)

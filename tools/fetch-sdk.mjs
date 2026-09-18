@@ -30,6 +30,7 @@ function git (args, cwd) {
 }
 
 let wrong = 0
+let dirtyCount = 0
 let missing = 0
 
 for (const name of Object.keys(sources).sort()) {
@@ -47,7 +48,28 @@ for (const name of Object.keys(sources).sort()) {
   try { head = git(['rev-parse', 'HEAD'], dir) }
   catch { console.error(`${label}  NOT A GIT CHECKOUT  ${dir}`); missing++; continue }
 
-  if (head === s.rev) { console.log(`${label}  ok`); continue }
+  // AT THE PIN IS NOT ENOUGH. The TypeScript port depends on the checkout by
+  // `file:` path and the Go port by a `replace` directive, so both build the
+  // WORKING TREE, not the commit. A modified or untracked generated file there
+  // means the corpus recorded the behaviour of an SDK nobody else has, while
+  // this check said the revision was enforced.
+  let dirty = ''
+  try { dirty = git(['status', '--porcelain'], dir) }
+  catch { /* reported as a wrong revision below if HEAD also failed */ }
+
+  if (head === s.rev && '' === dirty) { console.log(`${label}  ok`); continue }
+
+  if (head === s.rev) {
+    const lines = dirty.split('\n').filter(Boolean)
+    console.error(`${label}  DIRTY  ${dir} is at the pin with ${lines.length} modified/untracked file(s):`)
+    for (const l of lines.slice(0, 5)) console.error(`             ${l}`)
+    if (5 < lines.length) console.error(`             ... and ${lines.length - 5} more`)
+    // Never cleaned automatically, in either mode: the changes may be someone's
+    // work in progress on the SDK, and this tool does not own that checkout.
+    console.error('             commit, stash or discard them - this tool will not.')
+    dirtyCount++
+    continue
+  }
 
   if (check) {
     console.error(`${label}  WRONG REVISION  ${dir} is at ${head.slice(0, 12)}`)
@@ -61,9 +83,18 @@ for (const name of Object.keys(sources).sort()) {
   git(['checkout', '--quiet', s.rev], dir)
 }
 
-if (check && 0 < missing + wrong) {
+if (0 < missing + wrong + dirtyCount) {
   console.error(
-    `\nfetch-sdk: ${missing} missing, ${wrong} at the wrong revision.` +
-    `\nRun \`make sdk\` to clone and pin them, or set LIKENESS_SDK_ROOT (currently ${SDK_ROOT}).`)
+    `\nfetch-sdk: ${missing} missing, ${wrong} at the wrong revision,` +
+    ` ${dirtyCount} at the pin but dirty.`)
+  if (0 < dirtyCount) {
+    // Never cleaned automatically, in either mode: the changes may be someone's
+    // work in progress on the SDK, and this tool does not own that checkout.
+    console.error('A dirty checkout is not cleaned automatically; resolve it and re-run.')
+  }
+  if (0 < missing + wrong) {
+    console.error(
+      `Run \`make sdk\` to clone and pin them, or set LIKENESS_SDK_ROOT (currently ${SDK_ROOT}).`)
+  }
   process.exit(1)
 }

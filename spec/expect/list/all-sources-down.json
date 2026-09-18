@@ -1,0 +1,1 @@
+{"cmd":["list"],"code":"source-unavailable","data":null,"error":{"message":"no source answered: jot, spare","remedy":"run `likeness doctor` to see which connection is failing and why"},"meta":{"calls":2,"count":0,"incomplete":["jot","spare"],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

@@ -74,7 +74,21 @@ function parseFlags (args: string[]): { flags: Flags, rest: string[] } {
     if (a === '--raw') { flags.raw = true; continue }
     if (a === '--strict') { flags.strict = true; continue }
     if (a === '--deterministic') { flags.deterministic = true; continue }
-    if (a === '--limit') { flags.limit = Number(args[++i]); continue }
+    if (a === '--limit') {
+      // VALIDATED, not coerced. `Number('nope')` is NaN, and every comparison
+      // against NaN is false, so a mistyped limit silently disabled limiting
+      // altogether; `--limit -1` sliced off the last row and `--limit 0`
+      // turned a non-empty match set into `no-match`.
+      const raw = args[++i]
+      const n = Number(raw)
+      if (undefined === raw || '' === raw || !Number.isInteger(n) || n < 1) {
+        throw new LikenessError('invalid-selector',
+          '--limit needs a whole number of at least 1, not "' + (raw ?? '') + '"',
+          'try `--limit 20`')
+      }
+      flags.limit = n
+      continue
+    }
     if (a === '--sort') { flags.sort = args[++i]; continue }
     if (a === '--instance') { flags.instance.push(args[++i]); continue }
     if (a === '--source') { flags.source.push(args[++i]); continue }
@@ -111,9 +125,10 @@ function envelope (
       sources: meta.sources ?? [],
       incomplete: meta.incomplete ?? [],
       calls: meta.calls ?? 0,
-      // A declared non-parity field, removed by name before the byte diff.
-      // Zero under --deterministic so the two legitimate exceptions do not
-      // defeat the comparison.
+      // A declared non-parity field, removed by name before the byte diff, and
+      // zeroed under --deterministic so the two legitimate exceptions cannot
+      // defeat it. It is MEASURED otherwise: a field that always reported zero
+      // was worse than no field, because it looked like an answer.
       elapsed_ms: meta.elapsed_ms ?? 0,
     },
     port: PORT,
@@ -136,11 +151,48 @@ function fails (env: Envelope, message: string, remedy: string): Envelope {
   return env
 }
 
+/* The connections a command runs against, after `--instance` and `--source`.
+ *
+ * A FILTER THAT MATCHES NOTHING IS AN ERROR, not an empty set. A mistyped
+ * `--instance jto` used to leave no connections at all, so `list` answered
+ * `no-match` and `doctor` answered `ok` with zero rows - both of which say the
+ * configuration is fine when the command never looked at it.
+ */
 function selected (ctx: Ctx, flags: Flags): Connection[] {
+  const unknownInstance = flags.instance.filter(
+    i => !ctx.connections.some(c => c.instance === i))
+  if (0 < unknownInstance.length) {
+    throw new LikenessError('no-such-source',
+      'no connection named ' + unknownInstance.sort().map(q).join(', '),
+      'run `likeness doctor` to see the configured connections')
+  }
+  const unknownSource = flags.source.filter(
+    src => !ctx.connections.some(c => c.source === src))
+  if (0 < unknownSource.length) {
+    throw new LikenessError('no-such-source',
+      'no connection uses source ' + unknownSource.sort().map(q).join(', '),
+      'run `likeness doctor` to see the configured connections')
+  }
+
   let conns = ctx.connections
   if (0 < flags.instance.length) conns = conns.filter(c => flags.instance.includes(c.instance))
   if (0 < flags.source.length) conns = conns.filter(c => flags.source.includes(c.source))
   return conns
+}
+
+function q (s: string): string { return '"' + s + '"' }
+
+/* The adapter for a source, or nothing.
+ *
+ * Dispatch is BY THE CONNECTION'S DECLARED SOURCE. The fan-out used to send
+ * every connection through the Joplin SDK whatever its source said, which
+ * either called the wrong API and reported a misleading partial failure, or
+ * projected another source's records as Joplin notes.
+ */
+const ADAPTERS: Record<string, typeof joplin> = { joplin }
+
+function adapterFor (c: Connection): typeof joplin | undefined {
+  return ADAPTERS[c.source]
 }
 
 function optsFor (ctx: Ctx, c: Connection): joplin.JoplinOpts {
@@ -158,22 +210,38 @@ function optsFor (ctx: Ctx, c: Connection): joplin.JoplinOpts {
  * confident, smaller, wrong answer, which is much worse than a partial one
  * that says so.
  */
-async function gather (ctx: Ctx, conns: Connection[], calls: Calls, withRaw: boolean):
-Promise<{ notes: Note[], ok: string[], failed: string[] }> {
+async function gather (ctx: Ctx, conns: Connection[], calls: Calls, withRaw: boolean, strict: boolean):
+Promise<{ notes: Note[], ok: string[], failed: string[], short: string[] }> {
   const notes: Note[] = []
   const ok: string[] = []
   const failed: string[] = []
+  const short: string[] = []
   for (const c of conns) {
-    try {
-      const rows = await joplin.listNotes(optsFor(ctx, c), calls, withRaw)
-      notes.push(...rows)
-      ok.push(c.instance)
+    const adapter = adapterFor(c)
+    if (undefined === adapter) {
+      // A source with no adapter is refused BEFORE the network, not sent
+      // through whichever adapter happened to be imported.
+      throw new LikenessError('unsupported-capability',
+        'no adapter for source "' + c.source + '" (connection "' + c.instance + '")',
+        'drop that connection, or narrow to one that is supported with --source')
     }
-    catch {
+    try {
+      const got = await adapter.listNotes(optsFor(ctx, c), calls, withRaw)
+      notes.push(...got.notes)
+      ok.push(c.instance)
+      if (got.more) short.push(c.instance)
+    }
+    catch (err) {
+      if (err instanceof LikenessError && 'unsupported-capability' === err.code) throw err
       failed.push(c.instance)
+      // `--strict` HALTS. `fanout-halted` means the fan-out stopped after a
+      // member failed; continuing through every remaining connection and only
+      // then choosing that code made the name a lie and spent requests the
+      // caller had asked not to spend.
+      if (strict) break
     }
   }
-  return { notes, ok: ok.sort(), failed: failed.sort() }
+  return { notes, ok: ok.sort(), failed: failed.sort(), short: short.sort() }
 }
 
 /* The Note fields every adapter populates whatever the source is: an identity,
@@ -222,7 +290,7 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): P
     }
   }
 
-  const got = await gather(ctx, conns, calls, flags.raw)
+  const got = await gather(ctx, conns, calls, flags.raw, flags.strict)
   let notes = got.notes
   if (null !== filter) notes = notes.filter(n => evaluate(filter, n, clockMs))
   notes = sortNotes(notes, flags.sort)
@@ -233,14 +301,25 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): P
     truncated = true
   }
 
-  const incomplete = got.failed
+  // A source that filled its page may have more. Marked truncated and NAMED in
+  // `meta.incomplete`, because a silently short list makes every selector
+  // result computed from it wrong with nothing to say so.
+  if (0 < got.short.length) truncated = true
+
+  const incomplete = [...got.failed, ...got.short].sort()
 
   // `--strict` refuses to call a partial answer a success. It still PRINTS the
   // rows it has: `fanout-halted` is one of the two codes the registry marks as
   // permitted to carry data, because the work was already done and paid for,
   // and a caller branching on `ok` alone discards it correctly anyway.
+  // NOT EVERY SOURCE FAILING IS A PARTIAL ANSWER. `partial` means some sources
+  // answered; when none did, an envelope saying `ok: true` with empty data lets
+  // a total outage or a rejected credential read as a valid empty result.
+  const noneAnswered = 0 < got.failed.length && 0 === got.ok.length
+
   const code =
-    0 < incomplete.length && flags.strict ? 'fanout-halted' :
+    0 < got.failed.length && flags.strict ? 'fanout-halted' :
+    noneAnswered ? 'source-unavailable' :
     0 < incomplete.length ? 'partial' :
     // EXIT 1 IS NOT AN ERROR - it is the answer "none", and it has its own code
     // so that a script can tell "nothing matched" from "the query was wrong"
@@ -254,8 +333,18 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): P
   })
   if ('fanout-halted' === code) {
     return fails(env,
-      incomplete.join(', ') + ' did not answer and --strict was given',
+      got.failed.join(', ') + ' did not answer and --strict was given',
       'drop --strict to accept a partial answer, or fix the named connection')
+  }
+  if ('source-unavailable' === code) {
+    // `data` IS NULL, not `[]`. The registry does not mark this code as one
+    // permitted to carry results, and the distinction is the honest one: `[]`
+    // means the sources were asked and held nothing, null means they could not
+    // be asked at all.
+    env.data = null
+    return fails(env,
+      'no source answered: ' + got.failed.join(', '),
+      'run `likeness doctor` to see which connection is failing and why')
   }
   return env
 }
@@ -273,12 +362,25 @@ async function cmdGet (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Pr
     }
     const instance = ref.slice(0, idx)
     const id = ref.slice(idx + 1)
+    // An empty source-native id is malformed under the declared SourceId
+    // contract, and knowing that costs no request. It used to be sent, fetched
+    // and reported as `not-found`, which blamed the source for a typo.
+    if ('' === id) {
+      throw new LikenessError('invalid-ref', 'not a ref: ' + ref + ' (no id after the colon)',
+        'a ref is <instance>:<id>, a lid, #n or @alias')
+    }
     const c = ctx.connections.find(x => x.instance === instance)
     if (undefined === c) {
       throw new LikenessError('no-such-source', 'no connection named "' + instance + '"',
-        'run `likeness sources list` to see the configured connections')
+        'run `likeness doctor` to see the configured connections')
     }
-    const note = await joplin.loadNote(optsFor(ctx, c), calls, id, flags.raw)
+    const adapter = adapterFor(c)
+    if (undefined === adapter) {
+      throw new LikenessError('unsupported-capability',
+        'no adapter for source "' + c.source + '" (connection "' + c.instance + '")',
+        'this source arrives in a later stage')
+    }
+    const note = await adapter.loadNote(optsFor(ctx, c), calls, id, flags.raw)
     if (null === note) {
       throw new LikenessError('not-found', ref + ' does not exist',
         'check the ref, or run `likeness list` to see what is there')
@@ -296,7 +398,19 @@ async function cmdDoctor (ctx: Ctx, flags: Flags, calls: Calls): Promise<Envelop
   const failures: string[] = []
   let bad = 0
   for (const c of conns) {
-    const r = await joplin.check(optsFor(ctx, c), calls)
+    const adapter = adapterFor(c)
+    if (undefined === adapter) {
+      // `doctor` REPORTS rather than refuses: naming the unsupported source is
+      // exactly the diagnosis the command exists to give.
+      rows.push({
+        instance: c.instance, source: c.source, check: 'FAIL',
+        detail: 'no adapter for this source yet', code: 'unsupported-capability',
+      })
+      failures.push('unsupported-capability')
+      bad++
+      continue
+    }
+    const r = await adapter.check(optsFor(ctx, c), calls)
     const row: Record<string, unknown> = {
       instance: c.instance, source: c.source, check: r.ok ? 'ok' : 'FAIL', detail: r.detail,
     }
@@ -319,7 +433,7 @@ async function cmdDoctor (ctx: Ctx, flags: Flags, calls: Calls): Promise<Envelop
   if (0 < bad) {
     return fails(env,
       bad + (1 === bad ? ' connection needs' : ' connections need') + ' attention',
-      'start the application, or check the connection with `likeness sources test`')
+      'start the application, check the token, and re-run `likeness doctor`')
   }
   return env
 }
@@ -330,9 +444,34 @@ function cmdVersion (): Envelope {
 
 function cmdWhich (ctx: Ctx): Envelope {
   // Injected rather than probed: `which` is a corpus entry like everything
-  // else, and a command that read the real PATH could not be one.
-  const rows = (ctx.path ?? [{ path: '(this port)', port: PORT, version: VERSION }])
-  return envelope(['which'], 'ok', rows, { count: rows.length })
+  // else, and a command that read the real PATH could not be one. The argv
+  // shell does the probing; see cli.ts. An absent list means the caller
+  // supplied none, which is the empty answer, NOT a placeholder row claiming
+  // to be the only installation.
+  const rows = ctx.path ?? []
+  const code = 0 === rows.length ? 'no-match' : 'ok'
+  return envelope(['which'], code, rows, { count: rows.length })
+}
+
+/* `--help`, implemented, because two error remedies named it.
+ *
+ * An error that sends the reader to an option the program does not parse is
+ * worse than one with no remedy: `--help` was dispatched as an unknown command
+ * and answered with another error recommending the same unusable option.
+ */
+function cmdHelp (): Envelope {
+  const commands = [
+    { command: 'list', takes: '[selector]', does: 'list notes across the configured sources' },
+    { command: 'get', takes: '<ref>...', does: 'fetch one note by <instance>:<id>' },
+    { command: 'doctor', takes: '', does: 'check every configured connection' },
+    { command: 'version', takes: '', does: 'this port and its version' },
+    { command: 'which', takes: '', does: 'every likeness on PATH' },
+    { command: 'help', takes: '', does: 'this' },
+  ]
+  for (const name of Object.keys(STUBS).sort()) {
+    commands.push({ command: name, takes: '', does: STUBS[name] + ' (not implemented yet)' })
+  }
+  return envelope(['help'], 'ok', commands, { count: commands.length })
 }
 
 const STUBS: Record<string, string> = {
@@ -349,22 +488,40 @@ const STUBS: Record<string, string> = {
 export async function run (ctx: Ctx): Promise<Result> {
   const calls = new Calls()
   const [name, ...args] = ctx.argv
-  const { flags, rest } = parseFlags(args)
+  const started = Date.now()
 
-  const render = (env: Envelope): Result => ({
-    exit: exitFor(env.code),
-    // --json puts NOTHING else on stdout. Narration, progress and warnings go
-    // to stderr, always.
-    stdout: flags.json ? serialise(env) : human(env),
-    stderr: flags.json ? '' : narrate(env),
-    calls: calls.all(),
-  })
+  // Parsed before the try, so that a bad flag is still reported through the
+  // envelope rather than thrown out of `run`.
+  let flags: Flags
+  let rest: string[]
+  try {
+    ({ flags, rest } = parseFlags(args))
+  }
+  catch (err) {
+    return finish(ctx, name ?? '', err, calls, started,
+      { json: args.includes('--json'), deterministic: args.includes('--deterministic') })
+  }
+
+  const render = (env: Envelope): Result => {
+    // Measured here, once, around the whole command. Zeroed under
+    // --deterministic so the declared exception cannot defeat the byte diff.
+    env.meta.elapsed_ms = flags.deterministic ? 0 : Date.now() - started
+    return {
+      exit: exitFor(env.code),
+      // --json puts NOTHING else on stdout. Narration, progress and warnings
+      // go to stderr, always.
+      stdout: flags.json ? serialise(env) : human(env),
+      stderr: flags.json ? '' : narrate(env),
+      calls: calls.all(),
+    }
+  }
 
   try {
     if (undefined === name || '' === name) {
       throw new LikenessError('invalid-selector', 'no command given',
-        'try `likeness list` or `likeness --help`')
+        'try `likeness list`, or `likeness help` for the command list')
     }
+    if (name === '--help' || name === '-h' || name === 'help') return render(cmdHelp())
     if (name === 'list') return render(await cmdList(ctx, flags, rest, calls))
     if (name === 'get') return render(await cmdGet(ctx, flags, rest, calls))
     if (name === 'doctor') return render(await cmdDoctor(ctx, flags, calls))
@@ -376,27 +533,61 @@ export async function run (ctx: Ctx): Promise<Result> {
       // nor packaging is a surprise at the stage that needs it.
       throw new LikenessError('unsupported-capability',
         '`' + name + '` is not implemented yet - ' + STUBS[name],
-        'it arrives in a later stage; `likeness list`, `get`, `doctor`, `version` and `which` work now')
+        'it arrives in a later stage; run `likeness help` for what works now')
     }
     throw new LikenessError('invalid-selector', 'no such command: ' + name,
-      'run `likeness --help` for the command list')
+      'run `likeness help` for the command list')
   }
   catch (err) {
-    if (err instanceof SelectorError) {
-      const env = envelope([name ?? ''], 'invalid-selector', null,
-        { calls: calls.count() },
-        {
-          message: err.message + ' at byte ' + err.offset,
-          remedy: 'check the selector grammar with `likeness describe`',
-        })
-      return render(env)
-    }
-    if (err instanceof LikenessError) {
-      const env = envelope([name ?? ''], err.code, null, { calls: calls.count() },
-        { message: err.message, remedy: err.remedy, ...err.detail })
-      return render(env)
-    }
-    throw err
+    return render(errorEnvelope(name ?? '', err, calls))
+  }
+}
+
+/* Turn any thrown value into an envelope.
+ *
+ * THE LAST BRANCH IS THE IMPORTANT ONE. It used to rethrow, and an SDK
+ * transport error - an unreachable source, a rejected credential, anything
+ * that was not a 404 - escaped `run` as an unhandled rejection: the process
+ * died with a stack trace even under `--json`, where the caller was promised
+ * one line of JSON. Every failure now leaves through here, under a code the
+ * registry knows.
+ */
+function errorEnvelope (name: string, err: unknown, calls: Calls): Envelope {
+  if (err instanceof SelectorError) {
+    return envelope([name], 'invalid-selector', null, { calls: calls.count() }, {
+      message: err.message + ' at byte ' + err.offset,
+      remedy: 'check the selector grammar with `likeness describe`',
+    })
+  }
+  if (err instanceof LikenessError) {
+    return envelope([name], err.code, null, { calls: calls.count() },
+      { message: err.message, remedy: err.remedy, ...err.detail })
+  }
+  const anyErr = err as { status?: number, message?: string }
+  const code =
+    401 === anyErr?.status || 403 === anyErr?.status ? 'auth-failed' :
+    429 === anyErr?.status ? 'rate-limited' :
+    'source-unavailable'
+  return envelope([name], code, null, { calls: calls.count() }, {
+    // The source's own words are not repeated: they differ per port and embed
+    // the URL that was tried. The code carries the meaning.
+    message: 'the source did not complete the request',
+    remedy: 'run `likeness doctor` to see which connection is failing and why',
+  })
+}
+
+/* The error path for a failure raised before `flags` exists. */
+function finish (
+  ctx: Ctx, name: string, err: unknown, calls: Calls, started: number,
+  opts: { json: boolean, deterministic: boolean },
+): Result {
+  const env = errorEnvelope(name, err, calls)
+  env.meta.elapsed_ms = opts.deterministic ? 0 : Date.now() - started
+  return {
+    exit: exitFor(env.code),
+    stdout: opts.json ? serialise(env) : human(env),
+    stderr: opts.json ? '' : narrate(env),
+    calls: calls.all(),
   }
 }
 

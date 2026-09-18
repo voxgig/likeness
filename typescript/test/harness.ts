@@ -42,6 +42,7 @@ export type CliEntry = {
     clock: string
     seed: number
     env?: Record<string, string>
+    path?: { path: string, port: string, version: string }[]
   }
   out: {
     exit: number
@@ -102,6 +103,10 @@ export function buildCtx (e: CliEntry): Ctx {
     seed: e.ctx.seed,
     connections,
     fixture,
+    // Absent stays absent: an entry that declares no PATH is asserting what
+    // `which` does when it was told about nothing, which is a different case
+    // from being told about an empty list.
+    path: e.ctx.path,
   }
 }
 

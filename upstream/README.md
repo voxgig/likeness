@@ -48,3 +48,4 @@ workaround in this repository exists.
 | `issue/08-explain-prefix-and-missing-text.md` | `aontu-lang/aontu` | minor | `explain` rejects the code as it is printed, and a large minority of codes have no text |
 | `issue/09-notion-no-ruby-target.md` | `voxgig-sdk/notion-sdk` | **blocker** | no Ruby target, so likeness's Ruby port cannot reach Notion at all |
 | `issue/10-go-netsim-ignores-json-number.md` | `voxgig-sdk/joplin-sdk` (Go target) | major | a `net` option decoded as `json.Number` is silently ignored, so a simulated failure does not happen and the test passes |
+| `issue/11-paging-signal-unreachable.md` | `voxgig-sdk/joplin-sdk` (all four) | major | the paging feature computes `hasMore` and a cursor, and exposes them nowhere a caller can reach, so a consumer cannot follow pages or even detect one |

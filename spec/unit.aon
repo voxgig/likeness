@@ -280,6 +280,24 @@ primary: unit: {
       in: "status!=done"
       out: { t:"cmp" field:"status" op:"!=" value: { k:"word" v:"done" } }
     }
+
+    {
+      id: "selector/leap-day-accepted"
+      # 2024 is a leap year, so the 29th of February exists and is accepted.
+      fn: "parseSelector"
+      in: "updated>2024-02-29"
+      out: { t:"cmp" field:"updated" op:">" value: { k:"date" v:"2024-02-29" } }
+    }
+
+    {
+      id: "selector/century-leap-day-accepted"
+      # 2000 IS a leap year - divisible by 400 - where 1900 and 2100 are not.
+      # A port testing only `y % 4` passes this one and fails the 2100 case
+      # below, which is the whole reason both are here.
+      fn: "parseSelector"
+      in: "updated>2000-02-29"
+      out: { t:"cmp" field:"updated" op:">" value: { k:"date" v:"2000-02-29" } }
+    }
   ]
 
   # Malformed input. EVERY ONE ASSERTS A BYTE OFFSET: never a stack trace,
@@ -367,6 +385,40 @@ primary: unit: {
       in: "title:café bogus:x"
       out: { offset:12 token:"bogus" }
     }
+    {
+      id: "selector-err/impossible-day"
+      # THE ACTUAL CALENDAR, not `day <= 31`. An earlier version accepted this
+      # and the host's date parser then normalised it into a day in March, so
+      # the selector silently compared against a date nobody wrote.
+      fn: "parseSelectorError"
+      in: "updated>2026-02-31"
+      out: { offset:8 token:"2026-02-31" }
+    }
+
+    {
+      id: "selector-err/non-leap-february"
+      fn: "parseSelectorError"
+      in: "updated>2026-02-29"
+      out: { offset:8 token:"2026-02-29" }
+    }
+
+    {
+      id: "selector-err/century-is-not-a-leap-year"
+      # 2100 is divisible by 4 and is NOT a leap year. A port that approximated
+      # the rule would disagree with the others in 74 years, with nothing in
+      # between to catch it.
+      fn: "parseSelectorError"
+      in: "updated>2100-02-29"
+      out: { offset:8 token:"2100-02-29" }
+    }
+
+    {
+      id: "selector-err/short-month"
+      fn: "parseSelectorError"
+      in: "updated>2026-04-31"
+      out: { offset:8 token:"2026-04-31" }
+    }
+
     {
       id: "selector-err/offset-is-bytes-cjk"
       fn: "parseSelectorError"

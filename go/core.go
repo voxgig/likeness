@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Connection is one configured source, as the station file describes it.
@@ -63,7 +64,7 @@ type flags struct {
 	source        []string
 }
 
-func parseFlags(args []string) (flags, []string) {
+func parseFlags(args []string) (flags, []string, error) {
 	f := flags{}
 	rest := []string{}
 	for i := 0; i < len(args); i++ {
@@ -78,13 +79,24 @@ func parseFlags(args []string) (flags, []string) {
 		case "--deterministic":
 			f.deterministic = true
 		case "--limit":
+			// VALIDATED, not coerced. A mistyped limit used to be dropped
+			// silently, disabling limiting altogether; a negative one sliced
+			// off the last row and zero turned a non-empty match set into
+			// `no-match`.
 			i++
+			raw := ""
 			if i < len(args) {
-				n, err := strconv.Atoi(args[i])
-				if nil == err {
-					f.limit, f.hasLimit = n, true
+				raw = args[i]
+			}
+			n, err := strconv.Atoi(raw)
+			if nil != err || n < 1 {
+				return f, rest, &LikenessError{
+					Code:   "invalid-selector",
+					Msg:    "--limit needs a whole number of at least 1, not \"" + raw + "\"",
+					Remedy: "try `--limit 20`",
 				}
 			}
+			f.limit, f.hasLimit = n, true
 		case "--sort":
 			i++
 			if i < len(args) {
@@ -104,7 +116,7 @@ func parseFlags(args []string) (flags, []string) {
 			rest = append(rest, a)
 		}
 	}
-	return f, rest
+	return f, rest, nil
 }
 
 type envelope struct {
@@ -175,7 +187,60 @@ func (e *envelope) fails(message, remedy string) *envelope {
 	return e
 }
 
-func (c Ctx) selected(f flags) []Connection {
+/*
+selected returns the connections a command runs against, after `--instance` and
+`--source`.
+
+A FILTER THAT MATCHES NOTHING IS AN ERROR, not an empty set. A mistyped
+`--instance jto` used to leave no connections at all, so `list` answered
+`no-match` and `doctor` answered `ok` with zero rows - both of which say the
+configuration is fine when the command never looked at it.
+*/
+func (c Ctx) selected(f flags) ([]Connection, error) {
+	var unknownInstance []string
+	for _, want := range f.instance {
+		found := false
+		for _, conn := range c.Connections {
+			if conn.Instance == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			unknownInstance = append(unknownInstance, "\""+want+"\"")
+		}
+	}
+	if 0 < len(unknownInstance) {
+		sort.Strings(unknownInstance)
+		return nil, &LikenessError{
+			Code:   "no-such-source",
+			Msg:    "no connection named " + strings.Join(unknownInstance, ", "),
+			Remedy: "run `likeness doctor` to see the configured connections",
+		}
+	}
+
+	var unknownSource []string
+	for _, want := range f.source {
+		found := false
+		for _, conn := range c.Connections {
+			if conn.Source == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			unknownSource = append(unknownSource, "\""+want+"\"")
+		}
+	}
+	if 0 < len(unknownSource) {
+		sort.Strings(unknownSource)
+		return nil, &LikenessError{
+			Code:   "no-such-source",
+			Msg:    "no connection uses source " + strings.Join(unknownSource, ", "),
+			Remedy: "run `likeness doctor` to see the configured connections",
+		}
+	}
+
 	out := []Connection{}
 	for _, conn := range c.Connections {
 		if 0 < len(f.instance) && !contains(f.instance, conn.Instance) {
@@ -186,8 +251,18 @@ func (c Ctx) selected(f flags) []Connection {
 		}
 		out = append(out, conn)
 	}
-	return out
+	return out, nil
 }
+
+/*
+hasAdapter reports whether a source has an adapter in this port.
+
+Dispatch is BY THE CONNECTION'S DECLARED SOURCE. The fan-out used to send every
+connection through the Joplin SDK whatever its source said, which either called
+the wrong API and reported a misleading partial failure, or projected another
+source's records as Joplin notes.
+*/
+func hasAdapter(c Connection) bool { return joplinSource == c.Source }
 
 func contains(ss []string, s string) bool {
 	for _, x := range ss {
@@ -264,25 +339,55 @@ length of the pipeline rather than dropping it. Silently dropping a source
 gives a confident, smaller, wrong answer, which is much worse than a partial
 one that says so.
 */
-func gather(c Ctx, conns []Connection, calls *Calls, withRaw bool) (notes []Note, ok []string, failed []string) {
+func gather(c Ctx, conns []Connection, calls *Calls, withRaw, strict bool) (
+	notes []Note, ok []string, failed []string, short []string, err error) {
 	for _, conn := range conns {
-		rows, err := JoplinList(c.optsFor(conn), calls, withRaw)
-		if nil != err {
-			failed = append(failed, conn.Instance)
+		if !hasAdapter(conn) {
+			// A source with no adapter is refused BEFORE the network, not sent
+			// through whichever adapter happened to be linked in.
+			return nil, nil, nil, nil, &LikenessError{
+				Code:   "unsupported-capability",
+				Msg:    "no adapter for source \"" + conn.Source + "\" (connection \"" + conn.Instance + "\")",
+				Remedy: "drop that connection, or narrow to one that is supported with --source",
+			}
+		}
+		rows, more, lerr := JoplinList(c.optsFor(conn), calls, withRaw)
+		if nil != lerr {
+			if le, isLik := lerr.(*LikenessError); isLik && "source-unavailable" == le.Code {
+				// A malformed record is the source's fault and is reported as
+				// that connection failing, not as the whole command dying.
+				failed = append(failed, conn.Instance)
+			} else {
+				failed = append(failed, conn.Instance)
+			}
+			// `--strict` HALTS. `fanout-halted` means the fan-out stopped after
+			// a member failed; continuing through every remaining connection
+			// and only then choosing that code made the name a lie and spent
+			// requests the caller had asked not to spend.
+			if strict {
+				break
+			}
 			continue
 		}
 		notes = append(notes, rows...)
 		ok = append(ok, conn.Instance)
+		if more {
+			short = append(short, conn.Instance)
+		}
 	}
 	sort.Strings(ok)
 	sort.Strings(failed)
+	sort.Strings(short)
 	return
 }
 
 // -- commands ---------------------------------------------------------------
 
 func cmdList(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
-	conns := c.selected(f)
+	conns, err := c.selected(f)
+	if nil != err {
+		return nil, err
+	}
 	clockMs, _ := parseRfc3339(c.Clock)
 
 	var filter *Node
@@ -310,7 +415,10 @@ func cmdList(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 		}
 	}
 
-	notes, okSources, failed := gather(c, conns, calls, f.raw)
+	notes, okSources, failed, short, gerr := gather(c, conns, calls, f.raw, f.strict)
+	if nil != gerr {
+		return nil, gerr
+	}
 	if nil != filter {
 		kept := notes[:0]
 		for _, n := range notes {
@@ -328,15 +436,32 @@ func cmdList(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 		truncated = true
 	}
 
+	// A source that filled its page may have more. Marked truncated and NAMED
+	// in `meta.incomplete`, because a silently short list makes every selector
+	// result computed from it wrong with nothing to say so.
+	if 0 < len(short) {
+		truncated = true
+	}
+	incomplete := append(append([]string{}, failed...), short...)
+	sort.Strings(incomplete)
+
 	// `--strict` refuses to call a partial answer a success. It still PRINTS
 	// the rows it has: `fanout-halted` is one of the two codes the registry
 	// marks as permitted to carry data, because the work was already done and
 	// paid for, and a caller branching on `ok` alone discards it correctly.
+	// NOT EVERY SOURCE FAILING IS A PARTIAL ANSWER. `partial` means some
+	// sources answered; when none did, an envelope saying `ok: true` with empty
+	// data lets a total outage or a rejected credential read as a valid empty
+	// result.
+	noneAnswered := 0 < len(failed) && 0 == len(okSources)
+
 	code := "ok"
 	switch {
 	case 0 < len(failed) && f.strict:
 		code = "fanout-halted"
-	case 0 < len(failed):
+	case noneAnswered:
+		code = "source-unavailable"
+	case 0 < len(incomplete):
 		code = "partial"
 	case 0 == len(notes):
 		// EXIT 1 IS NOT AN ERROR - it is the answer "none", and it has its own
@@ -352,13 +477,23 @@ func cmdList(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 
 	env := newEnvelope([]string{"list"}, code, rows, meta{
 		count: len(notes), truncated: truncated,
-		sources: okSources, incomplete: failed, calls: calls.Count(),
+		sources: okSources, incomplete: incomplete, calls: calls.Count(),
 	}, nil)
 
 	if "fanout-halted" == code {
 		return env.fails(
 			strings.Join(failed, ", ")+" did not answer and --strict was given",
 			"drop --strict to accept a partial answer, or fix the named connection"), nil
+	}
+	if "source-unavailable" == code {
+		// `data` IS NULL, not `[]`. The registry does not mark this code as one
+		// permitted to carry results, and the distinction is the honest one:
+		// `[]` means the sources were asked and held nothing, null means they
+		// could not be asked at all.
+		env.m["data"] = nil
+		return env.fails(
+			"no source answered: "+strings.Join(failed, ", "),
+			"run `likeness doctor` to see which connection is failing and why"), nil
 	}
 	return env, nil
 }
@@ -375,6 +510,14 @@ func cmdGet(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 				"a ref is <instance>:<id>, a lid, #n or @alias", nil}
 		}
 		instance, id := ref[:idx], ref[idx+1:]
+		// An empty source-native id is malformed under the declared SourceId
+		// contract, and knowing that costs no request. It used to be sent,
+		// fetched and reported as `not-found`, which blamed the source for a
+		// typo.
+		if "" == id {
+			return nil, &LikenessError{"invalid-ref", "not a ref: " + ref + " (no id after the colon)",
+				"a ref is <instance>:<id>, a lid, #n or @alias", nil}
+		}
 		var conn *Connection
 		for i := range c.Connections {
 			if c.Connections[i].Instance == instance {
@@ -384,7 +527,12 @@ func cmdGet(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 		}
 		if nil == conn {
 			return nil, &LikenessError{"no-such-source", "no connection named \"" + instance + "\"",
-				"run `likeness sources list` to see the configured connections", nil}
+				"run `likeness doctor` to see the configured connections", nil}
+		}
+		if !hasAdapter(*conn) {
+			return nil, &LikenessError{"unsupported-capability",
+				"no adapter for source \"" + conn.Source + "\" (connection \"" + conn.Instance + "\")",
+				"this source arrives in a later stage", nil}
 		}
 		note, err := JoplinLoad(c.optsFor(*conn), calls, id, f.raw)
 		if nil != err {
@@ -413,12 +561,26 @@ func cmdGet(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 	}, nil), nil
 }
 
-func cmdDoctor(c Ctx, f flags, calls *Calls) *envelope {
-	conns := c.selected(f)
+func cmdDoctor(c Ctx, f flags, calls *Calls) (*envelope, error) {
+	conns, err := c.selected(f)
+	if nil != err {
+		return nil, err
+	}
 	rows := []any{}
 	failures := []string{}
 	instances := []string{}
 	for _, conn := range conns {
+		if !hasAdapter(conn) {
+			// `doctor` REPORTS rather than refuses: naming the unsupported
+			// source is exactly the diagnosis the command exists to give.
+			rows = append(rows, map[string]any{
+				"instance": conn.Instance, "source": conn.Source, "check": "FAIL",
+				"detail": "no adapter for this source yet", "code": "unsupported-capability",
+			})
+			failures = append(failures, "unsupported-capability")
+			instances = append(instances, conn.Instance)
+			continue
+		}
 		ok, code, detail := JoplinCheck(c.optsFor(conn), calls)
 		row := map[string]any{
 			"instance": conn.Instance, "source": conn.Source, "detail": detail,
@@ -467,9 +629,9 @@ func cmdDoctor(c Ctx, f flags, calls *Calls) *envelope {
 			word = " connection needs"
 		}
 		return env.fails(strconv.Itoa(n)+word+" attention",
-			"start the application, or check the connection with `likeness sources test`")
+			"start the application, check the token, and re-run `likeness doctor`"), nil
 	}
-	return env
+	return env, nil
 }
 
 func cmdVersion() *envelope {
@@ -479,15 +641,43 @@ func cmdVersion() *envelope {
 
 func cmdWhich(c Ctx) *envelope {
 	// Injected rather than probed: `which` is a corpus entry like everything
-	// else, and a command that read the real PATH could not be one.
+	// else, and a command that read the real PATH could not be one. The argv
+	// shell does the probing; see main_entry.go. An absent list means the
+	// caller supplied none, which is the empty answer, NOT a placeholder row
+	// claiming to be the only installation.
 	rows := []any{}
-	if 0 == len(c.Path) {
-		rows = append(rows, map[string]any{"path": "(this port)", "port": Port, "version": Version})
-	}
 	for _, p := range c.Path {
 		rows = append(rows, p)
 	}
-	return newEnvelope([]string{"which"}, "ok", rows, meta{count: len(rows)}, nil)
+	code := "ok"
+	if 0 == len(rows) {
+		code = "no-match"
+	}
+	return newEnvelope([]string{"which"}, code, rows, meta{count: len(rows)}, nil)
+}
+
+/*
+cmdHelp exists because two error remedies named it.
+
+An error that sends the reader to an option the program does not parse is worse
+than one with no remedy: `--help` was dispatched as an unknown command and
+answered with another error recommending the same unusable option.
+*/
+func cmdHelp() *envelope {
+	commands := []any{
+		map[string]any{"command": "list", "takes": "[selector]", "does": "list notes across the configured sources"},
+		map[string]any{"command": "get", "takes": "<ref>...", "does": "fetch one note by <instance>:<id>"},
+		map[string]any{"command": "doctor", "takes": "", "does": "check every configured connection"},
+		map[string]any{"command": "version", "takes": "", "does": "this port and its version"},
+		map[string]any{"command": "which", "takes": "", "does": "every likeness on PATH"},
+		map[string]any{"command": "help", "takes": "", "does": "this"},
+	}
+	for _, name := range StubNames() {
+		commands = append(commands, map[string]any{
+			"command": name, "takes": "", "does": stubs[name] + " (not implemented yet)",
+		})
+	}
+	return newEnvelope([]string{"help"}, "ok", commands, meta{count: len(commands)}, nil)
 }
 
 // stubs exist and say they do not work yet, so that neither this nor packaging
@@ -516,16 +706,40 @@ func StubNames() []string {
 // Run executes one whole command and returns everything it produced.
 func Run(c Ctx) Result {
 	calls := &Calls{}
+	started := time.Now()
 	name := ""
 	var args []string
 	if 0 < len(c.Argv) {
 		name, args = c.Argv[0], c.Argv[1:]
 	}
-	f, rest := parseFlags(args)
+	f, rest, ferr := parseFlags(args)
 
-	env, err := dispatch(c, f, rest, calls, name)
-	if nil != err {
-		env = errEnvelope(name, err, calls)
+	var env *envelope
+	if nil != ferr {
+		// A bad flag is reported through the envelope too. `f` carries whatever
+		// was parsed before the failure, which is enough to know whether the
+		// caller asked for JSON.
+		f.json = contains(args, "--json")
+		f.deterministic = contains(args, "--deterministic")
+		env = errEnvelope(name, ferr, calls)
+	} else {
+		var err error
+		env, err = dispatch(c, f, rest, calls, name)
+		if nil != err {
+			env = errEnvelope(name, err, calls)
+		}
+	}
+
+	// Measured here, once, around the whole command. Zeroed under
+	// --deterministic so the declared exception cannot defeat the byte diff. A
+	// field that always reported zero was worse than no field, because it
+	// looked like an answer.
+	if mt, ok := env.m["meta"].(map[string]any); ok {
+		if f.deterministic {
+			mt["elapsed_ms"] = 0
+		} else {
+			mt["elapsed_ms"] = int(time.Since(started).Milliseconds())
+		}
 	}
 
 	stdout, serr := render(env, f)
@@ -545,13 +759,15 @@ func dispatch(c Ctx, f flags, rest []string, calls *Calls, name string) (*envelo
 	switch {
 	case "" == name:
 		return nil, &LikenessError{"invalid-selector", "no command given",
-			"try `likeness list` or `likeness --help`", nil}
+			"try `likeness list`, or `likeness help` for the command list", nil}
+	case "--help" == name || "-h" == name || "help" == name:
+		return cmdHelp(), nil
 	case "list" == name:
 		return cmdList(c, f, rest, calls)
 	case "get" == name:
 		return cmdGet(c, f, rest, calls)
 	case "doctor" == name:
-		return cmdDoctor(c, f, calls), nil
+		return cmdDoctor(c, f, calls)
 	case "version" == name:
 		return cmdVersion(), nil
 	case "which" == name:
@@ -560,10 +776,10 @@ func dispatch(c Ctx, f flags, rest []string, calls *Calls, name string) (*envelo
 	if what, ok := stubs[name]; ok {
 		return nil, &LikenessError{"unsupported-capability",
 			"`" + name + "` is not implemented yet - " + what,
-			"it arrives in a later stage; `likeness list`, `get`, `doctor`, `version` and `which` work now", nil}
+			"it arrives in a later stage; run `likeness help` for what works now", nil}
 	}
 	return nil, &LikenessError{"invalid-selector", "no such command: " + name,
-		"run `likeness --help` for the command list", nil}
+		"run `likeness help` for the command list", nil}
 }
 
 func errEnvelope(name string, err error, calls *Calls) *envelope {
@@ -584,11 +800,19 @@ func errEnvelope(name string, err error, calls *Calls) *envelope {
 	}
 	// An error no layer claimed is still the user's problem to see, and it is
 	// reported under a code the registry knows rather than a new one invented
-	// at the point of failure.
-	return newEnvelope([]string{name}, "source-unavailable", nil, meta{calls: calls.Count()},
+	// at the point of failure. The source's own words are NOT repeated: they
+	// differ per port and embed the URL that was tried.
+	code := "source-unavailable"
+	switch statusOf(err) {
+	case 401, 403:
+		code = "auth-failed"
+	case 429:
+		code = "rate-limited"
+	}
+	return newEnvelope([]string{name}, code, nil, meta{calls: calls.Count()},
 		map[string]any{
-			"message": err.Error(),
-			"remedy":  "run `likeness doctor` to see which connection is failing",
+			"message": "the source did not complete the request",
+			"remedy":  "run `likeness doctor` to see which connection is failing and why",
 		})
 }
 

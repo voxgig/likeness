@@ -14,6 +14,8 @@
 import { lid, rfc3339 } from '../identity.js'
 import type { Note } from '../note.js'
 import type { Calls } from '../calls.js'
+import { LikenessError } from '../errors.js'
+import { pageMax } from '../caps.js'
 
 // The generated SDK. `.test(seed)` swaps its transport for an in-memory mock,
 // which is how every test in this port runs offline.
@@ -74,6 +76,15 @@ function sdkFor (opts: JoplinOpts): any {
  */
 export function project (raw: JoplinNote, instance: string, account: string, withRaw: boolean): Note {
   const id = String(raw.id ?? '')
+  // REFUSED, not fabricated. An empty id derives a valid-LOOKING lid from the
+  // empty string, so every such row shares one identity and the note violates
+  // the schema's non-empty SourceId invariant. A source that returned a record
+  // with no id has returned nothing usable, and the adapter says so.
+  if ('' === id) {
+    throw new LikenessError('source-unavailable',
+      'the source returned a ' + SOURCE + ' record with no id',
+      'this is a bug in the source or its SDK; run with --raw to capture the payload')
+  }
   const note: Note = {
     lid: lid(SOURCE, account, 'note', id),
     source: SOURCE,
@@ -104,12 +115,33 @@ function data (ent: any): JoplinNote {
   return 'function' === typeof ent?.data ? ent.data() : ent
 }
 
-export async function listNotes (opts: JoplinOpts, calls: Calls, withRaw: boolean): Promise<Note[]> {
+/* One page of notes, and whether there may be another.
+ *
+ * THE SECOND HALF IS THE POINT. The generated paging feature computes a
+ * `hasMore` signal but exposes it nowhere a caller can reach: `ctrl` comes
+ * back untouched and the returned entities carry no result context, so an
+ * adapter cannot follow pages or even ask whether there are any. Reported
+ * upstream; see upstream/issue/11.
+ *
+ * Until it can, a full page is treated as possibly-short: the caller marks the
+ * answer truncated and names the instance in `meta.incomplete`. A silently
+ * short list is the one outcome that must not happen, because every selector
+ * result computed from it is then wrong and nothing says so.
+ *
+ * `pageMax` is read from the capability matrix, not written here - the number
+ * is a property of the source and belongs in declared data.
+ */
+export async function listNotes (opts: JoplinOpts, calls: Calls, withRaw: boolean):
+Promise<{ notes: Note[], more: boolean }> {
   const client = sdkFor(opts)
   calls.record(opts.instance, 'GET', '/notes')
   const found = await client.Note().list({})
   const rows: JoplinNote[] = (found ?? []).map(data)
-  return rows.map(r => project(r, opts.instance, opts.account, withRaw))
+  const limit = pageMax(SOURCE)
+  return {
+    notes: rows.map(r => project(r, opts.instance, opts.account, withRaw)),
+    more: 0 < limit && rows.length >= limit,
+  }
 }
 
 export async function loadNote (opts: JoplinOpts, calls: Calls, id: string, withRaw: boolean): Promise<Note | null> {
@@ -143,6 +175,13 @@ export async function check (opts: JoplinOpts, calls: Calls): Promise<{ ok: bool
   catch (err: any) {
     if (401 === err?.status || 403 === err?.status) {
       return { ok: false, code: 'auth-failed', detail: 'the token was rejected' }
+    }
+    // 429 is a DIFFERENT condition with a different remedy, and the registry
+    // has a code for it that is marked retryable. Folding it into
+    // "the application did not answer" tells someone whose requests are being
+    // throttled to go and start a program that is already running.
+    if (429 === err?.status) {
+      return { ok: false, code: 'rate-limited', detail: 'the source is rate limiting this client' }
     }
     // A FIXED SENTENCE, never the underlying message. Each port's generated SDK
     // words its transport failures differently and embeds the URL it tried, so

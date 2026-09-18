@@ -201,6 +201,17 @@ function isNotKeyword (t: Tok | undefined): boolean {
 // -- value classification ---------------------------------------------------
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+export function isLeap (y: number): boolean {
+  return (0 === y % 4 && 0 !== y % 100) || 0 === y % 400
+}
+
+export function daysIn (y: number, m: number): number {
+  if (2 === m) return isLeap(y) ? 29 : 28
+  return MONTH_DAYS[m - 1]
+}
 const DUR_RE = /^(\d+)(mo|d|w|y)$/
 
 /* A QUOTED value is always a word and is never reinterpreted. That is the
@@ -213,7 +224,13 @@ export function classify (tok: Tok): Value {
   if (t === 'today' || t === 'yesterday') return { k: 'date', v: t }
   if (DATE_RE.test(t)) {
     const [y, m, d] = t.split('-').map(Number)
-    if (m < 1 || m > 12 || d < 1 || d > 31) {
+    // THE ACTUAL CALENDAR, not `d <= 31`. `2026-02-31` passed the loose check
+    // and was then normalised by the host's date parser into a day in March,
+    // so the selector silently compared against a date the user never wrote.
+    // Leap years are computed rather than approximated, because 2100 is not
+    // one and a port that used `y % 4` would disagree with this one in 74
+    // years and with nothing in between to catch it.
+    if (m < 1 || 12 < m || d < 1 || daysIn(y, m) < d) {
       throw new SelectorError('date is out of range', tok.offset, t)
     }
     return { k: 'date', v: t }

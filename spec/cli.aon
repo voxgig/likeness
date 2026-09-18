@@ -203,6 +203,123 @@ primary: cli: {
     }
 
     {
+      id: "list/unknown-instance-filter"
+      # A FILTER THAT MATCHES NOTHING IS AN ERROR, not an empty set. A mistyped
+      # `--instance` used to leave no connections at all, so `list` answered
+      # `no-match` - which says the query was fine and there is nothing there,
+      # when in fact the command never looked at anything. `calls: []`, because
+      # the names are checked against configuration, not against the network.
+      args: ["list" "--instance" "jto" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/list/unknown-instance-filter.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "list/unknown-source-filter"
+      args: ["list" "--source" "notion" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/list/unknown-source-filter.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "list/invalid-limit"
+      # `--limit nope` used to become NaN, and every comparison against NaN is
+      # false, so the limit silently did nothing at all.
+      args: ["list" "--limit" "nope" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/list/invalid-limit.json" calls: [] }
+    }
+
+    {
+      id: "list/no-adapter-refused-before-the-network"
+      # A source with no adapter in this stage. The fan-out used to send EVERY
+      # connection through the Joplin SDK whatever its source said, which either
+      # called the wrong API and reported a misleading partial failure, or
+      # projected another source's records as Joplin notes. `calls: []`.
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"pages" source:"notion" account:"acme" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:4 stdout:"spec/expect/list/no-adapter.json" calls: [] }
+    }
+
+    {
+      id: "list/all-sources-down"
+      # NOT EVERY SOURCE FAILING IS A PARTIAL ANSWER. `partial` means some
+      # sources answered; when none did, an envelope saying `ok: true` with
+      # empty data lets a total outage read as a valid empty result. Both
+      # connections are still called - the failure is discovered, not predicted.
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"jot" source:"joplin" account:"local" net:offline:true }
+          { instance:"spare" source:"joplin" account:"spare" net:offline:true }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/list/all-sources-down.json"
+        calls: [
+          { instance:"jot" method:"GET" path:"/notes" }
+          { instance:"spare" method:"GET" path:"/notes" }
+        ]
+      }
+    }
+
+    {
+      id: "list/strict-halts-on-the-first-failure"
+      # THE ENTRY THAT MAKES `fanout-halted` MEAN WHAT IT SAYS. The failing
+      # connection is FIRST, so a port that halted would call once and a port
+      # that merely relabelled the result at the end would call twice. Only the
+      # call list can tell those apart, which is the whole argument for
+      # asserting it.
+      args: ["list" "--strict" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"down" source:"joplin" account:"down" net:offline:true }
+          { instance:"jot" source:"joplin" account:"local" }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/list/strict-halts-first.json"
+        calls: [{ instance:"down" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
       id: "list/partial"
       # Two connections, one of them offline. The rows that exist are printed,
       # `meta.incomplete` names the omission, and the exit status is 2 rather
@@ -373,6 +490,22 @@ primary: cli: {
     }
 
     {
+      id: "get/empty-id"
+      # `jot:` passes the colon check and used to be SENT, fetched and reported
+      # as not-found, which blamed the source for a typo. An empty
+      # source-native id is malformed under the declared SourceId contract, and
+      # knowing that costs no request.
+      args: ["get" "jot:" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/get/empty-id.json" calls: [] }
+    }
+
+    {
       id: "get/unknown-instance"
       # THE SECOND REFUSAL-BEFORE-THE-NETWORK ENTRY. No connection is named
       # `absent`, which is knowable without asking anyone, so no call is made.
@@ -454,6 +587,27 @@ primary: cli: {
     }
 
     {
+      id: "doctor/no-adapter-is-reported"
+      # `doctor` REPORTS rather than refuses: naming the unsupported source is
+      # exactly the diagnosis the command exists to give, and it costs no call.
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"jot" source:"joplin" account:"local" }
+          { instance:"pages" source:"notion" account:"acme" }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/doctor/no-adapter.json"
+        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
       id: "doctor/mixed-failures"
       # Two connections failing for two different reasons. The envelope's code
       # is the WORST ROW - highest exit status, then code name ascending to
@@ -507,6 +661,29 @@ primary: cli: {
 
     {
       id: "meta/which"
+      # An INJECTED PATH. `which` used to answer with a placeholder row saying
+      # "(this port)" whatever was installed, which meant it could never answer
+      # the question it exists to answer. The argv shell probes PATH and hands
+      # the rows over; this is that shape.
+      args: ["which" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+        path: [
+          { path:"/usr/local/bin/likeness" port:"" version:"" }
+          { path:"/usr/local/bin/likeness-go" port:"go" version:"" }
+          { path:"/usr/local/bin/likeness-ts" port:"ts" version:"" }
+        ]
+      }
+      out: { exit:0 stdout:"spec/expect/meta/which.json" calls: [] }
+    }
+
+    {
+      id: "meta/which-none"
+      # Nothing installed under a matching name is the answer "none", exit 1 -
+      # not a row claiming this port is the only installation.
       args: ["which" "--json"]
       ctx: {
         fixture: "joplin"
@@ -514,7 +691,36 @@ primary: cli: {
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
-      out: { exit:0 stdout:"spec/expect/meta/which.json" calls: [] }
+      out: { exit:1 stdout:"spec/expect/meta/which-none.json" calls: [] }
+    }
+
+    {
+      id: "meta/help"
+      # `help` EXISTS, because two error remedies name it. An error that sends
+      # the reader to an option the program does not parse is worse than one
+      # with no remedy at all: `--help` used to be dispatched as an unknown
+      # command and answered with another error recommending the same unusable
+      # option.
+      args: ["help" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/meta/help.json" calls: [] }
+    }
+
+    {
+      id: "meta/help-flag"
+      args: ["--help" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/meta/help.json" calls: [] }
     }
 
     {
@@ -559,7 +765,7 @@ primary: cli: {
       out: {
         exit: 3
         stdout: "spec/expect/meta/no-command.txt"
-        stderr: "error: invalid-selector\n  no command given\n  remedy  try `likeness list` or `likeness --help`\n"
+        stderr: "error: invalid-selector\n  no command given\n  remedy  try `likeness list`, or `likeness help` for the command list\n"
         calls: []
       }
     }
