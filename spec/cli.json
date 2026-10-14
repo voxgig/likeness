@@ -687,6 +687,54 @@
           {
             "args": [
               "get",
+              "joplin:..",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "get/dot-dot-id",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/get/dot-dot-id.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "joplin:.",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "get/dot-id",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/get/dot-id.json"
+            }
+          },
+          {
+            "args": [
+              "get",
               "absent:x",
               "--json"
             ],

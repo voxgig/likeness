@@ -873,6 +873,31 @@ primary: cli: {
     }
 
     {
+      id: "get/dot-dot-id"
+      # Substituted into /notes/{id}, `..` would ask the API root instead.
+      args: ["get" "joplin:.." "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/get/dot-dot-id.json" calls: [] }
+    }
+
+    {
+      id: "get/dot-id"
+      args: ["get" "joplin:." "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/get/dot-id.json" calls: [] }
+    }
+
+    {
       id: "get/unknown-instance"
       # THE SECOND REFUSAL-BEFORE-THE-NETWORK ENTRY. No connection is named
       # `absent`, which is knowable without asking anyone, so no call is made.

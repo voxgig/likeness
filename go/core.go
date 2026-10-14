@@ -563,6 +563,11 @@ func cmdGet(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 			return nil, &LikenessError{"invalid-ref", "not a ref: " + ref + " (no id after the colon)",
 				"a ref is <instance>:<id>, a lid, #n or @alias", nil}
 		}
+		// A dot segment substituted into a route would name another resource.
+		if "." == id || ".." == id {
+			return nil, &LikenessError{"invalid-ref", "not a ref: " + ref + " (an id is never . or ..)",
+				"a ref is <instance>:<id>, a lid, #n or @alias", nil}
+		}
 		var conn *Connection
 		for i := range c.conns {
 			if c.conns[i].Instance == instance {
