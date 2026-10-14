@@ -312,6 +312,11 @@ async function cmdGet (flags: Flags, rest: string[], session: Session): Promise<
       throw new LikenessError('invalid-ref', 'not a ref: ' + ref + ' (no id after the colon)',
         'a ref is <instance>:<id>, a lid, #n or @alias')
     }
+    // A dot segment substituted into a route would name another resource.
+    if ('.' === id || '..' === id) {
+      throw new LikenessError('invalid-ref', 'not a ref: ' + ref + ' (an id is never . or ..)',
+        'a ref is <instance>:<id>, a lid, #n or @alias')
+    }
     const c = session.conns.find(x => x.instance === instance)
     if (undefined === c) {
       throw new LikenessError('no-such-source', 'no connection named "' + instance + '"',
