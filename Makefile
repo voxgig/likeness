@@ -131,18 +131,21 @@ test-py: sdk-check mock-deps py-deps
 # difference and requiring it to be reported: a comparison nobody has seen go
 # red might be comparing nothing at all.
 PARITY_DIR := build/parity
+PARITY_PORTS := go,py,ts
 
 .PHONY: parity
-parity: sdk-check mock-deps ts-deps
+parity: sdk-check mock-deps ts-deps py-deps
 	@rm -rf $(PARITY_DIR) && mkdir -p $(PARITY_DIR)
 	@cd typescript && npm run build >/dev/null && \
 	  LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" npm test >/dev/null
 	@# -count=1 defeats the test cache. Without it Go reports a cached PASS and
-	@# writes no files, and the comparison then finds one port and says so -
-	@# which is at least loud, but only because the comparison checks for it.
+	@# writes no files, and the comparison then reports every Go answer missing -
+	@# which is at least loud, but only because --ports names Go.
 	@cd go && LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" go test -count=1 -run TestEmitParity ./... >/dev/null
-	@node tools/parity.mjs $(PARITY_DIR)
-	@node tools/parity.mjs $(PARITY_DIR) --selftest 2>/dev/null
+	@cd python && out=$$(LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" \
+	  .venv/bin/python -m unittest tests.test_parity 2>&1) || { echo "$$out"; exit 1; }
+	@node tools/parity.mjs $(PARITY_DIR) --ports $(PARITY_PORTS)
+	@node tools/parity.mjs $(PARITY_DIR) --ports $(PARITY_PORTS) --selftest 2>/dev/null
 
 
 # NOT A TEST, and never run to make one pass. It rewrites the contract to agree
