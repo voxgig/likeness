@@ -13,7 +13,9 @@ const Port = "go"
 
 const Version = "0.1.0"
 
-var ParityExceptions = []string{"port", "elapsed_ms"}
+// The declared non-parity fields, as PATHS: StripParityExceptions removes
+// exactly these and nothing deeper.
+var ParityExceptions = []string{"port", "meta.elapsed_ms", "data.port"}
 
 type SerialiseError struct {
 	Msg  string
@@ -198,33 +200,36 @@ func Serialise(v any) (string, error) {
 	return s + "\n", nil
 }
 
-// StripParityExceptions removes the declared exceptions wherever they appear.
-// Used by the corpus runner; exported so the runner and any parity tooling
-// cannot drift apart.
+// StripParityExceptions removes the declared exceptions BY PATH, never by
+// name: the envelope's own `port`, `meta.elapsed_ms`, and the `port` that
+// `version` repeats inside an object-valued `data`. A `port` inside a `which`
+// row is compared like any other value. Used by the corpus runner; exported so
+// the runner and any parity tooling cannot drift apart.
 func StripParityExceptions(v any) any {
-	switch t := v.(type) {
-	case []any:
-		out := make([]any, len(t))
-		for i, e := range t {
-			out[i] = StripParityExceptions(e)
+	m, ok := v.(map[string]any)
+	if !ok {
+		return v
+	}
+	out := map[string]any{}
+	for k, e := range m {
+		if "port" == k {
+			continue
 		}
-		return out
-	case map[string]any:
-		out := map[string]any{}
-		for k, e := range t {
-			skip := false
-			for _, x := range ParityExceptions {
-				if k == x {
-					skip = true
-					break
+		if inner, ok := e.(map[string]any); ok && ("meta" == k || "data" == k) {
+			drop := "port"
+			if "meta" == k {
+				drop = "elapsed_ms"
+			}
+			kept := map[string]any{}
+			for ik, ie := range inner {
+				if drop != ik {
+					kept[ik] = ie
 				}
 			}
-			if skip {
-				continue
-			}
-			out[k] = StripParityExceptions(e)
+			out[k] = kept
+			continue
 		}
-		return out
+		out[k] = e
 	}
-	return v
+	return out
 }

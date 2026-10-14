@@ -4,7 +4,9 @@ import assert from 'node:assert'
 import { readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { check, entries, ROOT, type CliEntry } from './harness.js'
+import { check, entries, buildCtx, stdoutFailures, ROOT, type CliEntry } from './harness.js'
+import { run } from '../src/core.js'
+import { serialise } from '../src/envelope.js'
 
 const all = entries<CliEntry>('cli')
 
@@ -91,4 +93,43 @@ test('meta: every failure is reported, not just the first', async () => {
   e.out.stderr = 'no\n'
   const f = await check(e)
   assert.equal(f.length, 3, 'expected three failures, got ' + JSON.stringify(f))
+})
+
+/* The bytes are the contract. These feed the stdout check output no port
+ * produced: the right values in the wrong form. Before this check existed,
+ * both harnesses parsed stdout and re-rendered it, so every one of these
+ * passed.
+ */
+test('meta: the right values indented is reported', async () => {
+  const e = entry('list/all')
+  const r = await run(buildCtx(e))
+  const indented = JSON.stringify(JSON.parse(r.stdout), null, 2) + '\n'
+  const f = stdoutFailures(e, indented)
+  assert.ok(f.some(x => x.startsWith('stdout is not in canonical form')), 'not reported: ' + JSON.stringify(f))
+})
+
+test('meta: the right values with a CRLF ending is reported', async () => {
+  const e = entry('list/all')
+  const r = await run(buildCtx(e))
+  const f = stdoutFailures(e, r.stdout.replace(/\n$/, '\r\n'))
+  assert.ok(f.some(x => x.startsWith('stdout is not in canonical form')), 'not reported: ' + JSON.stringify(f))
+})
+
+test('meta: a wrong port inside a which row is reported', async () => {
+  const e = entry('meta/which')
+  const r = await run(buildCtx(e))
+  const parsed = JSON.parse(r.stdout)
+  assert.ok(Array.isArray(parsed.data) && 0 < parsed.data.length, 'which produced no rows')
+  parsed.data[0].port = 'WRONG'
+  const f = stdoutFailures(e, serialise(parsed))
+  assert.ok(f.some(x => x.startsWith('stdout differs')), 'not reported: ' + JSON.stringify(f))
+})
+
+test('meta: version reporting another port in its data is reported', async () => {
+  const e = entry('meta/version')
+  const r = await run(buildCtx(e))
+  const parsed = JSON.parse(r.stdout)
+  parsed.data.port = 'WRONG'
+  const f = stdoutFailures(e, serialise(parsed))
+  assert.ok(f.some(x => x.startsWith('data.port is')), 'not reported: ' + JSON.stringify(f))
 })

@@ -127,20 +127,24 @@ export type Envelope = {
   version: string
 }
 
-export const PARITY_EXCEPTIONS = ['port', 'elapsed_ms']
+export const PARITY_EXCEPTIONS = ['port', 'meta.elapsed_ms', 'data.port']
 
-/* Remove the declared exceptions, wherever they appear. Used by the corpus
- * runner and by `make parity`; exported so that the two cannot drift.
- */
+// By PATH, never by name: stripping every key called `port` hid what `which`
+// reported. Shared by the corpus runner and `make parity` so they cannot drift.
 export function stripParityExceptions (v: unknown): unknown {
-  if (Array.isArray(v)) return v.map(stripParityExceptions)
-  if (isPlainObject(v)) {
-    const out: Record<string, unknown> = {}
-    for (const k of Object.keys(v)) {
-      if (PARITY_EXCEPTIONS.includes(k)) continue
-      out[k] = stripParityExceptions(v[k])
+  if (!isPlainObject(v)) return v
+  const out: Record<string, unknown> = {}
+  for (const k of Object.keys(v)) {
+    const e = v[k]
+    if ('port' === k) continue
+    if (('meta' === k || 'data' === k) && isPlainObject(e)) {
+      const drop = 'meta' === k ? 'elapsed_ms' : 'port'
+      const inner: Record<string, unknown> = {}
+      for (const ik of Object.keys(e)) if (drop !== ik) inner[ik] = e[ik]
+      out[k] = inner
+      continue
     }
-    return out
+    out[k] = e
   }
-  return v
+  return out
 }
