@@ -1,4 +1,6 @@
 
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { Station } from '@voxgig/station'
 
 import { serialise, render, type Envelope } from './envelope.js'
@@ -8,7 +10,8 @@ import { sortNotes, type Note } from './note.js'
 import { Calls, type Call } from './calls.js'
 import { exitFor, LikenessError } from './errors.js'
 import * as joplin from './adapter/joplin.js'
-import { parseArgv, commandDef, helpText, helpRows, type Parsed } from './args.js'
+import { parseArgv, commandDef, commandWords, helpText, helpRows, type Parsed } from './args.js'
+import { vaultEntry, vaultChain, secrets, type VaultEntry, type VaultFlags } from './vault.js'
 
 export const VERSION = '0.1.0'
 export const PORT = 'ts'
@@ -33,6 +36,14 @@ export type Ctx = {
    * test and absent in production. */
   fixture?: Record<string, unknown>
   path?: { path: string, port: string, version: string }[]
+  /* A path under home is shown from `~`; a relative vault path is read from
+   * dir, where station.json is. */
+  home?: string
+  dir?: string
+  stdin?: () => Promise<string>
+  /* Stdin is a terminal, so what the environment lacks may be asked for. */
+  tty?: boolean
+  prompt?: (label: string) => Promise<string | undefined>
 }
 
 type Session = {
@@ -72,7 +83,7 @@ export type Result = {
   calls: Call[]
 }
 
-type Flags = {
+type Flags = VaultFlags & {
   json: boolean
   raw: boolean
   limit?: number
@@ -94,6 +105,11 @@ function flagsOf (parsed: Parsed): Flags {
     sort: f.sort as string | undefined,
     instance: (f.instance ?? []) as string[],
     source: (f.source ?? []) as string[],
+    passphraseEnv: f['passphrase-env'] as string | undefined,
+    newPassphraseEnv: f['new-passphrase-env'] as string | undefined,
+    vaultKey: f['vault-key'] as string | undefined,
+    reveal: true === f.reveal,
+    write: true === f.write,
   }
 }
 
@@ -104,7 +120,7 @@ function envelope (
   const env: Envelope = {
     ok: undefined === error,
     code,
-    cmd,
+    cmd: cmd.flatMap(c => c.split(' ')),
     data,
     meta: {
       count: meta.count ?? 0,
@@ -377,14 +393,31 @@ function cmdWhich (ctx: Ctx): Envelope {
 
 // Help text is rendered from the command table at build time; JSON gets the rows.
 function cmdHelp (args: string[]): { env: Envelope, text: string } {
-  const name = args[0] ?? ''
+  const name = args.join(' ')
   const text = helpText(name)
   if (undefined === text) {
     throw new LikenessError('invalid-argument', 'no such command: ' + name,
       'run `likeness help` for the command list')
   }
-  const rows = helpRows().filter(r => '' === name || r.command === name)
+  const rows = helpRows().filter(r =>
+    '' === name || r.command === name || r.command.startsWith(name + ' '))
   return { env: envelope(['help'], 'ok', rows, { count: rows.length }), text }
+}
+
+function entryOf (ctx: Ctx, flags: Flags): VaultEntry {
+  const home = ctx.home ?? homedir()
+  return vaultEntry(ctx.station, {
+    profile: ctx.env?.VOXGIG_STATION_PROFILE || 'default',
+    home,
+    dir: ctx.dir ?? join(home, '.config', 'likeness'),
+    key: flags.vaultKey,
+  })
+}
+
+async function cmdSecrets (ctx: Ctx, name: string, flags: Flags, args: string[]): Promise<{ env: Envelope, text: string }> {
+  const got = await secrets(name.slice('secrets '.length), args, entryOf(ctx, flags), ctx, flags)
+  const env = envelope([name], got.empty ? 'no-match' : 'ok', got.data, { count: got.count })
+  return { env, text: got.text }
 }
 
 
@@ -397,7 +430,7 @@ export async function run (ctx: Ctx): Promise<Result> {
     parsed = parseArgv(ctx.argv)
   }
   catch (err) {
-    return finish(ctx, ctx.argv[0] ?? '', err, new Calls(null), started,
+    return finish(ctx, commandWords(ctx.argv).join(' '), err, new Calls(null), started,
       { json: ctx.argv.includes('--json'), deterministic: ctx.argv.includes('--deterministic') })
   }
 
@@ -429,8 +462,12 @@ export async function run (ctx: Ctx): Promise<Result> {
     }
     if ('version' === name) return render(cmdVersion())
     if ('which' === name) return render(cmdWhich(ctx))
+    if (name.startsWith('secrets ')) {
+      const { env, text } = await cmdSecrets(ctx, name, flags, parsed.args)
+      return render(env, text)
+    }
 
-    const session = openSession(ctx)
+    const session = await openSession(ctx, flags)
     calls = session.calls
     if ('list' === name) return render(await cmdList(ctx, flags, parsed.args, session))
     if ('get' === name) return render(await cmdGet(flags, parsed.args, session))
@@ -442,11 +479,34 @@ export async function run (ctx: Ctx): Promise<Result> {
   }
 }
 
+// station.json with its secret chain replaced, in every profile, by the one
+// likeness decided on.
+export function withChain (config: unknown, chain: unknown[]): unknown {
+  if (null === config || 'object' !== typeof config) return config
+  const copy = JSON.parse(JSON.stringify(config))
+  for (const p of Object.values(copy.profiles ?? {})) {
+    if (null !== p && 'object' === typeof p) (p as Record<string, unknown>).secrets = { providers: chain }
+  }
+  return copy
+}
+
 // One station per run: every client is connected through it lazily, and the
-// calls a command made are the requests it observed.
-function openSession (ctx: Ctx): Session {
-  const station = openStation(ctx.station, ctx.env)
+// calls a command made are the requests it observed. A live run with a
+// connection to make opens it on the vault.
+async function openSession (ctx: Ctx, flags: Flags): Promise<Session> {
+  const entry = entryOf(ctx, flags)
+  let station = openStation(withChain(ctx.station, []), ctx.env)
   const conns = connectionsOf(station, ctx.accounts ?? {})
+  if (undefined === ctx.fixture && 0 < conns.length) {
+    const chain = await vaultChain(ctx, entry, flags)
+    try {
+      station = openStation(withChain(ctx.station, chain), ctx.env)
+    }
+    catch {
+      throw new LikenessError('secret-backend-unavailable', 'station could not open the vault as its secret store',
+        'this port\'s station must read minivault stores; see "Secrets" in the README')
+    }
+  }
   const clients = new Map<string, any>()
   return {
     conns,

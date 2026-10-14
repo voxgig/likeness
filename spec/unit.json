@@ -411,14 +411,21 @@
             ]
           },
           {
-            "err": "`help` does not take the argument \"get\"",
             "fn": "parseArgv",
-            "id": "args/help-takes-one-command",
+            "id": "args/help-takes-the-words-of-a-command",
             "in": [
               "help",
-              "list",
-              "get"
-            ]
+              "secrets",
+              "set"
+            ],
+            "out": {
+              "args": [
+                "secrets",
+                "set"
+              ],
+              "command": "help",
+              "flags": {}
+            }
           },
           {
             "err": "<command> takes a name ([a-z][a-z0-9-]*), not \"LIST\"",
@@ -1537,6 +1544,351 @@
             "id": "text/case-folding-is-ascii-only",
             "in": "İSTANBUL Straße ΟΔΟΣ ÀÉ ABC xyz",
             "out": "İstanbul straße ΟΔΟΣ ÀÉ abc xyz"
+          }
+        ]
+      },
+      "vault": {
+        "set": [
+          {
+            "fn": "vaultEntry",
+            "id": "vault/default",
+            "in": {
+              "station": null
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/likeness.skmv",
+              "key": "master",
+              "shown": "~/.config/likeness/likeness.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/relative-to-the-configuration",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "../team/v.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/team/v.skmv",
+              "key": "master",
+              "shown": "~/.config/team/v.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/from-home",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "~/v.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/v.skmv",
+              "key": "master",
+              "shown": "~/v.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/outside-home-is-shown-whole",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "/srv/v.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/srv/v.skmv",
+              "key": "master",
+              "shown": "/srv/v.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/vaultkey",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "kind": "minivault",
+                          "vaultkey": "ci"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/likeness.skmv",
+              "key": "ci",
+              "shown": "~/.config/likeness/likeness.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/flag-over-vaultkey",
+            "in": {
+              "key": "master",
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "kind": "minivault",
+                          "vaultkey": "ci"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/likeness.skmv",
+              "key": "master",
+              "shown": "~/.config/likeness/likeness.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/profile-chain-wins",
+            "in": {
+              "profile": "work",
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "a.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  },
+                  "work": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "b.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/b.skmv",
+              "key": "master",
+              "shown": "~/.config/likeness/b.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/profile-without-a-chain",
+            "in": {
+              "profile": "work",
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "a.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  },
+                  "work": {
+                    "sdk": {}
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/a.skmv",
+              "key": "master",
+              "shown": "~/.config/likeness/a.skmv"
+            }
+          },
+          {
+            "err": "likeness reads secrets from its vault alone, and station.json names the store \"env\"",
+            "fn": "vaultEntry",
+            "id": "vault/env-store-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "kind": "env"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "names the store \"minivault\"",
+            "fn": "vaultEntry",
+            "id": "vault/bare-kind-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        "minivault"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "secrets.providers must name one store, the vault",
+            "fn": "vaultEntry",
+            "id": "vault/empty-chain-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "a passphrase is never written to a file",
+            "fn": "vaultEntry",
+            "id": "vault/passphrase-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "kind": "minivault",
+                          "passphrase": "p"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "the vault entry in station.json has no key \"iterations\"",
+            "fn": "vaultEntry",
+            "id": "vault/unknown-key-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "iterations": 1,
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "the vault entry's file is not a path",
+            "fn": "vaultEntry",
+            "id": "vault/file-must-be-a-path",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "the vault entry's vaultkey is not a key name",
+            "fn": "vaultEntry",
+            "id": "vault/vaultkey-must-be-a-name",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "kind": "minivault",
+                          "vaultkey": "Admin"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
           }
         ]
       }

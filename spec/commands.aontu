@@ -2,28 +2,29 @@
 # Every port's argv shell is one table-driven parser over the compiled form,
 # and `help` prints text rendered from it at build time.
 
-global: json: { type:"boolean" short:"print the envelope as one line of JSON" }
-global: source: {
-  type: "name"
-  value: "API"
-  repeat: true
-  short: "only the connections to this API"
+global: {
+  json: { type:"boolean" short:"print the envelope as one line of JSON" }
+  source: type: "name"
+  source: value: "API"
+  source: repeat: true
+  source: short: "only the connections to this API"
+  instance: type: "instance"
+  instance: value: "REF"
+  instance: repeat: true
+  instance: short: "only this connection"
+  strict: { type:"boolean" short:"stop at the first connection that fails" }
+  deterministic: type: "boolean"
+  deterministic: short: "zero the fields that vary from run to run"
+  config: { type:"path" value:"PATH" short:"read station.json from PATH" }
+  passphrase-env: {
+    type: "envvar"
+    value: "VAR"
+    short: "read the vault passphrase from VAR, not LIKENESS_PASSPHRASE"
+  }
+  vault-key: type: "name"
+  vault-key: value: "NAME"
+  vault-key: short: "open the vault as the key NAME, not master"
 }
-global: instance: {
-  type: "instance"
-  value: "REF"
-  repeat: true
-  short: "only this connection"
-}
-global: strict: {
-  type: "boolean"
-  short: "stop at the first connection that fails"
-}
-global: deterministic: {
-  type: "boolean"
-  short: "zero the fields that vary from run to run"
-}
-global: config: { type:"path" value:"PATH" short:"read station.json from PATH" }
 
 command: {
   list: {
@@ -61,6 +62,8 @@ command: {
       "source-unavailable"
       "auth-failed"
       "rate-limited"
+      "vault-locked"
+      "secret-backend-unavailable"
     ]
   }
 
@@ -89,6 +92,8 @@ command: {
       "source-unavailable"
       "auth-failed"
       "rate-limited"
+      "vault-locked"
+      "secret-backend-unavailable"
     ]
   }
 
@@ -107,6 +112,8 @@ command: {
       "source-unavailable"
       "auth-failed"
       "rate-limited"
+      "vault-locked"
+      "secret-backend-unavailable"
     ]
   }
 
@@ -133,7 +140,8 @@ command: {
         name: "command"
         type: "name"
         required: false
-        short: "the command to describe"
+        repeat: true
+        short: "the command to describe, as its words"
       }
     ]
     flag: {}
@@ -161,12 +169,186 @@ command: {
   sources: flag: {}
   sources: exits: ["unsupported-capability" "invalid-argument"]
 
-  secrets: short: "the vault of source tokens"
-  secrets: ready: false
-  secrets: writes: true
-  secrets: arg: []
-  secrets: flag: {}
-  secrets: exits: ["unsupported-capability" "invalid-argument"]
+  # The vault's command line (SPEC 11.3): `secrets` is a group, and its action
+  # is the next argument.
+  "secrets init": {
+    short: "create the vault station.json names, with its master key"
+    ready: true
+    writes: true
+    echo: false
+    arg: []
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "vault-exists"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets set": {
+    short: "store a secret, its value read from a terminal or from stdin"
+    ready: true
+    writes: true
+    echo: false
+    arg: [
+      { name:"name" type:"secret" required:true short:"the secret's name" }
+      {
+        name: "from"
+        type: "stdin"
+        required: false
+        short: "read the value from stdin"
+      }
+    ]
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets get": {
+    short: "whether a secret is set, and with --reveal its value"
+    ready: true
+    writes: false
+    echo: false
+    arg: [{ name:"name" type:"secret" required:true short:"the secret's name" }]
+    flag: reveal: { type:"boolean" short:"print the value" }
+    exits: [
+      "ok"
+      "not-found"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets list": {
+    short: "the names this key can read"
+    ready: true
+    writes: false
+    echo: false
+    arg: []
+    flag: {}
+    exits: [
+      "ok"
+      "no-match"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets remove": {
+    short: "drop a secret"
+    ready: true
+    writes: true
+    echo: false
+    arg: [{ name:"name" type:"secret" required:true short:"the secret's name" }]
+    flag: {}
+    exits: [
+      "ok"
+      "not-found"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets keys": {
+    short: "every key in the vault, and what it may do"
+    ready: true
+    writes: false
+    echo: false
+    arg: []
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets grant": {
+    short: "mint a restricted key that reads the named secrets"
+    ready: true
+    writes: true
+    echo: false
+    arg: [
+      { name:"key" type:"name" required:true short:"the new key's name" }
+      {
+        name: "name"
+        type: "secret"
+        required: true
+        repeat: true
+        short: "a secret the key may read"
+      }
+    ]
+    flag: {
+      write: { type:"boolean" short:"it may also overwrite those secrets" }
+      new-passphrase-env: {
+        type: "envvar"
+        value: "VAR"
+        short: "read its passphrase from VAR, not LIKENESS_NEW_PASSPHRASE"
+      }
+    }
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "vault-exists"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets revoke": {
+    short: "drop a restricted key"
+    ready: true
+    writes: true
+    echo: false
+    arg: [{ name:"key" type:"name" required:true short:"the key's name" }]
+    flag: {}
+    exits: [
+      "ok"
+      "not-found"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets rotate": {
+    short: "a new root key for every secret; every other key is dropped"
+    ready: true
+    writes: true
+    echo: false
+    arg: []
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "secret-backend-unavailable"
+    ]
+  }
 
   search: short: "cross-source search"
   search: ready: false

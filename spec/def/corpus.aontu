@@ -15,6 +15,22 @@ Net: type(close({
 
 Conn: type(close({ instance:$.InstanceRef account:string net?:$.Net }))
 
+VaultKey: type(close({
+  key: string
+  master: boolean
+  write: boolean
+  grants: [&: string]
+}))
+
+VaultState: type(close({
+  file?: string
+  key?: string
+  passphrase: string
+  names: [&: string]
+  keys?: [&: $.VaultKey]
+  values?: { &: string }
+}))
+
 Ctx: type(close({
   fixture: string
 
@@ -31,6 +47,14 @@ Ctx: type(close({
   env?: { &: string }
 
   path?: [&: close({ path:string port:string version:string })]
+
+  files?: { &: string }
+
+  secrets?: top
+
+  stdin?: string
+
+  tty?: [&: string]
 }))
 
 Out: type(close({
@@ -39,6 +63,9 @@ Out: type(close({
 
   stderr?: string
   calls: [&: $.Call]
+
+  prompts?: [&: string]
+  vault?: $.VaultState
 }))
 
 CliEntry: type(close({

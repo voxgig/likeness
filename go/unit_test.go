@@ -111,6 +111,19 @@ func unitRegistry() map[string]unitFn {
 			}
 			return n.Value(), nil
 		},
+		"vaultEntry": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			config, _ := m["station"].(map[string]any)
+			profile := str(m, "profile")
+			if "" == profile {
+				profile = "default"
+			}
+			e, err := vaultEntry(config, profile, "/home/u", "/home/u/.config/likeness", str(m, "key"))
+			if nil != err {
+				return nil, err
+			}
+			return map[string]any{"file": e.File, "key": e.Key, "shown": e.Shown}, nil
+		},
 		"partialCodes": func(t *testing.T, in any) (any, error) {
 			codes := PartialCodes()
 			out := make([]any, len(codes))

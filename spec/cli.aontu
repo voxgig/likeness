@@ -105,6 +105,22 @@ primary: cli: {
     }
 
     {
+      id: "args/help-for-words-naming-no-command"
+      args: ["help" "list" "get" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/args/help-for-words-naming-no-command.json"
+        calls: []
+      }
+    }
+
+    {
       id: "args/stub-reads-only-its-globals"
       args: ["search" "anything" "--bogus" "--json"]
       ctx: {
@@ -1086,6 +1102,1651 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/meta/no-command.txt"
         stderr: "error: invalid-argument\n  no command given\n  remedy  try `likeness list`, or `likeness help` for the command list\n"
+        calls: []
+      }
+    }
+  ]
+
+  secrets: set: [
+    {
+      id: "secrets/needs-an-action"
+      # A group is not a command: its action is the second argument.
+      args: ["secrets"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/needs-an-action.txt"
+        stderr: "error: invalid-argument\n  `secrets` needs an action: get, grant, init, keys, list, remove, revoke, rotate or set\n  remedy  run `likeness help secrets` for what each does\n"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/no-such-action"
+      args: ["secrets" "frob" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/secrets/no-such-action.json" calls: [] }
+    }
+
+    {
+      id: "secrets/the-action-comes-second"
+      args: ["secrets" "--json" "list"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/the-action-comes-second.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/value-is-never-an-argument"
+      # Any process can read argv, so a value there is refused, and not repeated.
+      args: ["secrets" "set" "joplin.apikey" "s3cr3t-value" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/value-is-never-an-argument.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/surplus-not-repeated"
+      args: ["secrets" "set" "joplin.apikey" "-" "s3cr3t-value"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/surplus-not-repeated.txt"
+        stderr: "error: invalid-argument\n  `secrets set` takes no further argument; it is not repeated here, in case it is a secret\n  remedy  run `likeness help secrets set` for its arguments\n"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/dash-argument-not-repeated"
+      args: ["secrets" "set" "joplin.apikey" "-s3cr3t"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/dash-argument-not-repeated.txt"
+        stderr: "error: invalid-argument\n  an argument begins with - and is not a flag; it is not repeated here, in case it is a secret\n  remedy  a positional that begins with - must follow --\n"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/passphrase-env-takes-a-name"
+      # A passphrase typed where its variable's name belongs is refused without being repeated.
+      args: ["secrets" "list" "--passphrase-env" "my secret phrase" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/passphrase-env-takes-a-name.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/env-store-refused"
+      # No ambient credentials: the vault is the whole chain.
+      args: ["secrets" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        secrets: providers: [kind:"env"]
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/env-store-refused.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/passphrase-in-the-file-refused"
+      args: ["secrets" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        secrets: providers: [
+          { kind:"minivault" file:"likeness.skmv" passphrase:"written-down" }
+        ]
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/passphrase-in-the-file-refused.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/unknown-entry-key-refused"
+      args: ["secrets" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        secrets: providers: [{ kind:"minivault" create:true }]
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/unknown-entry-key-refused.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/one-store-only"
+      args: ["secrets" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        secrets: providers: [kind:"minivault" kind:"env"]
+      }
+      out: { exit:3 stdout:"spec/expect/secrets/one-store-only.json" calls: [] }
+    }
+
+    {
+      id: "secrets/no-vault"
+      args: ["secrets" "list"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/no-vault.txt"
+        stderr: "error: secret-backend-unavailable\n  no vault at ~/.config/likeness/likeness.skmv\n  remedy  run `likeness secrets init` to create it, or point station.json at the vault\n"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/no-passphrase"
+      args: ["secrets" "list"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/no-passphrase.txt"
+        stderr: "error: vault-locked\n  no passphrase: LIKENESS_PASSPHRASE is not set, and stdin is not a terminal to ask on\n  remedy  set LIKENESS_PASSPHRASE, or name another variable with --passphrase-env\n"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/wrong-passphrase"
+      args: ["secrets" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "not the passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/wrong-passphrase.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/no-such-key"
+      args: ["secrets" "list" "--vault-key" "nobody" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: { exit:3 stdout:"spec/expect/secrets/no-such-key.json" calls: [] }
+    }
+
+    {
+      id: "secrets/passphrase-env-names-the-variable"
+      args: ["secrets" "list" "--passphrase-env" "VAULT_PASSPHRASE"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: VAULT_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/list.txt" calls: [] }
+    }
+
+    {
+      id: "secrets/passphrase-env-unset"
+      # The variable a flag named is not repeated either.
+      args: ["secrets" "list" "--passphrase-env" "VAULT_PASSPHRASE" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/passphrase-env-unset.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/passphrase-typed"
+      # On a terminal, what the environment lacks is asked for.
+      args: ["secrets" "list"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["fixture master passphrase"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/list.txt"
+        calls: []
+        prompts: ["passphrase for master"]
+      }
+    }
+
+    {
+      id: "secrets/passphrase-typed-empty"
+      args: ["secrets" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: [""]
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/passphrase-typed-empty.json"
+        calls: []
+        prompts: ["passphrase for master"]
+      }
+    }
+
+    {
+      id: "secrets/environment-before-terminal"
+      # The environment answers first, so a terminal is not asked.
+      args: ["secrets" "list"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["unused"]
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/list.txt" calls: [] }
+    }
+
+    {
+      id: "secrets/list"
+      args: ["secrets" "list"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/list.txt" calls: [] }
+    }
+
+    {
+      id: "secrets/list-json"
+      args: ["secrets" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/list.json" calls: [] }
+    }
+
+    {
+      id: "secrets/list-restricted"
+      # A restricted key sees only what it was granted.
+      args: ["secrets" "list" "--vault-key" "ci"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture ci passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/list-restricted.txt" calls: [] }
+    }
+
+    {
+      id: "secrets/vaultkey-in-the-file"
+      args: ["secrets" "list"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture ci passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        secrets: providers: [
+          { kind:"minivault" file:"likeness.skmv" vaultkey:"ci" }
+        ]
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/list-restricted.txt" calls: [] }
+    }
+
+    {
+      id: "secrets/vault-key-flag-wins"
+      args: ["secrets" "list" "--vault-key" "master"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        secrets: providers: [{ kind:"minivault" vaultkey:"ci" }]
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/list.txt" calls: [] }
+    }
+
+    {
+      id: "secrets/get"
+      # A value is printed only when asked for.
+      args: ["secrets" "get" "joplin.apikey"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/get.txt" calls: [] }
+    }
+
+    {
+      id: "secrets/get-reveal"
+      args: ["secrets" "get" "joplin.apikey" "--reveal"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/get-reveal.txt" calls: [] }
+    }
+
+    {
+      id: "secrets/get-reveal-json"
+      args: ["secrets" "get" "joplin.apikey" "--reveal" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/get-reveal.json" calls: [] }
+    }
+
+    {
+      id: "secrets/get-missing"
+      args: ["secrets" "get" "linear.apikey" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: { exit:1 stdout:"spec/expect/secrets/get-missing.json" calls: [] }
+    }
+
+    {
+      id: "secrets/get-not-granted"
+      # Outside a grant is a miss, as it is in a stranger's vault.
+      args: ["secrets" "get" "notion.apikey" "--vault-key" "ci" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture ci passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/secrets/get-not-granted.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/set-from-stdin"
+      # One line ending is dropped, so `echo token |` stores the token.
+      args: ["secrets" "set" "joplin.apikey" "-"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        stdin: "rotated-token\n"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/set-joplin.txt"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "rotated-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/set-new-name"
+      args: ["secrets" "set" "linear.apikey" "-" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        stdin: "linear-token"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/set-linear.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "linear.apikey" "notion.apikey"]
+          values: "linear.apikey": "linear-token"
+        }
+      }
+    }
+
+    {
+      id: "secrets/set-typed"
+      args: ["secrets" "set" "joplin.apikey"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["fixture master passphrase" "typed-token"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/set-joplin.txt"
+        calls: []
+        prompts: ["passphrase for master" "value for joplin.apikey"]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: "joplin.apikey": "typed-token"
+        }
+      }
+    }
+
+    {
+      id: "secrets/set-needs-a-source"
+      # Refused before the passphrase is asked for: there is nowhere to read the value from.
+      args: ["secrets" "set" "joplin.apikey" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/set-needs-a-source.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/set-empty"
+      args: ["secrets" "set" "joplin.apikey" "-" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        stdin: "\n"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/set-empty.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/set-read-only"
+      args: ["secrets" "set" "joplin.apikey" "-" "--vault-key" "ci" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture ci passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        stdin: "x"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/secrets/set-read-only.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/set-not-granted"
+      args: [
+        "secrets"
+        "set"
+        "notion.apikey"
+        "-"
+        "--vault-key"
+        "deploy"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture deploy passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        stdin: "x"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/secrets/set-not-granted.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/set-cannot-create"
+      # A restricted key overwrites what it was granted and never grows the vault.
+      args: [
+        "secrets"
+        "set"
+        "linear.apikey"
+        "-"
+        "--vault-key"
+        "deploy"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture deploy passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        stdin: "x"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/secrets/set-cannot-create.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/set-as-a-writer"
+      args: ["secrets" "set" "joplin.apikey" "-" "--vault-key" "deploy"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture deploy passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        stdin: "deploy-token"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/set-joplin.txt"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: "joplin.apikey": "deploy-token"
+        }
+      }
+    }
+
+    {
+      id: "secrets/remove"
+      args: ["secrets" "remove" "notion.apikey"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/remove.txt"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey"]
+        }
+      }
+    }
+
+    {
+      id: "secrets/remove-missing"
+      args: ["secrets" "remove" "linear.apikey" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/secrets/remove-missing.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/remove-restricted"
+      args: ["secrets" "remove" "joplin.apikey" "--vault-key" "ci" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture ci passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/secrets/remove-restricted.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/keys"
+      args: ["secrets" "keys"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/keys.txt" calls: [] }
+    }
+
+    {
+      id: "secrets/keys-json"
+      args: ["secrets" "keys" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/keys.json" calls: [] }
+    }
+
+    {
+      id: "secrets/keys-restricted"
+      args: ["secrets" "keys" "--vault-key" "deploy" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture deploy passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/secrets/keys-restricted.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/grant"
+      # A granted key opens with its own passphrase and reads only its names.
+      args: ["secrets" "grant" "agent" "notion.apikey" "joplin.apikey"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: {
+          LIKENESS_PASSPHRASE: "fixture master passphrase"
+          LIKENESS_NEW_PASSPHRASE: "agent passphrase"
+        }
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/grant.txt"
+        calls: []
+        vault: {
+          key: "agent"
+          passphrase: "agent passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+        }
+      }
+    }
+
+    {
+      id: "secrets/grant-write-json"
+      args: ["secrets" "grant" "agent" "notion.apikey" "--write" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: {
+          LIKENESS_PASSPHRASE: "fixture master passphrase"
+          LIKENESS_NEW_PASSPHRASE: "agent passphrase"
+        }
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/grant-write.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"agent" master:false write:true grants: ["notion.apikey"] }
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+        }
+      }
+    }
+
+    {
+      id: "secrets/grant-existing-key"
+      args: ["secrets" "grant" "ci" "joplin.apikey" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: {
+          LIKENESS_PASSPHRASE: "fixture master passphrase"
+          LIKENESS_NEW_PASSPHRASE: "agent passphrase"
+        }
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/secrets/grant-existing-key.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/grant-needs-a-passphrase"
+      args: ["secrets" "grant" "agent" "joplin.apikey" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/grant-needs-a-passphrase.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/grant-typed-twice"
+      args: ["secrets" "grant" "agent" "joplin.apikey"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["agent passphrase" "agent passphrase"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/grant-joplin.txt"
+        calls: []
+        prompts: [
+          "passphrase for the new key agent"
+          "the same passphrase again"
+        ]
+        vault: {
+          key: "agent"
+          passphrase: "agent passphrase"
+          names: ["joplin.apikey"]
+        }
+      }
+    }
+
+    {
+      id: "secrets/grant-typed-differently"
+      args: ["secrets" "grant" "agent" "joplin.apikey" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["agent passphrase" "agent passphrase!"]
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/grant-typed-differently.json"
+        calls: []
+        prompts: [
+          "passphrase for the new key agent"
+          "the same passphrase again"
+        ]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/grant-needs-names"
+      args: ["secrets" "grant" "agent" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/grant-needs-names.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/grant-restricted"
+      args: [
+        "secrets"
+        "grant"
+        "agent"
+        "joplin.apikey"
+        "--vault-key"
+        "ci"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: {
+          LIKENESS_PASSPHRASE: "fixture ci passphrase"
+          LIKENESS_NEW_PASSPHRASE: "agent passphrase"
+        }
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/secrets/grant-restricted.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/revoke"
+      args: ["secrets" "revoke" "ci"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/revoke.txt"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+        }
+      }
+    }
+
+    {
+      id: "secrets/revoke-missing"
+      args: ["secrets" "revoke" "nobody" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/secrets/revoke-missing.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/revoke-self"
+      args: ["secrets" "revoke" "master" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/secrets/revoke-self.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/rotate"
+      # A new root key: every value survives and every other key is dropped.
+      args: ["secrets" "rotate"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/rotate.txt"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [{ key:"master" master:true write:true grants: [] }]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/rotate-restricted"
+      args: ["secrets" "rotate" "--vault-key" "ci" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture ci passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/secrets/rotate-restricted.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/init"
+      args: ["secrets" "init"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "new master passphrase"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/init.txt"
+        calls: []
+        vault: {
+          passphrase: "new master passphrase"
+          names: []
+          keys: [{ key:"master" master:true write:true grants: [] }]
+        }
+      }
+    }
+
+    {
+      id: "secrets/init-never-overwrites"
+      args: ["secrets" "init" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "new master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/secrets/init-never-overwrites.json"
+        calls: []
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          keys: [
+            { key:"ci" master:false write:false grants: ["joplin.apikey"] }
+            {
+              key: "deploy"
+              master: false
+              write: true
+              grants: ["joplin.apikey" "linear.apikey"]
+            }
+            { key:"master" master:true write:true grants: [] }
+          ]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "secrets/init-typed-twice"
+      args: ["secrets" "init"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        tty: ["new master passphrase" "new master passphrase"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/init.txt"
+        calls: []
+        prompts: ["new passphrase for master" "the same passphrase again"]
+        vault: {
+          passphrase: "new master passphrase"
+          names: []
+          keys: [{ key:"master" master:true write:true grants: [] }]
+        }
+      }
+    }
+
+    {
+      id: "secrets/init-typed-differently"
+      args: ["secrets" "init" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        tty: ["new master passphrase" "something else"]
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/init-typed-differently.json"
+        calls: []
+        prompts: ["new passphrase for master" "the same passphrase again"]
+      }
+    }
+
+    {
+      id: "secrets/init-needs-a-passphrase"
+      args: ["secrets" "init" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/init-needs-a-passphrase.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "secrets/init-where-station-says"
+      # A relative vault path is read from station.json's directory.
+      args: ["secrets" "init" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "new master passphrase"
+        secrets: providers: [{ kind:"minivault" file:"vaults/team.skmv" }]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/init-where-station-says.json"
+        calls: []
+        vault: {
+          passphrase: "new master passphrase"
+          names: []
+          keys: [{ key:"master" master:true write:true grants: [] }]
+          file: "vaults/team.skmv"
+        }
+      }
+    }
+
+    {
+      id: "secrets/init-in-home"
+      args: ["secrets" "init"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "new master passphrase"
+        secrets: providers: [{ kind:"minivault" file:"~/likeness-vault.skmv" }]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/init-in-home.txt"
+        calls: []
+        vault: {
+          passphrase: "new master passphrase"
+          names: []
+          keys: [{ key:"master" master:true write:true grants: [] }]
+          file: "~/likeness-vault.skmv"
+        }
+      }
+    }
+
+    {
+      id: "secrets/init-names-its-master"
+      args: ["secrets" "init" "--vault-key" "admin" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "new master passphrase"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/secrets/init-names-its-master.json"
+        calls: []
+        vault: {
+          key: "admin"
+          passphrase: "new master passphrase"
+          names: []
+          keys: [{ key:"admin" master:true write:true grants: [] }]
+        }
+      }
+    }
+
+    {
+      id: "secrets/help-group"
+      args: ["help" "secrets"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/help-group.txt" calls: [] }
+    }
+
+    {
+      id: "secrets/help-action"
+      args: ["help" "secrets" "set"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/help-action.txt" calls: [] }
+    }
+
+    {
+      id: "secrets/help-group-json"
+      args: ["help" "secrets" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/secrets/help-group.json" calls: [] }
+    }
+
+    {
+      id: "secrets/list-refuses-an-env-store"
+      # station.json's chain is checked before a source command reaches a connection.
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"joplin" account:"local" }]
+        clock: "2026-10-14T00:00:00Z"
+        seed: 1
+        secrets: providers: [kind:"env"]
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/secrets/list-refuses-an-env-store.json"
         calls: []
       }
     }

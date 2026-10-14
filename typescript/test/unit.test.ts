@@ -12,6 +12,7 @@ import { project } from '../src/adapter/joplin.js'
 import { takeConfigOption, parseStation, parseAccounts } from '../src/cli.js'
 import { openStation, connectionsOf } from '../src/core.js'
 import { parseArgv } from '../src/args.js'
+import { vaultEntry } from '../src/vault.js'
 import { entries, type UnitEntry } from './harness.js'
 
 type Fn = (input: any) => unknown
@@ -60,6 +61,12 @@ const REGISTRY: Record<string, Fn> = {
     return project(raw, instance, account, false)
   },
   partialCodes: () => partialCodes(),
+  vaultEntry: (v) => {
+    const { station, profile, key } = v as { station: unknown, profile?: string, key?: string }
+    return vaultEntry(station, {
+      profile: profile ?? 'default', home: '/home/u', dir: '/home/u/.config/likeness', key,
+    })
+  },
 }
 
 const all = entries<UnitEntry>('unit')
