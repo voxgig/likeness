@@ -4,29 +4,43 @@ import { join, delimiter } from 'node:path'
 import { homedir } from 'node:os'
 import { run, type Ctx, type Connection, PORT, VERSION } from './core.js'
 import { rfc3339 } from './identity.js'
+import { renderRaw } from './envelope.js'
+import { compareCodePoints } from './note.js'
 
 export class ConfigError extends Error {}
 
-function loadConnections (configPath?: string): Connection[] {
-  const path = configPath ?? join(homedir(), '.config', 'likeness', 'station.json')
-  if (!existsSync(path)) return []
-  const raw = JSON.parse(readFileSync(path, 'utf8'))
-  const sdk = raw.sdk ?? {}
-  return Object.keys(sdk).sort().map(instance => {
-    const account = sdk[instance].account ?? sdk[instance].org
-    if (undefined === account || '' === String(account)) {
+const REMEDY = 'fix the file, or point --config at another'
+
+function has (v: unknown): boolean { return undefined !== v && null !== v }
+function text (v: unknown): string { return 'string' === typeof v ? v : renderRaw(v) }
+
+// The connections a station file declares, in instance order. Pure, so the
+// unit corpus holds both ports to it.
+export function parseStation (source: string, path: string): Connection[] {
+  let doc: any
+  try { doc = JSON.parse(source) }
+  catch { throw new ConfigError(path + ' is not valid JSON') }
+  const sdk = doc?.sdk ?? {}
+  return Object.keys(sdk).sort(compareCodePoints).map(instance => {
+    const e = sdk[instance] ?? {}
+    let account = has(e.account) ? text(e.account) : ''
+    if ('' === account && has(e.org)) account = text(e.org)
+    if ('' === account) {
       throw new ConfigError(
         'connection "' + instance + '" has no `account` or `org`, and identity ' +
         'may not be derived from the instance name - see ' + path)
     }
-    return {
-      instance,
-      source: String(sdk[instance].api ?? ''),
-      account: String(account),
-      apikey: sdk[instance].apikey,
-      base: sdk[instance].base,
-    }
+    const c: Connection = { instance, source: has(e.api) ? text(e.api) : '', account }
+    if (has(e.apikey)) c.apikey = text(e.apikey)
+    if (has(e.base)) c.base = text(e.base)
+    return c
   })
+}
+
+function loadConnections (configPath?: string): Connection[] {
+  const path = configPath ?? join(homedir(), '.config', 'likeness', 'station.json')
+  if (!existsSync(path)) return []
+  return parseStation(readFileSync(path, 'utf8'), path)
 }
 
 function probePath (env: Record<string, string>): { path: string, port: string, version: string }[] {
@@ -55,19 +69,29 @@ function probePath (env: Record<string, string>): { path: string, port: string, 
   return rows
 }
 
-function takeOption (argv: string[], name: string): { rest: string[], value?: string } {
+// `--config PATH` and `--config=PATH` are one flag, taken out before the
+// command's own argv is parsed.
+export function takeConfigOption (argv: string[]): { rest: string[], value?: string } {
   const rest: string[] = []
   let value: string | undefined
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === name) { value = argv[++i]; continue }
-    if (argv[i].startsWith(name + '=')) { value = argv[i].slice(name.length + 1); continue }
+    if (argv[i] === '--config') { value = argv[++i]; continue }
+    if (argv[i].startsWith('--config=')) { value = argv[i].slice('--config='.length); continue }
     rest.push(argv[i])
   }
-  return { rest, value }
+  return undefined === value ? { rest } : { rest, value }
 }
 
 export async function main (argv: string[]): Promise<number> {
-  const { rest, value: configPath } = takeOption(argv, '--config')
+  // A reader that went away is not the port's failure: exit quietly with 0.
+  const quiet = (err: NodeJS.ErrnoException): void => {
+    if ('EPIPE' === err.code) process.exit(0)
+    throw err
+  }
+  process.stdout.on('error', quiet)
+  process.stderr.on('error', quiet)
+
+  const { rest, value: configPath } = takeConfigOption(argv)
   const env = process.env as Record<string, string>
 
   let connections: Connection[]
@@ -76,7 +100,7 @@ export async function main (argv: string[]): Promise<number> {
   }
   catch (err) {
     if (err instanceof ConfigError) {
-      process.stderr.write('error: invalid-project\n  ' + err.message + '\n')
+      process.stderr.write('error: invalid-project\n  ' + err.message + '\n  remedy  ' + REMEDY + '\n')
       return 3
     }
     throw err

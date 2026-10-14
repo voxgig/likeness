@@ -9,14 +9,20 @@ import (
 	"testing"
 )
 
-func TestBinaryRunsOutsideTheCheckout(t *testing.T) {
-	root := Root(t)
+// buildBinary compiles the port into a temporary directory.
+func buildBinary(t *testing.T) string {
+	t.Helper()
 	bin := filepath.Join(t.TempDir(), "likeness-go")
 	build := exec.Command("go", "build", "-o", bin, "./cmd/likeness-go")
-	build.Dir = filepath.Join(root, "go")
+	build.Dir = filepath.Join(Root(t), "go")
 	if out, err := build.CombinedOutput(); nil != err {
 		t.Fatalf("build: %v\n%s", err, out)
 	}
+	return bin
+}
+
+func TestBinaryRunsOutsideTheCheckout(t *testing.T) {
+	bin := buildBinary(t)
 
 	// An empty HOME and a working directory holding no spec/ at all.
 	home := t.TempDir()

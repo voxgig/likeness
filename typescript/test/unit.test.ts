@@ -9,6 +9,7 @@ import { lid, rfc3339, CROCKFORD } from '../src/identity.js'
 import { partialCodes } from '../src/errors.js'
 import { foldCase } from '../src/evaluate.js'
 import { project } from '../src/adapter/joplin.js'
+import { takeConfigOption, parseStation } from '../src/cli.js'
 import { entries, type UnitEntry } from './harness.js'
 
 type Fn = (input: any) => unknown
@@ -45,6 +46,8 @@ const REGISTRY: Record<string, Fn> = {
   rfc3339: (ms) => rfc3339(ms as number),
   crockfordAlphabet: () => CROCKFORD,
   foldCase: (s) => foldCase(s as string),
+  takeConfigOption: (argv) => takeConfigOption(argv as string[]),
+  parseStation: (text) => parseStation(text as string, 'station.json'),
   projectJoplin: (v) => {
     const { raw, instance, account } = v as { raw: Record<string, unknown>, instance: string, account: string }
     return project(raw, instance, account, false)

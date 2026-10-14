@@ -539,6 +539,49 @@ primary: unit: {
     }
   ]
 
+  config: set: [
+    {
+      id: "config/equals-form"
+      # `--config=PATH` and `--config PATH` are one flag; a port read only the second.
+      fn: "takeConfigOption"
+      in: ["list" "--config=/x/station.json" "--json"]
+      out: { rest: ["list" "--json"] value:"/x/station.json" }
+    }
+
+    {
+      id: "config/space-form"
+      fn: "takeConfigOption"
+      in: ["list" "--config" "/y" "--json"]
+      out: { rest: ["list" "--json"] value:"/y" }
+    }
+
+    { id:"config/absent" fn:"takeConfigOption" in: ["list"] out:rest: ["list"] }
+
+    {
+      id: "config/station-not-json"
+      fn: "parseStation"
+      in: "{not json"
+      err: "is not valid JSON"
+    }
+
+    {
+      id: "config/station-connections-in-name-order"
+      fn: "parseStation"
+      in: "{\"sdk\":{\"zed\":{\"api\":\"joplin\",\"account\":\"z\"},\"abe\":{\"api\":\"joplin\",\"org\":\"a\",\"base\":\"http://x\"}}}"
+      out: [
+        { instance:"abe" source:"joplin" account:"a" base:"http://x" }
+        { instance:"zed" source:"joplin" account:"z" }
+      ]
+    }
+
+    {
+      id: "config/station-without-account"
+      fn: "parseStation"
+      in: "{\"sdk\":{\"jot\":{\"api\":\"joplin\"}}}"
+      err: "has no `account` or `org`"
+    }
+  ]
+
   identity: set: [
     # Known vectors. A port that gets this subtly wrong produces
     # plausible-looking identifiers that silently fail to match another port's,
