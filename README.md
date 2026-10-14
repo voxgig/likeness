@@ -18,8 +18,8 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 139 entries, run by every port |
-| `spec/cli.aontu` — the transcript corpus | 138 whole commands, run by every port |
+| `spec/unit.aontu` — the pure-function corpus | 143 entries, run by every port |
+| `spec/cli.aontu` — the transcript corpus | 140 whole commands, run by every port |
 | `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
 | `python/` — the third port | the same again, through station's Python library |
@@ -116,7 +116,8 @@ with no minivault ([voxgig/station#34](https://github.com/voxgig/station/issues/
 and Joplin takes its key as the `token` query parameter, which station does not
 place ([voxgig/station#25](https://github.com/voxgig/station/issues/25), fixed by
 [voxgig/station#28](https://github.com/voxgig/station/pull/28)). With station
-`main` and #28 in place, `doctor` and `list` pass against the mock in both ports.
+`main` and #28 in place, `doctor` and `list` pass against the mock in all three
+ports; the Python port takes #28 when `python/deps.json` moves its station pin.
 
 With no instances configured they answer `no-match` and exit 1, which is the
 answer "none" rather than an error.
