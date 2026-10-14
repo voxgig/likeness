@@ -6,11 +6,14 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { readFileSync, existsSync, lstatSync, mkdirSync, symlinkSync, unlinkSync } from 'node:fs'
+import { readFileSync, existsSync, lstatSync, mkdirSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 
 const ROOT = process.cwd()
 const LIB_ROOT = resolve(process.env.LIKENESS_LIB_ROOT ?? join(ROOT, '..', 'voxgig'))
+
+// Left inside .git/ by a clone this tool made: only such a clone is moved to a new pin.
+const MARK = 'likeness-fetch-lib'
 
 const args = process.argv.slice(2)
 let registry
@@ -53,7 +56,6 @@ let failed = 0
 
 for (const name of Object.keys(libs).sort()) {
   const lib = libs[name]
-  // A checkout named by its variable is someone's own: verified, never cloned or moved.
   const named = process.env[lib.home]
   const own = undefined !== named && '' !== named
   const dir = own ? resolve(named) : join(LIB_ROOT, basename(lib.repo))
@@ -64,7 +66,10 @@ for (const name of Object.keys(libs).sort()) {
     if (check || own) { console.error(`${label}  MISSING  ${where}`); failed++; continue }
     console.log(`${label}  cloning into ${dir}`)
     execFileSync('git', ['clone', '--quiet', `https://github.com/${lib.repo}`, dir], { stdio: 'inherit' })
+    writeFileSync(join(dir, '.git', MARK), lib.repo + '\n')
   }
+  // Any other checkout is someone's own: verified, never moved.
+  const ours = !own && existsSync(join(dir, '.git', MARK))
 
   let head
   try { head = git(['rev-parse', 'HEAD'], dir) }
@@ -85,8 +90,9 @@ for (const name of Object.keys(libs).sort()) {
   }
 
   if (head !== lib.rev) {
-    if (check || own) {
-      console.error(`${label}  WRONG REVISION  ${where} is at ${head.slice(0, 12)}`)
+    if (check || !ours) {
+      console.error(`${label}  WRONG REVISION  ${where} is at ${head.slice(0, 12)}` +
+        (check || own ? '' : ', and this tool did not clone it'))
       failed++
       continue
     }
@@ -102,7 +108,7 @@ for (const name of Object.keys(libs).sort()) {
 
 if (0 < failed) {
   console.error(`\nfetch-lib: ${failed} librar${1 === failed ? 'y is' : 'ies are'} missing, off the pin, dirty or unlinkable.`)
-  console.error(`Run without --check to clone and pin them under ${LIB_ROOT} (or set LIKENESS_LIB_ROOT),` +
-    ' or point each named variable at a clean checkout of its pin.')
+  console.error(`Without --check this clones a missing library under ${LIB_ROOT} (LIKENESS_LIB_ROOT) and moves` +
+    ' its own clones to the pin, and no other checkout. Or point each named variable at a clean checkout of its pin.')
   process.exit(1)
 }
