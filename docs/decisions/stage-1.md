@@ -28,15 +28,21 @@ Each row is one commit on `voxgig/likeness`, every one green under `make check`.
 | Joplin re-pinned to `c762196`, the Go `json.Number` workaround dropped with its assertion kept | `3bfa8a1` |
 | The registry cross-check runs against the cloned SDK models on every run, with a self-test | `0797eae` |
 | The §10.2 canonical API name check withdrawn (SPEC §0 decision 13); parity is the declared grammar, the corpora and the byte comparison | `metsitaba/project-specs` |
+| `--limit` validated as the declared integer; a duration's count capped at eight digits; ordering operators refused on non-date fields at parse time; ASCII-only case folding | `8c8fec6` |
+| A malformed record projects the same way in every port; `raw` written once by the canonical writer with floats permitted; the comparison tool's writer aligned with the envelope's escaping and key order | `531ba57` |
+| `--config` read in both forms; a malformed station file refused alike; a broken pipe exits quietly with 0 | `e8e4a0e` |
 
-Two items of the re-baseline are not in those commits:
+One item of the re-baseline is not in those commits: **`main` protection.**
+Requiring the `check` workflow on `main` is a repository setting that needs an
+administrator: Settings → Branches → add a rule for `main` → require status
+checks to pass → select `check`. Until it is set, a red pull request can be
+merged.
 
-- **`main` protection.** Requiring the `check` workflow on `main` is a
-  repository setting that needs an administrator: Settings → Branches → add a
-  rule for `main` → require status checks to pass → select `check`. Until it is
-  set, a red pull request can be merged.
-- **The review's parity holes** are added to the corpus in the commits that
-  follow this note; see the change's pull request for the list.
+The review's parity holes are the last three rows. Each was pinned by corpus
+entries added before the fix, so that the port that was wrong failed on them;
+the one hole the SDKs' offline test mode cannot reach - a record with no id,
+since the mode stamps the map key onto every record - is pinned as a unit
+entry over the projection function instead.
 
 ## Waits on
 
