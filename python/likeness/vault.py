@@ -63,14 +63,17 @@ def shown(path: str, home: str) -> str:
 
 
 def _located(file: str, home: str, dir: str) -> str:
+    # Joined under home as a shell expands the prefix, so `~//v` stays there.
     if file.startswith('~/'):
-        return _resolve(home, file[2:])
+        return _resolve('/'.join(p for p in (home, file[2:]) if '' != p))
     return _resolve(file) if os.path.isabs(file) else _resolve(dir, file)
 
 
 def _chain(p: Any) -> Any:
+    """A null chain is no chain, in every profile."""
     if isinstance(p, dict) and isinstance(p.get('secrets'), dict):
-        return p['secrets'].get('providers', _ABSENT)
+        providers = p['secrets'].get('providers')
+        return _ABSENT if providers is None else providers
     return _ABSENT
 
 
@@ -79,8 +82,7 @@ def vault_entry(station: Any, profile: str, home: str, dir: str, key: str | None
     profiles = station.get('profiles') if isinstance(station, dict) else None
     profiles = profiles if isinstance(profiles, dict) else {}
     providers = _ABSENT if 'default' == profile else _chain(profiles.get(profile))
-    # A null chain falls through to the default profile's, as an absent one does.
-    if providers is _ABSENT or providers is None:
+    if providers is _ABSENT:
         providers = _chain(profiles.get('default'))
 
     entry: dict[str, Any] = {'kind': 'minivault'}
@@ -88,11 +90,12 @@ def vault_entry(station: Any, profile: str, home: str, dir: str, key: str | None
         if not isinstance(providers, list) or 1 != len(providers):
             raise _refused("station.json's secrets.providers must name one store, the vault")
         only = providers[0]
-        kind = only.get('kind', _ABSENT) if isinstance(only, dict) else only
+        if isinstance(only, dict) and 'kind' not in only:
+            raise _refused('the vault entry in station.json does not name its kind')
+        kind = only['kind'] if isinstance(only, dict) else only
         if not isinstance(only, dict) or 'minivault' != kind:
-            named = kind if isinstance(kind, str) else render_raw(None if kind is _ABSENT else kind)
             raise _refused('likeness reads secrets from its vault alone, and station.json names the store "' +
-                           named + '"')
+                           (kind if isinstance(kind, str) else render_raw(kind)) + '"')
         if 'passphrase' in only:
             raise _refused("station.json holds the vault's passphrase, and a passphrase is never written to a file",
                            'remove it, and set ' + PASSPHRASE_ENV + ' or name a variable with --passphrase-env')
