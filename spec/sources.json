@@ -158,37 +158,37 @@
       "name": "joplin",
       "protocol": "http",
       "repo": "voxgig-sdk/joplin-sdk",
-      "rev": "c7621966bf0c5d2f0f385038b75a74a10372acfb",
+      "rev": "24c2324cd9c30b08a33daeff0c2ca55cafbae84a",
       "semver": "0.0.1",
       "target": {
         "c": {
           "dir": "c",
           "package": "voxgig-sdk-joplin-sdk",
-          "pin": "vendored from voxgig-sdk/joplin-sdk@c7621966bf0c5d2f0f385038b75a74a10372acfb c/",
+          "pin": "vendored from voxgig-sdk/joplin-sdk@24c2324cd9c30b08a33daeff0c2ca55cafbae84a c/",
           "published": false
         },
         "go": {
           "dir": "go",
           "package": "github.com/voxgig-sdk/joplin-sdk/go",
-          "pin": "github.com/voxgig-sdk/joplin-sdk/go@c7621966bf0c5d2f0f385038b75a74a10372acfb",
+          "pin": "github.com/voxgig-sdk/joplin-sdk/go@24c2324cd9c30b08a33daeff0c2ca55cafbae84a",
           "published": false
         },
         "py": {
           "dir": "py",
           "package": "voxgig-sdk-joplin-sdk",
-          "pin": "git+https://github.com/voxgig-sdk/joplin-sdk@c7621966bf0c5d2f0f385038b75a74a10372acfb#subdirectory=py",
+          "pin": "git+https://github.com/voxgig-sdk/joplin-sdk@24c2324cd9c30b08a33daeff0c2ca55cafbae84a#subdirectory=py",
           "published": false
         },
         "rb": {
           "dir": "rb",
           "package": "voxgig-sdk-joplin-sdk",
-          "pin": "git: 'https://github.com/voxgig-sdk/joplin-sdk', ref: 'c7621966bf0c5d2f0f385038b75a74a10372acfb', glob: 'rb/*.gemspec'",
+          "pin": "git: 'https://github.com/voxgig-sdk/joplin-sdk', ref: '24c2324cd9c30b08a33daeff0c2ca55cafbae84a', glob: 'rb/*.gemspec'",
           "published": false
         },
         "ts": {
           "dir": "ts",
           "package": "@voxgig-sdk/joplin-sdk",
-          "pin": "clone https://github.com/voxgig-sdk/joplin-sdk at c7621966bf0c5d2f0f385038b75a74a10372acfb, then npm install <clone>/ts",
+          "pin": "clone https://github.com/voxgig-sdk/joplin-sdk at 24c2324cd9c30b08a33daeff0c2ca55cafbae84a, then npm install <clone>/ts",
           "published": false
         }
       },

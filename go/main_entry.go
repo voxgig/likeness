@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/voxgig/station/go/station"
 )
 
 const configRemedy = "fix the file, or point --config at another"
@@ -93,6 +95,22 @@ func parseJSON(text, path string) (map[string]any, error) {
 	return doc, nil
 }
 
+// parseStation reads station.json, which station validates against its own
+// shape.
+func parseStation(text, path string) (map[string]any, error) {
+	doc, err := parseJSON(text, path)
+	if nil != err {
+		return nil, err
+	}
+	if _, err := openStation(doc, nil); nil != err {
+		if se, ok := err.(*station.Error); ok && "station_config_invalid" == se.Code {
+			return nil, fmt.Errorf("%s: %s", path, se.Error())
+		}
+		return nil, err
+	}
+	return doc, nil
+}
+
 // parseAccounts reads the account each instance ref belongs to.
 func parseAccounts(text, path string) (map[string]string, error) {
 	doc, err := parseJSON(text, path)
@@ -110,53 +128,6 @@ func parseAccounts(text, path string) (map[string]string, error) {
 	return out, nil
 }
 
-func profileOf(env map[string]string) string {
-	if p := env["VOXGIG_STATION_PROFILE"]; "" != p {
-		return p
-	}
-	return "default"
-}
-
-// connectionsOf lists the profile's active instances in ref order. An instance
-// with no account is refused: identity may not be derived from the ref.
-func connectionsOf(station map[string]any, accounts map[string]string, profile string) ([]Connection, error) {
-	profiles, _ := station["profiles"].(map[string]any)
-	prof, _ := profiles[profile].(map[string]any)
-	sdk, _ := prof["sdk"].(map[string]any)
-	refs := make([]string, 0, len(sdk))
-	for ref := range sdk {
-		refs = append(refs, ref)
-	}
-	sort.Strings(refs)
-
-	out := []Connection{}
-	for _, ref := range refs {
-		block, _ := sdk[ref].(map[string]any)
-		if false == block["active"] {
-			continue
-		}
-		account := accounts[ref]
-		if "" == account {
-			return nil, &LikenessError{
-				Code:   "invalid-project",
-				Msg:    "instance \"" + ref + "\" has no account in likeness.json",
-				Remedy: "add `\"" + ref + "\": { \"account\": \"<id>\" }` under `instances` in likeness.json",
-			}
-		}
-		out = append(out, Connection{
-			Instance: ref, Source: strings.SplitN(ref, "$", 2)[0], Account: account, Base: optText(block, "base"),
-		})
-	}
-	return out, nil
-}
-
-var envTokenRe = regexp.MustCompile(`[^A-Z0-9]+`)
-
-// apikeyEnv is the variable station's env provider reads for a ref's key.
-func apikeyEnv(ref string) string {
-	return strings.Trim(envTokenRe.ReplaceAllString(strings.ToUpper(ref), "_"), "_") + "_APIKEY"
-}
-
 func loadConfig(configPath string) (map[string]any, map[string]string, error) {
 	path := configPath
 	if "" == path {
@@ -170,20 +141,20 @@ func loadConfig(configPath string) (map[string]any, map[string]string, error) {
 	if nil != err {
 		return nil, map[string]string{}, nil
 	}
-	station, err := parseJSON(string(raw), path)
+	doc, err := parseStation(string(raw), path)
 	if nil != err {
 		return nil, nil, err
 	}
 	lpath := filepath.Join(filepath.Dir(path), "likeness.json")
 	lraw, err := os.ReadFile(lpath)
 	if nil != err {
-		return station, map[string]string{}, nil
+		return doc, map[string]string{}, nil
 	}
 	accounts, err := parseAccounts(string(lraw), lpath)
 	if nil != err {
 		return nil, nil, err
 	}
-	return station, accounts, nil
+	return doc, accounts, nil
 }
 
 // Main is the whole process: build the context, run, write, return the status.
@@ -204,7 +175,7 @@ func Main(argv []string) int {
 		}
 	}
 
-	station, accounts, cerr := loadConfig(configPath)
+	config, accounts, cerr := loadConfig(configPath)
 	if nil != cerr {
 		fmt.Fprint(os.Stderr, "error: invalid-project\n  "+cerr.Error()+"\n  remedy  "+configRemedy+"\n")
 		return 3
@@ -214,7 +185,7 @@ func Main(argv []string) int {
 		Argv:     rest,
 		Env:      env,
 		Clock:    Rfc3339(time.Now().UnixMilli()),
-		Station:  station,
+		Station:  config,
 		Accounts: accounts,
 		Path:     probePath(env),
 	})

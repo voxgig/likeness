@@ -58,6 +58,15 @@
             }
           },
           {
+            "err": "station.json: station_config_invalid",
+            "fn": "connections",
+            "id": "config/station-shape-invalid",
+            "in": {
+              "likeness": "{}",
+              "station": "{\"station\":2}"
+            }
+          },
+          {
             "err": "likeness.json is not valid JSON",
             "fn": "connections",
             "id": "config/likeness-not-json",

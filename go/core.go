@@ -6,6 +6,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	joplin "github.com/voxgig-sdk/joplin-sdk/go"
+	"github.com/voxgig/station/go/station"
 )
 
 var limitRe = regexp.MustCompile(`^[1-9][0-9]{0,8}$`)
@@ -15,7 +18,6 @@ type Connection struct {
 	Instance string
 	Source   string
 	Account  string
-	Base     string
 }
 
 // Ctx is every impure input, named.
@@ -31,6 +33,7 @@ type Ctx struct {
 	Station  map[string]any
 	Accounts map[string]string
 	conns    []Connection
+	sess     *session
 	// Seed maps for the SDKs' offline test mode, by instance. Present in every
 	// test and absent in production.
 	Fixture map[string]map[string]any
@@ -233,14 +236,79 @@ func contains(ss []string, s string) bool {
 	return false
 }
 
-func (c Ctx) optsFor(conn Connection) SourceOpts {
-	return SourceOpts{
-		Instance: conn.Instance,
-		Account:  conn.Account,
-		Seed:     c.Fixture[conn.Instance],
-		APIKey:   c.Env[apikeyEnv(conn.Instance)],
-		Base:     conn.Base,
+// session is one run's station, its connections and the clients bound
+// through it, each constructed on first use.
+type session struct {
+	st      *station.Station
+	conns   []Connection
+	calls   *Calls
+	clients map[string]*joplin.JoplinSDK
+	fixture map[string]map[string]any
+}
+
+func (s *session) client(conn Connection) *joplin.JoplinSDK {
+	if cl, ok := s.clients[conn.Instance]; ok {
+		return cl
 	}
+	cl := joplinConnect(s.st, conn.Instance, s.fixture[conn.Instance])
+	s.clients[conn.Instance] = cl
+	return cl
+}
+
+func profileOf(env map[string]string) string {
+	if p := env["VOXGIG_STATION_PROFILE"]; "" != p {
+		return p
+	}
+	return "default"
+}
+
+func openStation(config map[string]any, env map[string]string) (*station.Station, error) {
+	load := false
+	opts := &station.Options{Profile: profileOf(env), Proxy: "off", Load: &load}
+	if nil == config {
+		opts.NoConfig = true
+	} else {
+		opts.Config = config
+	}
+	return station.New(opts)
+}
+
+// connectionsOf lists station's active declared instances in ref order, each
+// with its account. An instance with no account is refused: identity may not
+// be derived from the ref.
+func connectionsOf(st *station.Station, accounts map[string]string) ([]Connection, error) {
+	out := []Connection{}
+	for _, inst := range st.Instances() {
+		if !inst.Active {
+			continue
+		}
+		account := accounts[inst.Name]
+		if "" == account {
+			return nil, &LikenessError{
+				Code:   "invalid-project",
+				Msg:    "instance \"" + inst.Name + "\" has no account in likeness.json",
+				Remedy: "add `\"" + inst.Name + "\": { \"account\": \"<id>\" }` under `instances` in likeness.json",
+			}
+		}
+		out = append(out, Connection{Instance: inst.Name, Source: inst.API, Account: account})
+	}
+	return out, nil
+}
+
+func openSession(c Ctx) (*session, error) {
+	s := &session{calls: NewCalls(nil), clients: map[string]*joplin.JoplinSDK{}, fixture: c.Fixture}
+	st, err := openStation(c.Station, c.Env)
+	if nil != err {
+		return s, err
+	}
+	s.st = st
+	s.calls = NewCalls(st)
+	conns, err := connectionsOf(st, c.Accounts)
+	if nil != err {
+		return s, err
+	}
+	s.conns = conns
+	return s, nil
 }
 
 var universalFields = []string{
@@ -300,7 +368,7 @@ func gather(c Ctx, conns []Connection, calls *Calls, withRaw, strict bool) (
 				Remedy: "drop that connection, or narrow to one that is supported with --source",
 			}
 		}
-		rows, more, lerr := JoplinList(c.optsFor(conn), calls, withRaw)
+		rows, more, lerr := JoplinList(c.sess.client(conn), conn, withRaw)
 		if nil != lerr {
 			if le, isLik := lerr.(*LikenessError); isLik && "source-unavailable" == le.Code {
 				// A malformed record is the source's fault and is reported as
@@ -462,7 +530,7 @@ func cmdGet(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 				"no adapter for source \"" + conn.Source + "\" (connection \"" + conn.Instance + "\")",
 				"this source arrives in a later stage", nil}
 		}
-		note, err := JoplinLoad(c.optsFor(*conn), calls, id, f.raw)
+		note, err := JoplinLoad(c.sess.client(*conn), *conn, id, f.raw)
 		if nil != err {
 			return nil, err
 		}
@@ -509,7 +577,7 @@ func cmdDoctor(c Ctx, f flags, calls *Calls) (*envelope, error) {
 			instances = append(instances, conn.Instance)
 			continue
 		}
-		ok, code, detail := JoplinCheck(c.optsFor(conn), calls)
+		ok, code, detail := JoplinCheck(c.sess.client(conn))
 		row := map[string]any{
 			"instance": conn.Instance, "source": conn.Source, "detail": detail,
 			"check": "ok",
@@ -626,15 +694,15 @@ func StubNames() []string {
 
 // Run executes one whole command and returns everything it produced.
 func Run(c Ctx) Result {
-	calls := &Calls{}
 	started := time.Now()
 	name := ""
 	var args []string
 	if 0 < len(c.Argv) {
 		name, args = c.Argv[0], c.Argv[1:]
 	}
-	conns, cerr := connectionsOf(c.Station, c.Accounts, profileOf(c.Env))
-	c.conns = conns
+	sess, cerr := openSession(c)
+	c.sess, c.conns = sess, sess.conns
+	calls := sess.calls
 	f, rest, ferr := parseFlags(args)
 	if nil != cerr {
 		ferr = cerr
@@ -723,6 +791,13 @@ func errEnvelope(name string, err error, calls *Calls) *envelope {
 			body[k] = v
 		}
 		return newEnvelope([]string{name}, le.Code, nil, meta{calls: calls.Count()}, body)
+	}
+	if se, ok := err.(*station.Error); ok && "station_config_invalid" == se.Code {
+		return newEnvelope([]string{name}, "invalid-project", nil, meta{calls: calls.Count()},
+			map[string]any{
+				"message": se.Error(),
+				"remedy":  "fix station.json; station validates it against its own shape",
+			})
 	}
 	// An error no layer claimed is still the user's problem to see, and it is
 	// reported under a code the registry knows rather than a new one invented

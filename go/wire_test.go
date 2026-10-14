@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	joplin "github.com/voxgig-sdk/joplin-sdk/go"
 )
 
 const mockKey = "joplin-mock-token"
@@ -94,11 +96,16 @@ func clearRequests(t *testing.T, root string) {
 
 func TestWire(t *testing.T) {
 	root := startMock(t)
-	o := SourceOpts{Instance: "joplin", Account: "local", APIKey: mockKey, Base: root + "/joplin"}
+	// A client straight to the mock, outside station: these tests assert the
+	// query the adapter sends, which station's request events do not carry.
+	conn := Connection{Instance: "joplin", Account: "local"}
+	client := func() *joplin.JoplinSDK {
+		return joplin.NewJoplinSDK(map[string]any{"apikey": mockKey, "base": root + "/joplin"})
+	}
 
 	t.Run("list asks for the fields the shape needs, and gets real timestamps back", func(t *testing.T) {
 		clearRequests(t, root)
-		notes, _, err := JoplinList(o, &Calls{}, false)
+		notes, _, err := JoplinList(client(), conn, false)
 		if nil != err {
 			t.Fatal(err)
 		}
@@ -116,7 +123,7 @@ func TestWire(t *testing.T) {
 	})
 
 	t.Run("without fields the mock answers the three Joplin defaults, which project to the epoch", func(t *testing.T) {
-		found, err := joplinClient(o).Note(nil).List(map[string]any{}, nil)
+		found, err := client().Note(nil).List(map[string]any{}, nil)
 		if nil != err {
 			t.Fatal(err)
 		}
@@ -146,14 +153,14 @@ func TestWire(t *testing.T) {
 
 	t.Run("load and check ask for the fields too", func(t *testing.T) {
 		clearRequests(t, root)
-		n, err := JoplinLoad(o, &Calls{}, "a0e50000000000000000000000000001", false)
+		n, err := JoplinLoad(client(), conn, "a0e50000000000000000000000000001", false)
 		if nil != err || nil == n {
 			t.Fatalf("load: %v %v", n, err)
 		}
 		if nil == n.Body || epoch == n.Created {
 			t.Fatalf("load projected to the epoch or lost its body: %+v", n)
 		}
-		ok, code, detail := JoplinCheck(o, &Calls{})
+		ok, code, detail := JoplinCheck(client())
 		if !ok {
 			t.Fatalf("check: %s %s", code, detail)
 		}

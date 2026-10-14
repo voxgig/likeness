@@ -5,7 +5,7 @@ source: {
     def: "joplin-notes-folders-tags.json"
     defkind: "openapi"
     semver: "0.0.1"
-    rev: "c7621966bf0c5d2f0f385038b75a74a10372acfb"
+    rev: "24c2324cd9c30b08a33daeff0c2ca55cafbae84a"
     protocol: "http"
     local: false
 
@@ -16,31 +16,31 @@ source: {
         dir: "ts"
         package: "@voxgig-sdk/joplin-sdk"
         published: false
-        pin: "clone https://github.com/voxgig-sdk/joplin-sdk at c7621966bf0c5d2f0f385038b75a74a10372acfb, then npm install <clone>/ts"
+        pin: "clone https://github.com/voxgig-sdk/joplin-sdk at 24c2324cd9c30b08a33daeff0c2ca55cafbae84a, then npm install <clone>/ts"
       }
       go: {
         dir: "go"
         package: "github.com/voxgig-sdk/joplin-sdk/go"
         published: false
-        pin: "github.com/voxgig-sdk/joplin-sdk/go@c7621966bf0c5d2f0f385038b75a74a10372acfb"
+        pin: "github.com/voxgig-sdk/joplin-sdk/go@24c2324cd9c30b08a33daeff0c2ca55cafbae84a"
       }
       py: {
         dir: "py"
         package: "voxgig-sdk-joplin-sdk"
         published: false
-        pin: "git+https://github.com/voxgig-sdk/joplin-sdk@c7621966bf0c5d2f0f385038b75a74a10372acfb#subdirectory=py"
+        pin: "git+https://github.com/voxgig-sdk/joplin-sdk@24c2324cd9c30b08a33daeff0c2ca55cafbae84a#subdirectory=py"
       }
       rb: {
         dir: "rb"
         package: "voxgig-sdk-joplin-sdk"
         published: false
-        pin: "git: 'https://github.com/voxgig-sdk/joplin-sdk', ref: 'c7621966bf0c5d2f0f385038b75a74a10372acfb', glob: 'rb/*.gemspec'"
+        pin: "git: 'https://github.com/voxgig-sdk/joplin-sdk', ref: '24c2324cd9c30b08a33daeff0c2ca55cafbae84a', glob: 'rb/*.gemspec'"
       }
       c: {
         dir: "c"
         package: "voxgig-sdk-joplin-sdk"
         published: false
-        pin: "vendored from voxgig-sdk/joplin-sdk@c7621966bf0c5d2f0f385038b75a74a10372acfb c/"
+        pin: "vendored from voxgig-sdk/joplin-sdk@24c2324cd9c30b08a33daeff0c2ca55cafbae84a c/"
       }
     }
 

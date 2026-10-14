@@ -565,6 +565,14 @@ primary: unit: {
     }
 
     {
+      id: "config/station-shape-invalid"
+      # Station validates the file against its own shape, in every port.
+      fn: "connections"
+      in: { station:"{\"station\":2}" likeness:"{}" }
+      err: "station.json: station_config_invalid"
+    }
+
+    {
       id: "config/likeness-not-json"
       fn: "connections"
       in: {

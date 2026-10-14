@@ -94,7 +94,7 @@ sdk-check:
 # sdk-check first: a port built against a drifted clone produces a corpus
 # result about an SDK nobody else has.
 .PHONY: test-ts
-test-ts: sdk-check mock-deps
+test-ts: sdk-check mock-deps ts-deps
 	@cd typescript && npm run build && npm test
 
 
@@ -115,7 +115,7 @@ test-go: sdk-check mock-deps
 PARITY_DIR := build/parity
 
 .PHONY: parity
-parity: sdk-check mock-deps
+parity: sdk-check mock-deps ts-deps
 	@rm -rf $(PARITY_DIR) && mkdir -p $(PARITY_DIR)
 	@cd typescript && npm run build >/dev/null && \
 	  LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" npm test >/dev/null
@@ -211,6 +211,15 @@ mock:
 .PHONY: mock-deps
 mock-deps:
 	@test -d mock/node_modules || (cd mock && npm ci --no-audit --no-fund >/dev/null)
+
+
+# typescript/.npmrc installs the SDK clone as a copy, so that its peer
+# dependency on station resolves from the port. A copy does not follow the
+# clone when `make sdk` moves it, so it is taken again on every run.
+.PHONY: ts-deps
+ts-deps:
+	@cd typescript && rm -rf node_modules/@voxgig-sdk && \
+	  npm install --no-audit --no-fund --loglevel=error >/dev/null
 
 
 .PHONY: comments comments-test hooks

@@ -13,7 +13,9 @@ each file is where it was filed.
 
 Every draft is filed. "Closed" for a `sdkgen` issue means the generator carries
 the fix; an SDK carries it only once regenerated. Joplin was regenerated on
-2026-09-27 and this repository is pinned to that revision (`c762196`); Obsidian
+2026-10-14 with station's feature, and this repository is pinned to that
+revision (`24c2324`,
+[joplin-sdk#4](https://github.com/voxgig-sdk/joplin-sdk/pull/4)); Obsidian
 and Linear carry the fixes at their pins; Notion is still on the generator of
 2026-09-17 and carries every closed defect until
 [notion-sdk#1](https://github.com/voxgig-sdk/notion-sdk/issues/1) regenerates it.

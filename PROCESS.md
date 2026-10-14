@@ -150,8 +150,10 @@ Every client is bound through [voxgig/station](https://github.com/voxgig/station
 which is what likeness exists to demonstrate: `station.json` declares the
 instances, station resolves their secrets, and the calls a command reports in
 `meta.calls` and the corpus are the requests station observed at the transport.
-The Go port reads the same configuration, and binds through station once its
-SDK is regenerated with the station feature.
+Station's Go module cannot be required outside a go workspace yet
+([voxgig/station#27](https://github.com/voxgig/station/issues/27)), so
+`go/go.mod` maps its unresolvable versions to real revisions with `replace`
+lines; move them with the station pin.
 
 `spec/sources.aontu` is the registry: which SDK, at which revision, with the exact
 dependency line per language.

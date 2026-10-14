@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	joplin "github.com/voxgig-sdk/joplin-sdk/go"
 )
 
 func entryByID(t *testing.T, root, id string) map[string]any {
@@ -238,8 +240,7 @@ func TestMetaNetOptionsReachTheSdk(t *testing.T) {
 		"entity": map[string]any{"note": map[string]any{"x1": map[string]any{"id": "x1"}}},
 		"net":    mustDecode(t, `{"failTimes":1,"failStatus":401}`),
 	}
-	calls := &Calls{}
-	ok, code, _ := JoplinCheck(SourceOpts{Instance: "x", Account: "a", Seed: seed}, calls)
+	ok, code, _ := JoplinCheck(joplin.TestSDK(seed, nil))
 	if ok || "auth-failed" != code {
 		t.Fatalf("net.failStatus did not reach the SDK: ok=%v code=%q", ok, code)
 	}

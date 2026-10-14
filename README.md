@@ -67,13 +67,12 @@ note identity derives from, is in `likeness.json` beside it:
 ```
 
 Station resolves each instance's key through its secret providers, from
-`JOPLIN_APIKEY` (`JOPLIN_WORK_APIKEY` for `joplin$work`) by default. The
-TypeScript port binds every client through station, and the calls a command
-reports are station's own request events; the Go port reads the same two files
-until its SDK is regenerated with the station feature. Live Joplin through
-station needs [voxgig/station#25](https://github.com/voxgig/station/issues/25):
-station injects a key into headers only, and Joplin takes its key as the
-`token` query parameter.
+`JOPLIN_APIKEY` (`JOPLIN_WORK_APIKEY` for `joplin$work`) by default. Both ports
+bind every client through station, and the calls a command reports are
+station's own request events. Live Joplin through station needs
+[voxgig/station#25](https://github.com/voxgig/station/issues/25): station places
+a key in headers only, and Joplin takes its key as the `token` query parameter,
+so both ports are refused today with the same `auth-failed`.
 
 With no instances configured they answer `no-match` and exit 1, which is the
 answer "none" rather than an error.

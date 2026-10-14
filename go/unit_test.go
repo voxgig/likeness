@@ -73,7 +73,7 @@ func unitRegistry() map[string]unitFn {
 		},
 		"connections": func(t *testing.T, in any) (any, error) {
 			m := in.(map[string]any)
-			station, err := parseJSON(str(m, "station"), "station.json")
+			config, err := parseStation(str(m, "station"), "station.json")
 			if nil != err {
 				return nil, err
 			}
@@ -81,7 +81,11 @@ func unitRegistry() map[string]unitFn {
 			if nil != err {
 				return nil, err
 			}
-			conns, err := connectionsOf(station, accounts, "default")
+			st, err := openStation(config, nil)
+			if nil != err {
+				return nil, err
+			}
+			conns, err := connectionsOf(st, accounts)
 			if nil != err {
 				return nil, err
 			}

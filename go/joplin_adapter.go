@@ -3,6 +3,7 @@ package likeness
 import (
 	joplin "github.com/voxgig-sdk/joplin-sdk/go"
 	jcore "github.com/voxgig-sdk/joplin-sdk/go/core"
+	"github.com/voxgig/station/go/station"
 )
 
 const joplinSource = "joplin"
@@ -11,41 +12,29 @@ var JoplinSupplies = []string{
 	"source", "instance", "space", "title", "body", "created", "updated",
 }
 
-type SourceOpts struct {
-	Instance string
-	Account  string
-	Seed     map[string]any
-	APIKey   string
-	Base     string
-}
-
-func joplinClient(o SourceOpts) *joplin.JoplinSDK {
-	if nil != o.Seed {
-		return joplin.TestSDK(o.Seed, nil)
-	}
-	opts := map[string]any{}
-	if "" != o.APIKey {
-		opts["apikey"] = o.APIKey
-	}
-	if "" != o.Base {
-		opts["base"] = o.Base
+// joplinConnect binds a client to station under its instance ref. A seed puts
+// the SDK's offline test transport underneath station.
+func joplinConnect(st *station.Station, instance string, seed map[string]any) *joplin.JoplinSDK {
+	opts := st.OptionsFor(instance, nil)
+	if nil != seed {
+		return joplin.TestSDK(seed, opts)
 	}
 	return joplin.NewJoplinSDK(opts)
 }
 
-// statusOf digs the HTTP status out of the SDK's error. The generated client
-// carries the whole Result, so this reads the status rather than matching on
-// the message text, which differs between ports and between revisions.
+// statusOf digs the HTTP status out of the SDK's error, whose Result is a
+// cleaned plain-data copy, rather than matching on the message text, which
+// differs between ports and between revisions.
 func statusOf(err error) int {
 	je, ok := err.(*jcore.JoplinError)
 	if !ok {
 		return 0
 	}
-	r, ok := je.Result.(*jcore.Result)
-	if !ok {
-		return 0
+	r, _ := je.Result.(map[string]any)
+	if n, ok := num(r["status"]); ok {
+		return int(n)
 	}
-	return r.Status
+	return 0
 }
 
 // textOf renders a non-string value as its canonical JSON text.
@@ -78,10 +67,8 @@ func projectNote(raw map[string]any, instance, account string, withRaw bool) (No
 	if v, ok := present(raw, "id"); ok {
 		id = textOf(v)
 	}
-	// REFUSED, not fabricated. An empty id derives a valid-LOOKING lid from the
-	// empty string, so every such row shares one identity and the note violates
-	// the schema's non-empty SourceId invariant. A source that returned a
-	// record with no id has returned nothing usable, and the adapter says so.
+	// Refused, not fabricated: an empty id gives every such row one valid-looking
+	// lid, and breaks the schema's non-empty SourceId.
 	if "" == id {
 		return Note{}, &LikenessError{
 			Code:   "source-unavailable",
@@ -136,9 +123,7 @@ func entData(v any) map[string]any {
 // `fields`; the client declares `field`, which Joplin ignores (sdkgen#406).
 const joplinFields = "id,parent_id,title,body,created_time,updated_time"
 
-func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) {
-	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes")
+func JoplinList(client *joplin.JoplinSDK, conn Connection, withRaw bool) ([]Note, bool, error) {
 	found, err := client.Note(nil).List(map[string]any{"fields": joplinFields}, nil)
 	if nil != err {
 		return nil, false, err
@@ -146,7 +131,7 @@ func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) 
 	rows, _ := found.([]any)
 	out := make([]Note, 0, len(rows))
 	for _, r := range rows {
-		n, err := projectNote(entData(r), o.Instance, o.Account, withRaw)
+		n, err := projectNote(entData(r), conn.Instance, conn.Account, withRaw)
 		if nil != err {
 			return nil, false, err
 		}
@@ -156,9 +141,7 @@ func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) 
 	return out, 0 < limit && limit <= len(rows), nil
 }
 
-func JoplinLoad(o SourceOpts, calls *Calls, id string, withRaw bool) (*Note, error) {
-	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes/"+id)
+func JoplinLoad(client *joplin.JoplinSDK, conn Connection, id string, withRaw bool) (*Note, error) {
 	ent, err := client.Note(nil).Load(map[string]any{"id": id, "fields": joplinFields}, nil)
 	if nil != err {
 		if 404 == statusOf(err) {
@@ -170,7 +153,7 @@ func JoplinLoad(o SourceOpts, calls *Calls, id string, withRaw bool) (*Note, err
 	if _, ok := row["id"]; !ok {
 		return nil, nil
 	}
-	n, err := projectNote(row, o.Instance, o.Account, withRaw)
+	n, err := projectNote(row, conn.Instance, conn.Account, withRaw)
 	if nil != err {
 		return nil, err
 	}
@@ -179,9 +162,7 @@ func JoplinLoad(o SourceOpts, calls *Calls, id string, withRaw bool) (*Note, err
 
 // JoplinCheck reports reachability for `doctor`, telling apart the failure
 // modes a user experiences as one, because the remedy differs for each.
-func JoplinCheck(o SourceOpts, calls *Calls) (ok bool, code, detail string) {
-	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes")
+func JoplinCheck(client *joplin.JoplinSDK) (ok bool, code, detail string) {
 	_, err := client.Note(nil).List(map[string]any{"fields": joplinFields}, nil)
 	if nil == err {
 		return true, "", "ok"
@@ -189,10 +170,7 @@ func JoplinCheck(o SourceOpts, calls *Calls) (ok bool, code, detail string) {
 	if s := statusOf(err); 401 == s || 403 == s {
 		return false, "auth-failed", "the token was rejected"
 	}
-	// 429 is a DIFFERENT condition with a different remedy, and the registry
-	// has a code for it that is marked retryable. Folding it into "the
-	// application did not answer" tells someone whose requests are being
-	// throttled to go and start a program that is already running.
+	// Throttling has its own retryable code: "did not answer" sends the user to start a running app.
 	if 429 == statusOf(err) {
 		return false, "rate-limited", "the source is rate limiting this client"
 	}
