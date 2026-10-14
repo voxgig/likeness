@@ -18,8 +18,8 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 135 entries, run by both ports |
-| `spec/cli.aontu` — the transcript corpus | 138 whole commands, run by both ports |
+| `spec/unit.aontu` — the pure-function corpus | 146 entries, run by both ports |
+| `spec/cli.aontu` — the transcript corpus | 141 whole commands, run by both ports |
 | `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
 | The parity comparison | `make parity`: the ports agree, each names itself, and the comparison is proved to go red |
