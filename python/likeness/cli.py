@@ -64,6 +64,13 @@ def parse_accounts(source: str, path: str) -> dict[str, str]:
     return out
 
 
+def _join(*parts: str) -> str:
+    """As the canonical port's path.join: normalised lexically, so a missing
+    directory before a `..` does not hide the file, and a leading // is one /."""
+    p = os.path.normpath(os.path.join(*parts))
+    return '/' + p.lstrip('/') if p.startswith('//') else p
+
+
 def _read(path: str) -> str:
     with open(path, encoding='utf-8', errors='replace') as handle:
         return handle.read()
@@ -73,7 +80,7 @@ def load_config(path: str) -> tuple[Any, dict[str, str]]:
     if not os.path.exists(path):
         return None, {}
     station = parse_station(_read(path), path)
-    lpath = os.path.normpath(os.path.join(os.path.dirname(path), 'likeness.json'))
+    lpath = _join(os.path.dirname(path), 'likeness.json')
     accounts = parse_accounts(_read(lpath), lpath) if os.path.exists(lpath) else {}
     return station, accounts
 
@@ -170,7 +177,7 @@ def main(argv: list[str]) -> int:
     rest, config_path = take_config_option(argv)
     env = dict(os.environ)
     home = homedir()
-    path = config_path if config_path is not None else os.path.join(home, '.config', 'likeness', 'station.json')
+    path = config_path if config_path is not None else _join(home, '.config', 'likeness', 'station.json')
 
     try:
         station, accounts = load_config(path)
