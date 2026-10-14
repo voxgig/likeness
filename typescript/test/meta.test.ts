@@ -51,6 +51,29 @@ test('meta: stdout differing by ONE BYTE is reported', async () => {
   finally { unlinkSync(tmp) }
 })
 
+test('meta: a vault left holding the wrong names is reported', async () => {
+  const e = entry('secrets/remove')
+  assert.ok(undefined !== e.out.vault, 'secrets/remove asserts no vault state')
+  e.out.vault.names = ['joplin.apikey', 'notion.apikey']
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('vault names ')), 'no vault failure in ' + JSON.stringify(f))
+})
+
+test('meta: a vault value that differs is reported', async () => {
+  const e = entry('secrets/set-from-stdin')
+  assert.ok(undefined !== e.out.vault?.values, 'secrets/set-from-stdin asserts no values')
+  e.out.vault.values = { 'joplin.apikey': 'rotated-token\n' }
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('vault value of ')), 'no value failure in ' + JSON.stringify(f))
+})
+
+test('meta: a prompt that was not expected is reported', async () => {
+  const e = entry('secrets/passphrase-typed')
+  e.out.prompts = []
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('prompts ')), 'no prompt failure in ' + JSON.stringify(f))
+})
+
 test('meta: a MISSING call is reported', async () => {
   const e = entry('list/all')
   e.out.calls = []

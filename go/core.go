@@ -2,6 +2,8 @@ package likeness
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -38,6 +40,15 @@ type Ctx struct {
 	// Every likeness on PATH, for `which`. Injected rather than probed so the
 	// command is testable.
 	Path []map[string]any
+	// A path under Home is shown from `~`; a relative vault path is read from
+	// Dir, where station.json is.
+	Home  string
+	Dir   string
+	Stdin func() (string, error)
+	// Stdin is a terminal, so what the environment lacks may be asked for.
+	// Prompt reports false at the end of input.
+	TTY    bool
+	Prompt func(label string) (string, bool)
 }
 
 // Result is what a command produced.
@@ -49,6 +60,7 @@ type Result struct {
 }
 
 type flags struct {
+	vaultFlags
 	json          bool
 	raw           bool
 	limit         int
@@ -76,6 +88,11 @@ func flagsOf(p Parsed) flags {
 	for _, v := range asList(p.Flags["source"]) {
 		f.source = append(f.source, v.(string))
 	}
+	f.passphraseEnv, _ = p.Flags["passphrase-env"].(string)
+	f.newPassphraseEnv, _ = p.Flags["new-passphrase-env"].(string)
+	f.vaultKey, _ = p.Flags["vault-key"].(string)
+	f.reveal, _ = p.Flags["reveal"].(bool)
+	f.write, _ = p.Flags["write"].(bool)
 	return f
 }
 
@@ -105,10 +122,14 @@ type meta struct {
 }
 
 func newEnvelope(cmd []string, code string, data any, mt meta, errBody map[string]any) *envelope {
+	words := []string{}
+	for _, c := range cmd {
+		words = append(words, strings.Split(c, " ")...)
+	}
 	m := map[string]any{
 		"ok":   nil == errBody,
 		"code": code,
-		"cmd":  strList(cmd),
+		"cmd":  strList(words),
 		"data": data,
 		"meta": map[string]any{
 			"count":      mt.count,
@@ -264,18 +285,80 @@ func connectionsOf(st *station.Station, accounts map[string]string) ([]Connectio
 	return out, nil
 }
 
-func openSession(c Ctx) (*session, error) {
+// withChain is station.json with its secret chain replaced, in every profile,
+// by the one likeness decided on. The caller's map is left as it was.
+func withChain(config map[string]any, chain []any) map[string]any {
+	if nil == config {
+		return nil
+	}
+	copied := map[string]any{}
+	for k, v := range config {
+		copied[k] = v
+	}
+	profiles, ok := config["profiles"].(map[string]any)
+	if !ok {
+		return copied
+	}
+	each := map[string]any{}
+	for name, p := range profiles {
+		pm, ok := p.(map[string]any)
+		if !ok {
+			each[name] = p
+			continue
+		}
+		one := map[string]any{}
+		for k, v := range pm {
+			one[k] = v
+		}
+		one["secrets"] = map[string]any{"providers": chain}
+		each[name] = one
+	}
+	copied["profiles"] = each
+	return copied
+}
+
+func entryOf(c Ctx, f flags) (VaultEntry, error) {
+	home := c.Home
+	if "" == home {
+		home, _ = os.UserHomeDir()
+	}
+	dir := c.Dir
+	if "" == dir {
+		dir = filepath.Join(home, ".config", "likeness")
+	}
+	return vaultEntry(c.Station, profileOf(c.Env), home, dir, f.vaultKey)
+}
+
+// openSession opens one station per run: every client is connected through
+// it lazily, and the calls a command made are the requests it observed. A live
+// run with a connection to make opens it on the vault.
+func openSession(c Ctx, f flags) (*session, error) {
 	s := &session{calls: NewCalls(nil), clients: map[string]*joplin.JoplinSDK{}, fixture: c.Fixture}
-	st, err := openStation(c.Station, c.Env)
+	entry, err := entryOf(c, f)
 	if nil != err {
 		return s, err
 	}
-	s.st = st
-	s.calls = NewCalls(st)
+	st, err := openStation(withChain(c.Station, []any{}), c.Env)
+	if nil != err {
+		return s, err
+	}
 	conns, err := connectionsOf(st, c.Accounts)
 	if nil != err {
 		return s, err
 	}
+	if nil == c.Fixture && 0 < len(conns) {
+		chain, err := vaultChain(c, entry, f.vaultFlags)
+		if nil != err {
+			return s, err
+		}
+		if st, err = openStation(withChain(c.Station, chain), c.Env); nil != err {
+			return s, &LikenessError{Code: "secret-backend-unavailable",
+				Msg:    "station could not open the vault as its secret store",
+				Remedy: "this port's station must read minivault stores; see \"Secrets\" in the README"}
+		}
+	}
+	s.st = st
+	s.calls = NewCalls(st)
 	s.conns = conns
 	return s, nil
 }
@@ -621,10 +704,7 @@ func cmdWhich(c Ctx) *envelope {
 // Help text is rendered from the command table at build time; JSON gets the rows.
 func cmdHelp(args []string) (*envelope, string, error) {
 	loadTable()
-	name := ""
-	if 0 < len(args) {
-		name = args[0]
-	}
+	name := strings.Join(args, " ")
 	text, ok := help.Text[name]
 	if !ok {
 		return nil, "", &LikenessError{Code: "invalid-argument", Msg: "no such command: " + name,
@@ -632,7 +712,7 @@ func cmdHelp(args []string) (*envelope, string, error) {
 	}
 	rows := []any{}
 	for _, r := range help.Rows {
-		if "" == name || r.Command == name {
+		if "" == name || r.Command == name || strings.HasPrefix(r.Command, name+" ") {
 			rows = append(rows, map[string]any{"command": r.Command, "takes": r.Takes, "does": r.Does})
 		}
 	}
@@ -652,10 +732,7 @@ func Run(c Ctx) Result {
 	// The grammar decides first: a refused argument runs nothing at all.
 	parsed, perr := ParseArgv(c.Argv)
 	if nil != perr {
-		head := ""
-		if 0 < len(c.Argv) {
-			head = c.Argv[0]
-		}
+		head := strings.Join(commandWords(c.Argv), " ")
 		f.json = contains(c.Argv, "--json")
 		f.deterministic = contains(c.Argv, "--deterministic")
 		env = errEnvelope(head, perr, calls)
@@ -712,8 +789,23 @@ func dispatch(c Ctx, f flags, p Parsed) (*envelope, string, *Calls, error) {
 	case "which":
 		return cmdWhich(c), "", calls, nil
 	}
+	if strings.HasPrefix(p.Command, "secrets ") {
+		entry, err := entryOf(c, f)
+		if nil != err {
+			return nil, "", calls, err
+		}
+		got, err := secretsAction(c, p.Command[len("secrets "):], p.Args, entry, f.vaultFlags)
+		if nil != err {
+			return nil, "", calls, err
+		}
+		code := "ok"
+		if got.empty {
+			code = "no-match"
+		}
+		return newEnvelope([]string{p.Command}, code, got.data, meta{count: got.count}, nil), got.text, calls, nil
+	}
 
-	sess, err := openSession(c)
+	sess, err := openSession(c, f)
 	calls = sess.calls
 	if nil != err {
 		return nil, "", calls, err

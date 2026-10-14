@@ -1,15 +1,19 @@
 module github.com/voxgig/likeness/go
 
-go 1.23
+go 1.23.0
 
-require github.com/voxgig-sdk/joplin-sdk/go v0.0.0
+require (
+	github.com/voxgig-sdk/joplin-sdk/go v0.0.0
+	github.com/voxgig/sekreto/go v0.0.0
+	github.com/voxgig/station/go v0.0.1
+	golang.org/x/term v0.33.0
+)
 
 require (
 	github.com/voxgig/plugin/go v0.0.0-20260901203214-91f294b7a228 // indirect
-	github.com/voxgig/sekreto/go v0.0.0 // indirect
-	github.com/voxgig/station/go v0.0.1 // indirect
 	github.com/voxgig/struct/go v0.0.0 // indirect
 	github.com/voxgig/struct/go/testutil v0.0.0-20261009084424-3ab807cc2ae7 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 )
 
 // The generated SDKs are not published to any language registry yet, so the

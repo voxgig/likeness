@@ -8,7 +8,12 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/voxgig/sekreto/go/plugins/minivault"
 )
+
+// promptLogs holds the prompts each run showed, by the run's home.
+var promptLogs = map[string]*[]string{}
 
 // Root is the repository root: the directory holding the compiled corpora,
 // which the embedded copies under go/spec/ do not include.
@@ -170,8 +175,110 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 		}
 		ctx.Fixture[inst] = own
 	}
-	ctx.Station = map[string]any{"station": 1, "profiles": map[string]any{"default": map[string]any{"sdk": sdk}}}
+	profile := map[string]any{"sdk": sdk}
+	if secrets, ok := ectx["secrets"]; ok {
+		profile["secrets"] = secrets
+	}
+	ctx.Station = map[string]any{"station": 1, "profiles": map[string]any{"default": profile}}
+
+	// Every run gets a home of its own, holding the entry's files.
+	ctx.Home = t.TempDir()
+	ctx.Dir = filepath.Join(ctx.Home, ".config", "likeness")
+	if err := os.MkdirAll(ctx.Dir, 0o700); nil != err {
+		t.Fatal(err)
+	}
+	files, _ := ectx["files"].(map[string]any)
+	for name, src := range files {
+		dst := runPath(ctx, name)
+		raw, err := os.ReadFile(filepath.Join(root, src.(string)))
+		if nil != err {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Dir(dst), 0o700); nil != err {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dst, raw, 0o600); nil != err {
+			t.Fatal(err)
+		}
+	}
+	stdin := str(ectx, "stdin")
+	ctx.Stdin = func() (string, error) { return stdin, nil }
+
+	if tty, ok := ectx["tty"].([]any); ok {
+		typed := strs(tty)
+		shown := []string{}
+		promptLogs[ctx.Home] = &shown
+		ctx.TTY = true
+		ctx.Prompt = func(label string) (string, bool) {
+			shown = append(shown, label)
+			promptLogs[ctx.Home] = &shown
+			if 0 == len(typed) {
+				return "", false
+			}
+			next := typed[0]
+			typed = typed[1:]
+			return next, true
+		}
+	}
 	return ctx
+}
+
+func runPath(ctx Ctx, name string) string {
+	if strings.HasPrefix(name, "~/") {
+		return filepath.Join(ctx.Home, name[2:])
+	}
+	return filepath.Join(ctx.Dir, name)
+}
+
+func vaultFailures(ctx Ctx, want map[string]any, fail func(string)) {
+	file := str(want, "file")
+	if "" == file {
+		file = "likeness.skmv"
+	}
+	key := str(want, "key")
+	if "" == key {
+		key = "master"
+	}
+	vault, err := minivault.Open(&minivault.Options{File: runPath(ctx, file), Key: key, Passphrase: str(want, "passphrase")})
+	if nil != err {
+		fail("the vault does not open afterwards: " + err.Error())
+		return
+	}
+	defer vault.Close()
+	names, err := vault.List()
+	if nil != err {
+		fail("the vault does not open afterwards: " + err.Error())
+		return
+	}
+	if a, b := fmt.Sprint(names), fmt.Sprint(strs(want["names"])); a != b {
+		fail("vault names " + a + ", expected " + b)
+	}
+	if wk, ok := want["keys"].([]any); ok {
+		keys, err := vault.Keys()
+		if nil != err {
+			fail("the vault keys do not read: " + err.Error())
+			return
+		}
+		sort.Slice(keys, func(i, j int) bool { return keys[i].Key < keys[j].Key })
+		got := []string{}
+		for _, k := range keys {
+			got = append(got, fmt.Sprint(k.Key, k.Master, k.Write, k.Grants))
+		}
+		exp := []string{}
+		for _, k := range wk {
+			km := k.(map[string]any)
+			exp = append(exp, fmt.Sprint(str(km, "key"), km["master"], km["write"], strs(km["grants"])))
+		}
+		if a, b := strings.Join(got, "; "), strings.Join(exp, "; "); a != b {
+			fail("vault keys " + a + ", expected " + b)
+		}
+	}
+	values, _ := want["values"].(map[string]any)
+	for name, value := range values {
+		if got, _, _ := vault.Get(name); got != value {
+			fail("vault value of " + name + " is not the one expected")
+		}
+	}
 }
 
 func strs(v any) []string {
@@ -312,7 +419,8 @@ func Check(t *testing.T, root string, e map[string]any) []string {
 	fail := func(s string) { failures = append(failures, s) }
 
 	out, _ := e["out"].(map[string]any)
-	r := Run(buildCtx(t, root, e))
+	ctx := buildCtx(t, root, e)
+	r := Run(ctx)
 
 	if want := int(mustNum(t, out["exit"])); r.Exit != want {
 		fail(fmt.Sprintf("exit %d, expected %d", r.Exit, want))
@@ -332,5 +440,16 @@ func Check(t *testing.T, root string, e map[string]any) []string {
 		fail("calls " + fmtCalls(r.Calls) + ", expected " + fmtCalls(wc))
 	}
 
+	shown := []string{}
+	if log, ok := promptLogs[ctx.Home]; ok {
+		shown = *log
+	}
+	if a, b := fmt.Sprintf("%q", shown), fmt.Sprintf("%q", strs(out["prompts"])); a != b {
+		fail("prompts " + a + ", expected " + b)
+	}
+
+	if want, ok := out["vault"].(map[string]any); ok {
+		vaultFailures(ctx, want, fail)
+	}
 	return failures
 }

@@ -106,10 +106,15 @@ for (const dst of HELP) emit(dst, help, 'spec/commands.aontu')
 
 // What the shape cannot say: a command may not redeclare a global flag (rule
 // 8), only the last positional repeats, a valued flag names its value, a range
-// is an integer's, and every exit is a registered code.
+// is an integer's, every exit is a registered code, and a command is one word
+// or a group's action, never both a group and a command.
 function grammarFaults (table, errors) {
   const out = []
   for (const [name, cmd] of Object.entries(table.command)) {
+    if (!/^[a-z][a-z0-9-]*( [a-z][a-z0-9-]*)?$/.test(name)) {
+      out.push(`"${name}" is neither one word nor a group and an action`)
+    }
+    if (name in groupsOf(table)) out.push(`${name} is both a command and a group`)
     for (const flag of Object.keys(cmd.flag)) {
       if (flag in table.global) out.push(`${name} redeclares the global flag --${flag}`)
     }
@@ -129,14 +134,27 @@ function grammarFaults (table, errors) {
   return out
 }
 
+function groupsOf (table) {
+  const groups = {}
+  for (const name of Object.keys(table.command)) {
+    const at = name.indexOf(' ')
+    if (-1 !== at) (groups[name.slice(0, at)] ??= []).push(name)
+  }
+  return groups
+}
+
 function flagUsage (name, f) {
   const text = 'boolean' === f.type ? `--${name}` : `--${name} ${f.value}`
   return f.repeat ? `${text}...` : text
 }
 
+// A stdin positional takes `-` and nothing else, so its usage is the dash.
+function argLabel (a) {
+  return ('stdin' === a.type ? '-' : `<${a.name}>`) + (a.repeat ? '...' : '')
+}
+
 function argUsage (a) {
-  const text = `<${a.name}>` + (a.repeat ? '...' : '')
-  return a.required ? text : `[${text}]`
+  return a.required ? argLabel(a) : `[${argLabel(a)}]`
 }
 
 function range (f) {
@@ -165,7 +183,7 @@ function renderHelp (table) {
     const usage = ['likeness', name, takes, ...flags.map(f => `[${flagUsage(f, cmd.flag[f])}]`)]
       .filter(Boolean).join(' ')
     const lines = [
-      ...cmd.arg.map(a => [`<${a.name}>` + (a.repeat ? '...' : ''), a.short]),
+      ...cmd.arg.map(a => [argLabel(a), a.short]),
       ...flags.map(f => [flagUsage(f, cmd.flag[f]), cmd.flag[f].short + range(cmd.flag[f])]),
     ]
     text[name] = [
@@ -174,6 +192,15 @@ function renderHelp (table) {
       '', `global flags: ${globals}`, '',
     ].join('\n')
     rows.push({ command: name, takes, does: cmd.short + (cmd.ready ? '' : ' (not implemented yet)') })
+  }
+
+  for (const [group, members] of Object.entries(groupsOf(table))) {
+    text[group] = [
+      `likeness ${group} <action> [arguments] [flags]`, '',
+      columns(members.sort().map(n => [n.slice(group.length + 1), table.command[n].short])), '',
+      `global flags: ${globals}`,
+      `run \`likeness help ${group} <action>\` for one action`, '',
+    ].join('\n')
   }
 
   const ready = names.filter(n => table.command[n].ready)

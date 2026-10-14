@@ -123,7 +123,14 @@ func renderNumber(v any, path string, loose bool) (string, error) {
 	case int64:
 		return strconv.FormatInt(n, 10), nil
 	case json.Number:
+		// Held to a double's exact range, as the canonical port's parse is.
 		if i, err := strconv.ParseInt(n.String(), 10, 64); nil == err {
+			if 9007199254740991 < i || i < -9007199254740991 {
+				if loose {
+					return jsNumber(float64(i)), nil
+				}
+				return "", &SerialiseError{"integer beyond exact double precision - use a bigint", path}
+			}
 			return strconv.FormatInt(i, 10), nil
 		}
 		if f, err := strconv.ParseFloat(n.String(), 64); nil == err {

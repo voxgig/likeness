@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/voxgig/station/go/station"
+	"golang.org/x/term"
 )
 
 const configRemedy = "fix the file, or point --config at another"
@@ -101,22 +103,26 @@ func optText(m map[string]any, k string) string {
 }
 
 func parseJSON(text, path string) (map[string]any, error) {
-	var doc map[string]any
-	if err := json.Unmarshal([]byte(text), &doc); nil != err {
+	var parsed any
+	if err := json.Unmarshal([]byte(text), &parsed); nil != err {
 		return nil, fmt.Errorf("%s is not valid JSON", path)
+	}
+	doc, ok := parsed.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("%s is not a JSON object", path)
 	}
 	return doc, nil
 }
 
 // parseStation reads station.json, which station validates against its own
-// shape.
+// shape. Its secret chain is likeness's to check, and is checked when used.
 func parseStation(text, path string) (map[string]any, error) {
 	doc, err := parseJSON(text, path)
 	if nil != err {
 		return nil, err
 	}
-	if _, err := openStation(doc, nil); nil != err {
-		if se, ok := err.(*station.Error); ok && "station_config_invalid" == se.Code {
+	if _, err := openStation(withChain(doc, []any{}), nil); nil != err {
+		if se, ok := err.(*station.Error); ok {
 			return nil, fmt.Errorf("%s: %s", path, se.Error())
 		}
 		return nil, err
@@ -141,15 +147,7 @@ func parseAccounts(text, path string) (map[string]string, error) {
 	return out, nil
 }
 
-func loadConfig(configPath string) (map[string]any, map[string]string, error) {
-	path := configPath
-	if "" == path {
-		home, err := os.UserHomeDir()
-		if nil != err {
-			return nil, nil, err
-		}
-		path = filepath.Join(home, ".config", "likeness", "station.json")
-	}
+func loadConfig(path string) (map[string]any, map[string]string, error) {
 	raw, err := os.ReadFile(path)
 	if nil != err {
 		return nil, map[string]string{}, nil
@@ -170,6 +168,23 @@ func loadConfig(configPath string) (map[string]any, map[string]string, error) {
 	return doc, accounts, nil
 }
 
+// prompt reads one line from the terminal with echo off; false at end of
+// input.
+func prompt(label string) (string, bool) {
+	fmt.Fprint(os.Stderr, label+": ")
+	typed, err := term.ReadPassword(int(os.Stdin.Fd()))
+	fmt.Fprint(os.Stderr, "\n")
+	if nil != err {
+		return "", false
+	}
+	return string(typed), true
+}
+
+func readStdin() (string, error) {
+	raw, err := io.ReadAll(os.Stdin)
+	return string(raw), err
+}
+
 // Main is the whole process: build the context, run, write, return the status.
 func Main(argv []string) int {
 	// With SIGPIPE ignored a write to a departed reader reports EPIPE instead
@@ -188,19 +203,31 @@ func Main(argv []string) int {
 		}
 	}
 
-	config, accounts, cerr := loadConfig(configPath)
+	home, _ := os.UserHomeDir()
+	path := configPath
+	if "" == path {
+		path = filepath.Join(home, ".config", "likeness", "station.json")
+	}
+
+	config, accounts, cerr := loadConfig(path)
 	if nil != cerr {
 		fmt.Fprint(os.Stderr, "error: invalid-project\n  "+cerr.Error()+"\n  remedy  "+configRemedy+"\n")
 		return 3
 	}
 
+	clock, _ := Rfc3339(time.Now().UnixMilli())
 	res := Run(Ctx{
 		Argv:     rest,
 		Env:      env,
-		Clock:    Rfc3339(time.Now().UnixMilli()),
+		Clock:    clock,
 		Station:  config,
 		Accounts: accounts,
 		Path:     probePath(env),
+		Home:     home,
+		Dir:      filepath.Dir(path),
+		Stdin:    readStdin,
+		TTY:      term.IsTerminal(int(os.Stdin.Fd())),
+		Prompt:   prompt,
 	})
 
 	if "" != res.Stdout {

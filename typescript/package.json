@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@voxgig-sdk/joplin-sdk": "file:../../voxgig-sdk/joplin-sdk/ts",
+    "@voxgig/sekreto": "0.3.0",
     "@voxgig/station": "0.1.0"
   },
   "devDependencies": {

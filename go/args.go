@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,6 +40,7 @@ type CommandDef struct {
 	Short  string             `json:"short"`
 	Ready  bool               `json:"ready"`
 	Writes bool               `json:"writes"`
+	Echo   *bool              `json:"echo"`
 	Arg    []ArgDef           `json:"arg"`
 	Flag   map[string]FlagDef `json:"flag"`
 	Exits  []string           `json:"exits"`
@@ -79,6 +81,35 @@ func commandDef(name string) (CommandDef, bool) {
 	return cmd, ok
 }
 
+// actionsOf lists a group's actions, `init` in `secrets init`, in code-point
+// order.
+func actionsOf(group string) []string {
+	loadTable()
+	out := []string{}
+	for name := range table.Command {
+		if strings.HasPrefix(name, group+" ") {
+			out = append(out, name[len(group)+1:])
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// commandWords names the command argv starts with, as far as it can be read.
+func commandWords(argv []string) []string {
+	if 1 < len(argv) {
+		if _, one := commandDef(argv[0]); !one {
+			if _, two := commandDef(argv[0] + " " + argv[1]); two {
+				return []string{argv[0], argv[1]}
+			}
+		}
+	}
+	if 0 == len(argv) {
+		return []string{""}
+	}
+	return []string{argv[0]}
+}
+
 // Parsed is a command line the grammar accepted.
 type Parsed struct {
 	Command string
@@ -90,6 +121,8 @@ var (
 	nameRe     = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 	integerRe  = regexp.MustCompile(`^(0|[1-9][0-9]*)$`)
 	instanceRe = regexp.MustCompile(`^[a-z][a-z0-9-]*([$][a-z0-9-]+)?$`)
+	secretRe   = regexp.MustCompile(`^[a-z0-9_]+(\.[a-z0-9_]+)*$`)
+	envvarRe   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 )
 
 func bad(msg, remedy string) *LikenessError {
@@ -114,6 +147,10 @@ func described(typ string, min, max *int64) string {
 		return "an instance ref (api or api$tag)"
 	case "path":
 		return "a path"
+	case "secret":
+		return "a secret name ([a-z0-9_] words joined by dots)"
+	case "envvar":
+		return "an environment variable name"
 	}
 	return "a string"
 }
@@ -131,7 +168,7 @@ func inRange(raw string, min, max *int64) (int64, bool) {
 	return n, (nil == min || *min <= n) && (nil == max || n <= *max)
 }
 
-func checked(label, typ string, min, max *int64, raw, remedy string) (any, error) {
+func checked(label, typ string, min, max *int64, raw, remedy string, echo bool) (any, error) {
 	var value any = raw
 	ok := true
 	switch typ {
@@ -144,9 +181,18 @@ func checked(label, typ string, min, max *int64, raw, remedy string) (any, error
 		ok = instanceRe.MatchString(raw)
 	case "path":
 		ok = "" != raw
+	case "secret":
+		ok = secretRe.MatchString(raw)
+	case "envvar":
+		ok = envvarRe.MatchString(raw)
 	}
 	if !ok {
-		return nil, bad(label+" takes "+described(typ, min, max)+", not \""+raw+"\"", remedy)
+		// Where a secret is most likely to be typed by mistake, never repeated.
+		shown := ""
+		if echo && "envvar" != typ && "stdin" != typ {
+			shown = ", not \"" + raw + "\""
+		}
+		return nil, bad(label+" takes "+described(typ, min, max)+shown, remedy)
 	}
 	return value, nil
 }
@@ -180,15 +226,30 @@ func ParseArgv(argv []string) (Parsed, error) {
 		return Parsed{}, bad("the command comes first, and "+name+" is a flag",
 			"put the command first: `likeness list "+name+"`")
 	}
+	at := 1
+	if _, one := table.Command[name]; !one {
+		if actions := actionsOf(name); 0 < len(actions) {
+			if len(argv) < 2 || strings.HasPrefix(argv[1], "-") {
+				return Parsed{}, bad("`"+name+"` needs an action: "+strings.Join(actions[:len(actions)-1], ", ")+
+					" or "+actions[len(actions)-1], "run `likeness help "+name+"` for what each does")
+			}
+			if _, ok := table.Command[name+" "+argv[1]]; !ok {
+				return Parsed{}, bad("no such command: "+name+" "+argv[1],
+					"run `likeness help "+name+"` for its actions")
+			}
+			name, at = name+" "+argv[1], 2
+		}
+	}
 	cmd, ok := table.Command[name]
 	if !ok {
 		return Parsed{}, bad("no such command: "+name, "run `likeness help` for the command list")
 	}
 
+	echo := nil == cmd.Echo || *cmd.Echo
 	remedy := "run `likeness help " + name + "` for its arguments"
 	flags := map[string]any{}
 	positional := []string{}
-	rest := argv[1:]
+	rest := argv[at:]
 
 	for i := 0; i < len(rest); i++ {
 		a := rest[i]
@@ -199,6 +260,10 @@ func ParseArgv(argv []string) (Parsed, error) {
 		if !strings.HasPrefix(a, "--") {
 			// A command still being built reads its global flags and nothing else.
 			if flagShaped(a) && cmd.Ready {
+				if !echo {
+					return Parsed{}, bad("an argument begins with - and is not a flag; it is not repeated here, in case it is a secret",
+						"a positional that begins with - must follow --")
+				}
 				return Parsed{}, bad(a+" begins with - and is not a flag; a positional that begins with - must follow --",
 					"write `likeness "+name+" -- "+a+"`")
 			}
@@ -225,6 +290,9 @@ func ParseArgv(argv []string) (Parsed, error) {
 			if !cmd.Ready {
 				continue
 			}
+			if !echo {
+				return Parsed{}, bad("`"+name+"` has no such flag; it is not repeated here, in case it is a secret", remedy)
+			}
 			return Parsed{}, bad("`"+name+"` has no flag --"+given, remedy)
 		}
 
@@ -246,7 +314,7 @@ func ParseArgv(argv []string) (Parsed, error) {
 				return Parsed{}, bad("--"+key+" needs a value",
 					"write --"+key+" "+def.Value+", or --"+key+"="+def.Value+" for a value that begins with -")
 			}
-			v, err := checked("--"+key, def.Type, def.Min, def.Max, raw, remedy)
+			v, err := checked("--"+key, def.Type, def.Min, def.Max, raw, remedy, echo)
 			if nil != err {
 				return Parsed{}, err
 			}
@@ -281,7 +349,11 @@ func ParseArgv(argv []string) (Parsed, error) {
 			return Parsed{}, bad("`"+name+"` needs <"+def.Name+">", remedy)
 		}
 		for _, raw := range taken {
-			if _, err := checked("<"+def.Name+">", def.Type, nil, nil, raw, remedy); nil != err {
+			if "stdin" == def.Type && "-" != raw {
+				return Parsed{}, bad("`"+name+"` takes - there, never the value itself",
+					"pipe the value in, with - after the name")
+			}
+			if _, err := checked("<"+def.Name+">", def.Type, nil, nil, raw, remedy, echo); nil != err {
 				return Parsed{}, err
 			}
 			args = append(args, raw)
@@ -289,6 +361,9 @@ func ParseArgv(argv []string) (Parsed, error) {
 		p += len(taken)
 	}
 	if p < len(positional) {
+		if !echo {
+			return Parsed{}, bad("`"+name+"` takes no further argument; it is not repeated here, in case it is a secret", remedy)
+		}
 		return Parsed{}, bad("`"+name+"` does not take the argument \""+positional[p]+"\"", remedy)
 	}
 	return Parsed{Command: name, Flags: flags, Args: args}, nil

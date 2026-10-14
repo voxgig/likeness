@@ -96,6 +96,35 @@ func TestMetaOneByteOfStdoutIsReported(t *testing.T) {
 	}
 }
 
+func TestMetaWrongVaultNamesAreReported(t *testing.T) {
+	root := Root(t)
+	e := entryByID(t, root, "secrets/remove")
+	vault := e["out"].(map[string]any)["vault"].(map[string]any)
+	vault["names"] = []any{"joplin.apikey", "notion.apikey"}
+	if f := Check(t, root, e); !anyStarts(f, "vault names ") {
+		t.Fatalf("no vault failure in %v", f)
+	}
+}
+
+func TestMetaWrongVaultValueIsReported(t *testing.T) {
+	root := Root(t)
+	e := entryByID(t, root, "secrets/set-from-stdin")
+	vault := e["out"].(map[string]any)["vault"].(map[string]any)
+	vault["values"] = map[string]any{"joplin.apikey": "rotated-token\n"}
+	if f := Check(t, root, e); !anyStarts(f, "vault value of ") {
+		t.Fatalf("no value failure in %v", f)
+	}
+}
+
+func TestMetaUnexpectedPromptIsReported(t *testing.T) {
+	root := Root(t)
+	e := entryByID(t, root, "secrets/passphrase-typed")
+	e["out"].(map[string]any)["prompts"] = []any{}
+	if f := Check(t, root, e); !anyStarts(f, "prompts ") {
+		t.Fatalf("no prompt failure in %v", f)
+	}
+}
+
 func TestMetaMissingCallIsReported(t *testing.T) {
 	root := Root(t)
 	e := entryByID(t, root, "list/all")

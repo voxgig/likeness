@@ -58,7 +58,7 @@ func unitRegistry() map[string]unitFn {
 		},
 
 		"rfc3339": func(t *testing.T, in any) (any, error) {
-			return Rfc3339(mustNum(t, in)), nil
+			return Rfc3339(mustNum(t, in))
 		},
 
 		"crockfordAlphabet": func(t *testing.T, in any) (any, error) { return Crockford, nil },
@@ -110,6 +110,19 @@ func unitRegistry() map[string]unitFn {
 				return nil, err
 			}
 			return n.Value(), nil
+		},
+		"vaultEntry": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			config, _ := m["station"].(map[string]any)
+			profile := str(m, "profile")
+			if "" == profile {
+				profile = "default"
+			}
+			e, err := vaultEntry(config, profile, "/home/u", "/home/u/.config/likeness", str(m, "key"))
+			if nil != err {
+				return nil, err
+			}
+			return map[string]any{"file": e.File, "key": e.Key, "shown": e.Shown}, nil
 		},
 		"partialCodes": func(t *testing.T, in any) (any, error) {
 			codes := PartialCodes()

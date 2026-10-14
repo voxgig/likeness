@@ -7,4 +7,4 @@ notes matching a selector, across the selected connections
   --raw          carry each source's own record
   --sort KEY     order the notes by KEY
 
-global flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict
+global flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME

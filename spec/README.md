@@ -20,8 +20,8 @@ spec/
   caps.aontu          DATA. What each source can and cannot do.
   errors.aontu        DATA. Every code likeness can emit.
   commands.aontu      DATA. The command surface and its argument grammar.
-  unit.aontu          DATA. The unit corpus: pure functions, both ports.
-  cli.aontu           DATA. The transcript corpus: whole commands, both ports.
+  unit.aontu          DATA. The unit corpus: pure functions, every port.
+  cli.aontu           DATA. The transcript corpus: whole commands, every port.
   help.json           RENDERED from commands.aontu by `make spec-build`; `help` prints it.
   example/
     likeness.aontu          a valid project file
@@ -38,6 +38,14 @@ The command table carries rules its shape cannot say, and the build refuses a
 table that breaks them: a command may not redeclare a global flag, only the last
 positional repeats, a valued flag names its value, a range belongs to an integer,
 and every exit is a registered code.
+
+A transcript entry runs in a home directory of its own, with the configuration
+directory at `~/.config/likeness`. It may bring files into it (the fixture vault,
+`fixtures/vault/likeness.skmv`, which every port's sekreto reads), give stdin,
+and stand in for a terminal with the answers typed at its prompts. It then
+asserts the prompts shown and, for a vault command, what the vault holds
+afterwards as one key reads it. The vault's bytes are never compared: they change
+on every write.
 
 ## What is exercised, and what is not
 

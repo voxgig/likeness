@@ -59,6 +59,15 @@ primary: unit: {
     }
 
     {
+      id: "envelope/integer-beyond-a-double-is-refused"
+      # The canonical port parses numbers as doubles, so every port is held to
+      # the integers a double names exactly.
+      fn: "serialise"
+      in: n: 9007199254740992
+      err: "integer beyond exact double precision"
+    }
+
+    {
       id: "envelope/escape-quote-and-backslash"
       fn: "serialise"
       in: s: "a\"b\\c"
@@ -774,10 +783,12 @@ primary: unit: {
     }
 
     {
-      id: "args/help-takes-one-command"
+      id: "args/help-takes-the-words-of-a-command"
+      # An action is a group's second word, so help reads every word; words that
+      # name no command are refused when help looks them up.
       fn: "parseArgv"
-      in: ["help" "list" "get"]
-      err: "`help` does not take the argument \"get\""
+      in: ["help" "secrets" "set"]
+      out: { command:"help" flags: {} args: ["secrets" "set"] }
     }
 
     {
@@ -857,6 +868,34 @@ primary: unit: {
     }
 
     {
+      id: "config/station-not-an-object"
+      fn: "connections"
+      in: { station:"[]" likeness:"{}" }
+      err: "station.json is not a JSON object"
+    }
+
+    {
+      id: "config/station-refused-for-a-shared-secret"
+      # Any refusal of station's own, not only a shape mismatch, is the file's.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"notes-a\":{},\"notes$a\":{}}}}}"
+        likeness: "{}"
+      }
+      err: "station.json: station_secret_collision"
+    }
+
+    {
+      id: "config/likeness-not-an-object"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+        likeness: "1"
+      }
+      err: "likeness.json is not a JSON object"
+    }
+
+    {
       id: "config/likeness-not-json"
       fn: "connections"
       in: {
@@ -904,6 +943,174 @@ primary: unit: {
     }
   ]
 
+  # The vault station.json names, resolved for a home of /home/u and a
+  # configuration directory of /home/u/.config/likeness.
+  vault: set: [
+    {
+      id: "vault/default"
+      # No chain named: the vault beside station.json, opened as master.
+      fn: "vaultEntry"
+      in: station: null
+      out: {
+        file: "/home/u/.config/likeness/likeness.skmv"
+        key: "master"
+        shown: "~/.config/likeness/likeness.skmv"
+      }
+    }
+
+    {
+      id: "vault/relative-to-the-configuration"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" file:"../team/v.skmv" }
+      ]
+      out: {
+        file: "/home/u/.config/team/v.skmv"
+        key: "master"
+        shown: "~/.config/team/v.skmv"
+      }
+    }
+
+    {
+      id: "vault/from-home"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" file:"~/v.skmv" }
+      ]
+      out: { file:"/home/u/v.skmv" key:"master" shown:"~/v.skmv" }
+    }
+
+    {
+      id: "vault/outside-home-is-shown-whole"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" file:"/srv/v.skmv" }
+      ]
+      out: { file:"/srv/v.skmv" key:"master" shown:"/srv/v.skmv" }
+    }
+
+    {
+      id: "vault/vaultkey"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" vaultkey:"ci" }
+      ]
+      out: {
+        file: "/home/u/.config/likeness/likeness.skmv"
+        key: "ci"
+        shown: "~/.config/likeness/likeness.skmv"
+      }
+    }
+
+    {
+      id: "vault/flag-over-vaultkey"
+      fn: "vaultEntry"
+      in: {
+        station: profiles: default: secrets: providers: [
+          { kind:"minivault" vaultkey:"ci" }
+        ]
+        key: "master"
+      }
+      out: {
+        file: "/home/u/.config/likeness/likeness.skmv"
+        key: "master"
+        shown: "~/.config/likeness/likeness.skmv"
+      }
+    }
+
+    {
+      id: "vault/profile-chain-wins"
+      # Chosen the way station chooses: the profile's chain, else default's.
+      fn: "vaultEntry"
+      in: {
+        station: profiles: {
+          default: secrets: providers: [{ kind:"minivault" file:"a.skmv" }]
+          work: secrets: providers: [{ kind:"minivault" file:"b.skmv" }]
+        }
+        profile: "work"
+      }
+      out: {
+        file: "/home/u/.config/likeness/b.skmv"
+        key: "master"
+        shown: "~/.config/likeness/b.skmv"
+      }
+    }
+
+    {
+      id: "vault/profile-without-a-chain"
+      fn: "vaultEntry"
+      in: {
+        station: profiles: {
+          default: secrets: providers: [{ kind:"minivault" file:"a.skmv" }]
+          work: sdk: {}
+        }
+        profile: "work"
+      }
+      out: {
+        file: "/home/u/.config/likeness/a.skmv"
+        key: "master"
+        shown: "~/.config/likeness/a.skmv"
+      }
+    }
+
+    {
+      id: "vault/env-store-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [kind:"env"]
+      err: "likeness reads secrets from its vault alone, and station.json names the store \"env\""
+    }
+
+    {
+      id: "vault/bare-kind-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: ["minivault"]
+      err: "names the store \"minivault\""
+    }
+
+    {
+      id: "vault/empty-chain-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: []
+      err: "secrets.providers must name one store, the vault"
+    }
+
+    {
+      id: "vault/passphrase-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" passphrase:"p" }
+      ]
+      err: "a passphrase is never written to a file"
+    }
+
+    {
+      id: "vault/unknown-key-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" iterations:1 }
+      ]
+      err: "the vault entry in station.json has no key \"iterations\""
+    }
+
+    {
+      id: "vault/file-must-be-a-path"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" file:"" }
+      ]
+      err: "the vault entry's file is not a path"
+    }
+
+    {
+      id: "vault/vaultkey-must-be-a-name"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" vaultkey:"Admin" }
+      ]
+      err: "the vault entry's vaultkey is not a key name"
+    }
+  ]
+
   identity: set: [
     # Known vectors. A port that gets this subtly wrong produces
     # plausible-looking identifiers that silently fail to match another port's,
@@ -946,6 +1153,32 @@ primary: unit: {
     }
 
     { id:"identity/rfc3339-epoch" fn:"rfc3339" in:0 out:"1970-01-01T00:00:00Z" }
+    {
+      id: "identity/rfc3339-first-four-digit-year"
+      fn: "rfc3339"
+      in: -62167219200000
+      out: "0000-01-01T00:00:00Z"
+    }
+    {
+      id: "identity/rfc3339-last-four-digit-year"
+      fn: "rfc3339"
+      in: 253402300799999
+      out: "9999-12-31T23:59:59Z"
+    }
+    {
+      id: "identity/rfc3339-before-year-zero"
+      # Refused rather than written another way: no year outside 0000-9999 has
+      # an RFC 3339 form.
+      fn: "rfc3339"
+      in: -62167219200001
+      err: "outside the years 0000 to 9999"
+    }
+    {
+      id: "identity/rfc3339-after-year-9999"
+      fn: "rfc3339"
+      in: 253402300800000
+      err: "outside the years 0000 to 9999"
+    }
     {
       id: "identity/rfc3339-second-precision"
       # Milliseconds are truncated, never rounded: RFC 3339 UTC at second

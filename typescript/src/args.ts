@@ -8,7 +8,7 @@ export type FlagDef = {
 }
 export type ArgDef = { name: string, type: string, required: boolean, repeat?: boolean, short: string }
 export type CommandDef = {
-  short: string, ready: boolean, writes: boolean, arg: ArgDef[],
+  short: string, ready: boolean, writes: boolean, echo?: boolean, arg: ArgDef[],
   flag: Record<string, FlagDef>, exits: string[],
 }
 
@@ -21,6 +21,19 @@ const HELP = helpDoc as unknown as {
 
 export function commandDef (name: string): CommandDef | undefined {
   return Object.hasOwn(TABLE.command, name) ? TABLE.command[name] : undefined
+}
+
+// The actions of a group, `secrets` in `secrets init`, in code-point order.
+export function actionsOf (group: string): string[] {
+  return Object.keys(TABLE.command).filter(n => n.startsWith(group + ' '))
+    .map(n => n.slice(group.length + 1)).sort()
+}
+
+// The words naming the command argv starts with, as far as they can be read.
+export function commandWords (argv: string[]): string[] {
+  if (1 < argv.length && undefined === commandDef(argv[0]) &&
+      undefined !== commandDef(argv[0] + ' ' + argv[1])) return [argv[0], argv[1]]
+  return [argv[0] ?? '']
 }
 
 export function helpText (name: string): string | undefined {
@@ -36,6 +49,11 @@ export type Parsed = { command: string, flags: Record<string, unknown>, args: st
 const NAME_RE = /^[a-z][a-z0-9-]*$/
 const INTEGER_RE = /^(0|[1-9][0-9]*)$/
 const INSTANCE_RE = /^[a-z][a-z0-9-]*(\$[a-z0-9-]+)?$/
+const SECRET_RE = /^[a-z0-9_]+(\.[a-z0-9_]+)*$/
+const ENVVAR_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
+
+// Where a secret is most likely to be typed by mistake, so never repeated.
+const UNECHOED = ['envvar', 'stdin']
 
 function bad (message: string, remedy: string): LikenessError {
   return new LikenessError('invalid-argument', message, remedy)
@@ -52,6 +70,8 @@ function described (def: FlagDef | ArgDef): string {
   if ('name' === def.type) return 'a name ([a-z][a-z0-9-]*)'
   if ('instance' === def.type) return 'an instance ref (api or api$tag)'
   if ('path' === def.type) return 'a path'
+  if ('secret' === def.type) return 'a secret name ([a-z0-9_] words joined by dots)'
+  if ('envvar' === def.type) return 'an environment variable name'
   return 'a string'
 }
 
@@ -63,14 +83,19 @@ function inRange (raw: string, def: FlagDef): boolean {
   return (undefined === def.min || def.min <= n) && (undefined === def.max || n <= def.max)
 }
 
-function checked (label: string, def: FlagDef | ArgDef, raw: string, remedy: string): unknown {
+function checked (label: string, def: FlagDef | ArgDef, raw: string, remedy: string, echo: boolean): unknown {
   const ok =
     'integer' === def.type ? INTEGER_RE.test(raw) && inRange(raw, def as FlagDef) :
     'name' === def.type ? NAME_RE.test(raw) :
     'instance' === def.type ? INSTANCE_RE.test(raw) :
     'path' === def.type ? '' !== raw :
+    'secret' === def.type ? SECRET_RE.test(raw) :
+    'envvar' === def.type ? ENVVAR_RE.test(raw) :
     true
-  if (!ok) throw bad(label + ' takes ' + described(def) + ', not "' + raw + '"', remedy)
+  if (!ok) {
+    const shown = echo && !UNECHOED.includes(def.type) ? ', not "' + raw + '"' : ''
+    throw bad(label + ' takes ' + described(def) + shown, remedy)
+  }
   return 'integer' === def.type ? Number(raw) : raw
 }
 
@@ -96,13 +121,28 @@ export function parseArgv (argv: string[]): Parsed {
     throw bad('the command comes first, and ' + name + ' is a flag',
       'put the command first: `likeness list ' + name + '`')
   }
+  let at = 1
+  const actions = undefined === commandDef(name) ? actionsOf(name) : []
+  if (0 < actions.length) {
+    const action = argv[1]
+    if (undefined === action || action.startsWith('-')) {
+      throw bad('`' + name + '` needs an action: ' + actions.slice(0, -1).join(', ') +
+        ' or ' + actions[actions.length - 1], 'run `likeness help ' + name + '` for what each does')
+    }
+    if (undefined === commandDef(name + ' ' + action)) {
+      throw bad('no such command: ' + name + ' ' + action, 'run `likeness help ' + name + '` for its actions')
+    }
+    name = name + ' ' + action
+    at = 2
+  }
   const cmd = commandDef(name)
   if (undefined === cmd) throw bad('no such command: ' + name, 'run `likeness help` for the command list')
 
+  const echo = false !== cmd.echo
   const remedy = 'run `likeness help ' + name + '` for its arguments'
   const flags: Record<string, unknown> = {}
   const positional: string[] = []
-  const rest = argv.slice(1)
+  const rest = argv.slice(at)
 
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i]
@@ -113,6 +153,10 @@ export function parseArgv (argv: string[]): Parsed {
     if (!a.startsWith('--')) {
       // A command still being built reads its global flags and nothing else.
       if (isFlagShaped(a) && cmd.ready) {
+        if (!echo) {
+          throw bad('an argument begins with - and is not a flag; it is not repeated here, in case it is a secret',
+            'a positional that begins with - must follow --')
+        }
         throw bad(a + ' begins with - and is not a flag; a positional that begins with - must follow --',
           'write `likeness ' + name + ' -- ' + a + '`')
       }
@@ -135,7 +179,9 @@ export function parseArgv (argv: string[]): Parsed {
     }
     if (undefined === def) {
       if (!cmd.ready) continue
-      throw bad('`' + name + '` has no flag --' + given, remedy)
+      throw bad(echo
+        ? '`' + name + '` has no flag --' + given
+        : '`' + name + '` has no such flag; it is not repeated here, in case it is a secret', remedy)
     }
 
     let value: unknown
@@ -152,7 +198,7 @@ export function parseArgv (argv: string[]): Parsed {
           'write --' + key + ' ' + def.value + ', or --' + key + '=' + def.value +
           ' for a value that begins with -')
       }
-      value = checked('--' + key, def, raw, remedy)
+      value = checked('--' + key, def, raw, remedy, echo)
     }
 
     if (true === def.repeat) {
@@ -173,11 +219,19 @@ export function parseArgv (argv: string[]): Parsed {
   for (const def of cmd.arg) {
     const taken = true === def.repeat ? positional.slice(p) : positional.slice(p, p + 1)
     if (def.required && 0 === taken.length) throw bad('`' + name + '` needs <' + def.name + '>', remedy)
-    for (const raw of taken) args.push(checked('<' + def.name + '>', def, raw, remedy) as string)
+    for (const raw of taken) {
+      if ('stdin' === def.type && '-' !== raw) {
+        throw bad('`' + name + '` takes - there, never the value itself',
+          'pipe the value in, with - after the name')
+      }
+      args.push(checked('<' + def.name + '>', def, raw, remedy, echo) as string)
+    }
     p += taken.length
   }
   if (p < positional.length) {
-    throw bad('`' + name + '` does not take the argument "' + positional[p] + '"', remedy)
+    throw bad(echo
+      ? '`' + name + '` does not take the argument "' + positional[p] + '"'
+      : '`' + name + '` takes no further argument; it is not repeated here, in case it is a secret', remedy)
   }
   return { command: name, flags, args }
 }

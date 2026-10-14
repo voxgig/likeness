@@ -2,6 +2,7 @@ package likeness
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"time"
 )
 
@@ -48,7 +49,16 @@ func Lid(source, account, entity, id string) string {
 	return "lk_" + Crockford32(h.Sum(nil), 12)
 }
 
-func Rfc3339(ms int64) string {
+// The milliseconds of the first and last instants with a four-digit year.
+const (
+	rfc3339Min = -62167219200000
+	rfc3339Max = 253402300799999
+)
+
+func Rfc3339(ms int64) (string, error) {
+	if ms < rfc3339Min || rfc3339Max < ms {
+		return "", fmt.Errorf("rfc3339: %d ms is outside the years 0000 to 9999", ms)
+	}
 	t := time.UnixMilli(ms).UTC()
-	return t.Format("2006-01-02T15:04:05") + "Z"
+	return t.Format("2006-01-02T15:04:05") + "Z", nil
 }

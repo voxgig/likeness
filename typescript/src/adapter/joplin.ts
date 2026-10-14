@@ -43,6 +43,17 @@ export function connect (station: Station, instance: string, seed?: unknown): an
   return station.connect(SDK, { feature })
 }
 
+function stamp (v: unknown, field: string): string {
+  try {
+    return rfc3339(ms(v))
+  }
+  catch {
+    throw new LikenessError('source-unavailable',
+      'the source returned a ' + SOURCE + ' record whose ' + field + ' is outside the years 0000 to 9999',
+      'this is a bug in the source or its SDK; run with --raw to capture the payload')
+  }
+}
+
 export function project (raw: JoplinNote, instance: string, account: string, withRaw: boolean): Note {
   const id = has(raw.id) ? text(raw.id) : ''
   // Refused, not fabricated: an empty id gives every such row one valid-looking
@@ -59,8 +70,8 @@ export function project (raw: JoplinNote, instance: string, account: string, wit
     id,
     title: has(raw.title) ? text(raw.title) : '',
     url: 'joplin://x-callback-url/openNote?id=' + id,
-    created: rfc3339(ms(raw.created_time)),
-    updated: rfc3339(ms(raw.updated_time)),
+    created: stamp(raw.created_time, 'created_time'),
+    updated: stamp(raw.updated_time, 'updated_time'),
   }
   if (has(raw.parent_id)) {
     const space = text(raw.parent_id)

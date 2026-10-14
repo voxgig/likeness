@@ -2,7 +2,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, delimiter, dirname } from 'node:path'
 import { homedir } from 'node:os'
-import { run, openStation, type Ctx, PORT, VERSION } from './core.js'
+import { run, openStation, withChain, type Ctx, PORT, VERSION } from './core.js'
 import { rfc3339 } from './identity.js'
 import { renderRaw } from './envelope.js'
 import { compareCodePoints } from './note.js'
@@ -15,16 +15,24 @@ function has (v: unknown): boolean { return undefined !== v && null !== v }
 function text (v: unknown): string { return 'string' === typeof v ? v : renderRaw(v) }
 
 function parseJson (source: string, path: string): any {
-  try { return JSON.parse(source) }
+  let doc: unknown
+  try { doc = JSON.parse(source) }
   catch { throw new ConfigError(path + ' is not valid JSON') }
+  if (null === doc || 'object' !== typeof doc || Array.isArray(doc)) {
+    throw new ConfigError(path + ' is not a JSON object')
+  }
+  return doc
 }
 
 // station.json, parsed here and validated by station against its own shape.
+// Its secret chain is likeness's to check, and is checked when it is used.
 export function parseStation (source: string, path: string): unknown {
   const doc = parseJson(source, path)
-  try { openStation(doc) }
+  try { openStation(withChain(doc, [])) }
   catch (err: any) {
-    if ('station_config_invalid' === err?.code) throw new ConfigError(path + ': ' + err.message)
+    if ('string' === typeof err?.code && err.code.startsWith('station_')) {
+      throw new ConfigError(path + ': ' + err.message)
+    }
     throw err
   }
   return doc
@@ -32,7 +40,7 @@ export function parseStation (source: string, path: string): unknown {
 
 // The account each instance ref belongs to, from likeness.json.
 export function parseAccounts (source: string, path: string): Record<string, string> {
-  const instances = parseJson(source, path)?.instances ?? {}
+  const instances = parseJson(source, path).instances ?? {}
   const out: Record<string, string> = {}
   for (const ref of Object.keys(instances).sort(compareCodePoints)) {
     const account = instances[ref]?.account
@@ -41,13 +49,50 @@ export function parseAccounts (source: string, path: string): Record<string, str
   return out
 }
 
-function loadConfig (configPath?: string): { station: unknown, accounts: Record<string, string> } {
-  const path = configPath ?? join(homedir(), '.config', 'likeness', 'station.json')
+function loadConfig (path: string): { station: unknown, accounts: Record<string, string> } {
   if (!existsSync(path)) return { station: null, accounts: {} }
   const station = parseStation(readFileSync(path, 'utf8'), path)
   const lpath = join(dirname(path), 'likeness.json')
   const accounts = existsSync(lpath) ? parseAccounts(readFileSync(lpath, 'utf8'), lpath) : {}
   return { station, accounts }
+}
+
+// One line from the terminal with echo off; undefined at end of input.
+function prompt (label: string): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    const input = process.stdin
+    let typed = ''
+    const done = (value: string | undefined): void => {
+      input.removeListener('data', onData)
+      input.setRawMode(false)
+      input.pause()
+      process.stderr.write('\n')
+      resolve(value)
+    }
+    const onData = (chunk: Buffer): void => {
+      for (const ch of chunk.toString('utf8')) {
+        if ('\r' === ch || '\n' === ch) return done(typed)
+        if ('\u0004' === ch) return done('' === typed ? undefined : typed)
+        if ('\u0003' === ch) {
+          input.setRawMode(false)
+          process.stderr.write('\n')
+          process.exit(130)
+        }
+        if ('\u007f' === ch || '\b' === ch) typed = Array.from(typed).slice(0, -1).join('')
+        else typed += ch
+      }
+    }
+    process.stderr.write(label + ': ')
+    input.setRawMode(true)
+    input.resume()
+    input.on('data', onData)
+  })
+}
+
+async function readStdin (): Promise<string> {
+  const chunks: Buffer[] = []
+  for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
+  return Buffer.concat(chunks).toString('utf8')
 }
 
 function probePath (env: Record<string, string>): { path: string, port: string, version: string }[] {
@@ -113,10 +158,12 @@ export async function main (argv: string[]): Promise<number> {
 
   const { rest, value: configPath } = takeConfigOption(argv)
   const env = process.env as Record<string, string>
+  const home = homedir()
+  const path = configPath ?? join(home, '.config', 'likeness', 'station.json')
 
   let config: { station: unknown, accounts: Record<string, string> }
   try {
-    config = loadConfig(configPath)
+    config = loadConfig(path)
   }
   catch (err) {
     if (err instanceof ConfigError) {
@@ -133,6 +180,11 @@ export async function main (argv: string[]): Promise<number> {
     station: config.station,
     accounts: config.accounts,
     path: probePath(env),
+    home,
+    dir: dirname(path),
+    stdin: readStdin,
+    tty: true === process.stdin.isTTY,
+    prompt,
   }
 
   const res = await run(ctx)
