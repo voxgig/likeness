@@ -52,6 +52,13 @@ node typescript/bin/likeness.js list 'updated>7d' --json
 cd go && go run ./cmd/likeness list 'updated>7d' --json
 ```
 
+Both parse their arguments from one declared table, `spec/commands.aontu`, so the
+command line is the same interface in every port: `likeness help` and
+`likeness help <command>` print the help rendered from it, and an undeclared flag,
+a mistyped value or a misplaced argument is refused as `invalid-argument` before
+anything runs. A selector term that begins with `-` follows `--`:
+`likeness list -- '-tag:draft title:a'`.
+
 Both read `~/.config/likeness/station.json` (or `--config PATH`), which is a
 [voxgig/station](https://github.com/voxgig/station) configuration in station's
 own grammar. Each instance is a ref under `sdk`: `joplin` for the first Joplin
