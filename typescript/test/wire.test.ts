@@ -9,7 +9,7 @@ import { Calls } from '../src/calls.js'
 import { listNotes, loadNote, check, project, FIELDS } from '../src/adapter/joplin.js'
 
 // eslint-disable-next-line
-import pkg from '@voxgig-sdk/joplin'
+import pkg from '@voxgig-sdk/joplin-sdk'
 
 const SDK: any = (pkg as any).JoplinSDK ?? (pkg as any).default ?? pkg
 const APIKEY = 'joplin-mock-token'

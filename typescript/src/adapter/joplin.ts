@@ -6,7 +6,7 @@ import { LikenessError } from '../errors.js'
 import { pageMax } from '../caps.js'
 
 // eslint-disable-next-line
-import pkg from '@voxgig-sdk/joplin'
+import pkg from '@voxgig-sdk/joplin-sdk'
 
 const SOURCE = 'joplin'
 

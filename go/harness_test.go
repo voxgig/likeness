@@ -165,7 +165,7 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 		})
 		own := cloneMap(seed)
 		if net, ok := cm["net"]; ok {
-			own["net"] = numbersToInt(net)
+			own["net"] = net
 		}
 		ctx.Fixture[inst] = own
 	}
@@ -180,34 +180,6 @@ func strs(v any) []string {
 		out = append(out, x)
 	}
 	return out
-}
-
-// numbersToInt rewrites every json.Number in a value as an int, recursively.
-func numbersToInt(v any) any {
-	switch t := v.(type) {
-	case json.Number:
-		if i, err := t.Int64(); nil == err {
-			return int(i)
-		}
-		f, err := t.Float64()
-		if nil != err {
-			return t
-		}
-		return f
-	case map[string]any:
-		out := map[string]any{}
-		for k, e := range t {
-			out[k] = numbersToInt(e)
-		}
-		return out
-	case []any:
-		out := make([]any, len(t))
-		for i, e := range t {
-			out[i] = numbersToInt(e)
-		}
-		return out
-	}
-	return v
 }
 
 func cloneMap(m map[string]any) map[string]any {

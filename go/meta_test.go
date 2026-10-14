@@ -236,7 +236,7 @@ func TestMetaVersionReportingAnotherPortIsReported(t *testing.T) {
 func TestMetaNetOptionsReachTheSdk(t *testing.T) {
 	seed := map[string]any{
 		"entity": map[string]any{"note": map[string]any{"x1": map[string]any{"id": "x1"}}},
-		"net":    numbersToInt(mustDecode(t, `{"failTimes":1,"failStatus":401}`)),
+		"net":    mustDecode(t, `{"failTimes":1,"failStatus":401}`),
 	}
 	calls := &Calls{}
 	ok, code, _ := JoplinCheck(SourceOpts{Instance: "x", Account: "a", Seed: seed}, calls)
