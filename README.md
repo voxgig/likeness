@@ -52,9 +52,31 @@ node typescript/bin/likeness.js list 'updated>7d' --json
 cd go && go run ./cmd/likeness list 'updated>7d' --json
 ```
 
-Both read `~/.config/likeness/station.json` for connections. With none
-configured they answer `no-match` and exit 1, which is the answer "none" rather
-than an error.
+Both read `~/.config/likeness/station.json` (or `--config PATH`), which is a
+[voxgig/station](https://github.com/voxgig/station) configuration in station's
+own grammar. Each instance is a ref under `sdk`: `joplin` for the first Joplin
+profile, `joplin$work` for a second. The account each instance belongs to, which
+note identity derives from, is in `likeness.json` beside it:
+
+```json
+{ "station": 1, "profiles": { "default": { "sdk": { "joplin": { "base": "http://localhost:41184" } } } } }
+```
+
+```json
+{ "likeness": 1, "instances": { "joplin": { "account": "<the Joplin profile id>" } } }
+```
+
+Station resolves each instance's key through its secret providers, from
+`JOPLIN_APIKEY` (`JOPLIN_WORK_APIKEY` for `joplin$work`) by default. The
+TypeScript port binds every client through station, and the calls a command
+reports are station's own request events; the Go port reads the same two files
+until its SDK is regenerated with the station feature. Live Joplin through
+station needs [voxgig/station#25](https://github.com/voxgig/station/issues/25):
+station injects a key into headers only, and Joplin takes its key as the
+`token` query parameter.
+
+With no instances configured they answer `no-match` and exit 1, which is the
+answer "none" rather than an error.
 
 - [PROCESS.md](PROCESS.md) — how this repository is developed, and why
   unit tests use the SDKs' own offline test mode

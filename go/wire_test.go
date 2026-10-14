@@ -94,7 +94,7 @@ func clearRequests(t *testing.T, root string) {
 
 func TestWire(t *testing.T) {
 	root := startMock(t)
-	o := SourceOpts{Instance: "jot", Account: "local", APIKey: mockKey, Base: root + "/joplin"}
+	o := SourceOpts{Instance: "joplin", Account: "local", APIKey: mockKey, Base: root + "/joplin"}
 
 	t.Run("list asks for the fields the shape needs, and gets real timestamps back", func(t *testing.T) {
 		clearRequests(t, root)

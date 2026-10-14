@@ -71,21 +71,23 @@ func unitRegistry() map[string]unitFn {
 			}
 			return out, nil
 		},
-		"parseStation": func(t *testing.T, in any) (any, error) {
-			conns, err := parseStation(in.(string), "station.json")
+		"connections": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			station, err := parseJSON(str(m, "station"), "station.json")
+			if nil != err {
+				return nil, err
+			}
+			accounts, err := parseAccounts(str(m, "likeness"), "likeness.json")
+			if nil != err {
+				return nil, err
+			}
+			conns, err := connectionsOf(station, accounts, "default")
 			if nil != err {
 				return nil, err
 			}
 			out := make([]any, 0, len(conns))
 			for _, c := range conns {
-				m := map[string]any{"instance": c.Instance, "source": c.Source, "account": c.Account}
-				if "" != c.APIKey {
-					m["apikey"] = c.APIKey
-				}
-				if "" != c.Base {
-					m["base"] = c.Base
-				}
-				out = append(out, m)
+				out = append(out, map[string]any{"instance": c.Instance, "source": c.Source, "account": c.Account})
 			}
 			return out, nil
 		},

@@ -5,20 +5,14 @@ primary: cli: {
       args: ["list" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 0
         stdout: "spec/expect/list/all.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -29,20 +23,14 @@ primary: cli: {
       args: ["list" "retention" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 0
         stdout: "spec/expect/list/free-text.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -51,20 +39,14 @@ primary: cli: {
       args: ["list" "updated>3d" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 0
         stdout: "spec/expect/list/relative-duration.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -73,20 +55,14 @@ primary: cli: {
       args: ["list" "--limit" "2" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 0
         stdout: "spec/expect/list/limit-truncates.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -95,7 +71,7 @@ primary: cli: {
       args: ["list" "title:nothingmatchesthis" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -106,13 +82,7 @@ primary: cli: {
         # on. The source WAS asked, so the call list is not empty.
         exit: 1
         stdout: "spec/expect/list/no-match.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -123,20 +93,14 @@ primary: cli: {
       args: ["list"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 0
         stdout: "spec/expect/list/human.txt"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -147,20 +111,14 @@ primary: cli: {
       args: ["list" "title:nothingmatchesthis"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 1
         stdout: "spec/expect/list/human-no-match.txt"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -169,7 +127,7 @@ primary: cli: {
       args: ["list" "bogusfield:x" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -181,7 +139,7 @@ primary: cli: {
       args: ["list" "tag:anything" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -194,10 +152,10 @@ primary: cli: {
 
     {
       id: "list/unknown-instance-filter"
-      args: ["list" "--instance" "jto" "--json"]
+      args: ["list" "--instance" "jopln" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -213,7 +171,7 @@ primary: cli: {
       args: ["list" "--source" "notion" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -229,7 +187,7 @@ primary: cli: {
       args: ["list" "--limit" "nope" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -244,7 +202,7 @@ primary: cli: {
       args: ["list" "--limit" "0x10" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -256,7 +214,7 @@ primary: cli: {
       args: ["list" "--limit" "1e3" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -268,7 +226,7 @@ primary: cli: {
       args: ["list" "--limit" "2.0" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -280,7 +238,7 @@ primary: cli: {
       args: ["list" "--limit" "99999999999999999999" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -292,7 +250,7 @@ primary: cli: {
       args: ["list" "--limit" "1000000000" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -304,7 +262,7 @@ primary: cli: {
       args: ["list" "updated>99999999999999999999d" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -316,7 +274,7 @@ primary: cli: {
       args: ["list" "title>2026-01-01" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -328,7 +286,7 @@ primary: cli: {
       args: ["list" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"pages" source:"notion" account:"acme" }]
+        connections: [{ instance:"notion" account:"acme" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -341,8 +299,8 @@ primary: cli: {
       ctx: {
         fixture: "joplin"
         connections: [
-          { instance:"jot" source:"joplin" account:"local" net:offline:true }
-          { instance:"spare" source:"joplin" account:"spare" net:offline:true }
+          { instance:"joplin" account:"local" net:offline:true }
+          { instance:"joplin$spare" account:"spare" net:offline:true }
         ]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
@@ -351,16 +309,8 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/list/all-sources-down.json"
         calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-          {
-            instance: "spare"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
+          { instance:"joplin" method:"GET" path:"/notes" }
+          { instance:"joplin$spare" method:"GET" path:"/notes" }
         ]
       }
     }
@@ -376,8 +326,8 @@ primary: cli: {
       ctx: {
         fixture: "joplin"
         connections: [
-          { instance:"down" source:"joplin" account:"down" net:offline:true }
-          { instance:"jot" source:"joplin" account:"local" }
+          { instance:"joplin" account:"down" net:offline:true }
+          { instance:"joplin$up" account:"local" }
         ]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
@@ -385,13 +335,7 @@ primary: cli: {
       out: {
         exit: 4
         stdout: "spec/expect/list/strict-halts-first.json"
-        calls: [
-          {
-            instance: "down"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -401,8 +345,8 @@ primary: cli: {
       ctx: {
         fixture: "joplin"
         connections: [
-          { instance:"jot" source:"joplin" account:"local" }
-          { instance:"spare" source:"joplin" account:"spare" net:offline:true }
+          { instance:"joplin" account:"local" }
+          { instance:"joplin$spare" account:"spare" net:offline:true }
         ]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
@@ -411,16 +355,8 @@ primary: cli: {
         exit: 2
         stdout: "spec/expect/list/partial.json"
         calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-          {
-            instance: "spare"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
+          { instance:"joplin" method:"GET" path:"/notes" }
+          { instance:"joplin$spare" method:"GET" path:"/notes" }
         ]
       }
     }
@@ -433,8 +369,8 @@ primary: cli: {
       ctx: {
         fixture: "joplin"
         connections: [
-          { instance:"jot" source:"joplin" account:"local" }
-          { instance:"spare" source:"joplin" account:"spare" net:offline:true }
+          { instance:"joplin" account:"local" }
+          { instance:"joplin$spare" account:"spare" net:offline:true }
         ]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
@@ -442,18 +378,10 @@ primary: cli: {
       out: {
         exit: 2
         stdout: "spec/expect/list/partial-human.txt"
-        stderr: "spare unavailable - results are incomplete\n"
+        stderr: "joplin$spare unavailable - results are incomplete\n"
         calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-          {
-            instance: "spare"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
+          { instance:"joplin" method:"GET" path:"/notes" }
+          { instance:"joplin$spare" method:"GET" path:"/notes" }
         ]
       }
     }
@@ -464,8 +392,8 @@ primary: cli: {
       ctx: {
         fixture: "joplin"
         connections: [
-          { instance:"jot" source:"joplin" account:"local" }
-          { instance:"spare" source:"joplin" account:"spare" net:offline:true }
+          { instance:"joplin" account:"local" }
+          { instance:"joplin$spare" account:"spare" net:offline:true }
         ]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
@@ -474,16 +402,8 @@ primary: cli: {
         exit: 4
         stdout: "spec/expect/list/strict-halts.json"
         calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-          {
-            instance: "spare"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
+          { instance:"joplin" method:"GET" path:"/notes" }
+          { instance:"joplin$spare" method:"GET" path:"/notes" }
         ]
       }
     }
@@ -494,20 +414,14 @@ primary: cli: {
       args: ["list" "--json"]
       ctx: {
         fixture: "joplin-odd"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 0
         stdout: "spec/expect/list/odd-values.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -516,20 +430,14 @@ primary: cli: {
       args: ["list" "--raw" "--json"]
       ctx: {
         fixture: "joplin-odd"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 0
         stdout: "spec/expect/list/odd-raw.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -539,20 +447,14 @@ primary: cli: {
       args: ["list" "title:istanbul" "--json"]
       ctx: {
         fixture: "joplin-odd"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 1
         stdout: "spec/expect/list/odd-no-match.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -561,20 +463,14 @@ primary: cli: {
       args: ["list" "title:STRA" "--json"]
       ctx: {
         fixture: "joplin-odd"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 0
         stdout: "spec/expect/list/odd-strasse.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -583,20 +479,14 @@ primary: cli: {
       args: ["list" "title:STRASSE" "--json"]
       ctx: {
         fixture: "joplin-odd"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 1
         stdout: "spec/expect/list/odd-no-match.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -607,20 +497,14 @@ primary: cli: {
       args: ["list" "title:e -title:limit" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 0
         stdout: "spec/expect/list/negation.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -629,20 +513,14 @@ primary: cli: {
       args: ["list" "-title:limit title:e" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 0
         stdout: "spec/expect/list/negation.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -650,12 +528,12 @@ primary: cli: {
       id: "list/instance-filter"
       # `--instance` narrows the fan-out BEFORE it happens: the second
       # connection is never called, which the empty second call proves.
-      args: ["list" "--instance" "jot" "--json"]
+      args: ["list" "--instance" "joplin" "--json"]
       ctx: {
         fixture: "joplin"
         connections: [
-          { instance:"jot" source:"joplin" account:"local" }
-          { instance:"spare" source:"joplin" account:"spare" net:offline:true }
+          { instance:"joplin" account:"local" }
+          { instance:"joplin$spare" account:"spare" net:offline:true }
         ]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
@@ -663,13 +541,7 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/instance-filter.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
   ]
@@ -678,10 +550,10 @@ primary: cli: {
   get: set: [
     {
       id: "get/one"
-      args: ["get" "jot:a0e50000000000000000000000000001" "--json"]
+      args: ["get" "joplin:a0e50000000000000000000000000001" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -690,9 +562,9 @@ primary: cli: {
         stdout: "spec/expect/get/one.json"
         calls: [
           {
-            instance: "jot"
+            instance: "joplin"
             method: "GET"
-            path: "/notes/a0e50000000000000000000000000001?fields=id,parent_id,title,body,created_time,updated_time"
+            path: "/notes/a0e50000000000000000000000000001"
           }
         ]
       }
@@ -700,10 +572,10 @@ primary: cli: {
 
     {
       id: "get/odd-raw-one"
-      args: ["get" "jot:a0e50000000000000000000000000013" "--raw" "--json"]
+      args: ["get" "joplin:a0e50000000000000000000000000013" "--raw" "--json"]
       ctx: {
         fixture: "joplin-odd"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -712,9 +584,9 @@ primary: cli: {
         stdout: "spec/expect/get/odd-raw-one.json"
         calls: [
           {
-            instance: "jot"
+            instance: "joplin"
             method: "GET"
-            path: "/notes/a0e50000000000000000000000000013?fields=id,parent_id,title,body,created_time,updated_time"
+            path: "/notes/a0e50000000000000000000000000013"
           }
         ]
       }
@@ -722,10 +594,10 @@ primary: cli: {
 
     {
       id: "get/odd-null-title"
-      args: ["get" "jot:a0e50000000000000000000000000014" "--json"]
+      args: ["get" "joplin:a0e50000000000000000000000000014" "--json"]
       ctx: {
         fixture: "joplin-odd"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -734,9 +606,9 @@ primary: cli: {
         stdout: "spec/expect/get/odd-null-title.json"
         calls: [
           {
-            instance: "jot"
+            instance: "joplin"
             method: "GET"
-            path: "/notes/a0e50000000000000000000000000014?fields=id,parent_id,title,body,created_time,updated_time"
+            path: "/notes/a0e50000000000000000000000000014"
           }
         ]
       }
@@ -746,23 +618,17 @@ primary: cli: {
       id: "get/not-found"
       # Exit 1, like `no-match`: the ref was well formed and there is no such
       # record. The source WAS asked, so there is one call.
-      args: ["get" "jot:nosuchnote" "--json"]
+      args: ["get" "joplin:nosuchnote" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 1
         stdout: "spec/expect/get/not-found.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes/nosuchnote?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes/nosuchnote" }]
       }
     }
 
@@ -771,7 +637,7 @@ primary: cli: {
       args: ["get" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -783,7 +649,7 @@ primary: cli: {
       args: ["get" "nocolonhere" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -792,10 +658,10 @@ primary: cli: {
 
     {
       id: "get/empty-id"
-      args: ["get" "jot:" "--json"]
+      args: ["get" "joplin:" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -809,7 +675,7 @@ primary: cli: {
       args: ["get" "absent:x" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -824,20 +690,14 @@ primary: cli: {
       args: ["doctor" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        connections: [{ instance:"joplin" account:"local" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 0
         stdout: "spec/expect/doctor/ok.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -846,22 +706,14 @@ primary: cli: {
       args: ["doctor" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [
-          { instance:"jot" source:"joplin" account:"local" net:offline:true }
-        ]
+        connections: [{ instance:"joplin" account:"local" net:offline:true }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
       out: {
         exit: 3
         stdout: "spec/expect/doctor/unreachable.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -872,8 +724,7 @@ primary: cli: {
         fixture: "joplin"
         connections: [
           {
-            instance: "jot"
-            source: "joplin"
+            instance: "joplin"
             account: "local"
             net: { failTimes:1 failStatus:401 }
           }
@@ -884,13 +735,7 @@ primary: cli: {
       out: {
         exit: 3
         stdout: "spec/expect/doctor/auth-rejected.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -902,8 +747,8 @@ primary: cli: {
       ctx: {
         fixture: "joplin"
         connections: [
-          { instance:"jot" source:"joplin" account:"local" }
-          { instance:"pages" source:"notion" account:"acme" }
+          { instance:"joplin" account:"local" }
+          { instance:"notion" account:"acme" }
         ]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
@@ -911,13 +756,7 @@ primary: cli: {
       out: {
         exit: 4
         stdout: "spec/expect/doctor/no-adapter.json"
-        calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-        ]
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
       }
     }
 
@@ -927,10 +766,9 @@ primary: cli: {
       ctx: {
         fixture: "joplin"
         connections: [
-          { instance:"jot" source:"joplin" account:"local" net:offline:true }
+          { instance:"joplin" account:"local" net:offline:true }
           {
-            instance: "spare"
-            source: "joplin"
+            instance: "joplin$spare"
             account: "spare"
             net: { failTimes:1 failStatus:401 }
           }
@@ -942,16 +780,8 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/doctor/mixed-failures.json"
         calls: [
-          {
-            instance: "jot"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
-          {
-            instance: "spare"
-            method: "GET"
-            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
-          }
+          { instance:"joplin" method:"GET" path:"/notes" }
+          { instance:"joplin$spare" method:"GET" path:"/notes" }
         ]
       }
     }

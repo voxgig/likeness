@@ -60,14 +60,14 @@ test('meta: a MISSING call is reported', async () => {
 
 test('meta: an EXTRA call is reported', async () => {
   const e = entry('list/all')
-  e.out.calls = [...e.out.calls, { instance: 'jot', method: 'GET', path: '/notes' }]
+  e.out.calls = [...e.out.calls, { instance: 'joplin', method: 'GET', path: '/notes' }]
   const f = await check(e)
   assert.ok(f.some(x => x.startsWith('calls ')), 'no calls failure in ' + JSON.stringify(f))
 })
 
 test('meta: a call with the right count but the wrong path is reported', async () => {
   const e = entry('list/all')
-  e.out.calls = [{ instance: 'jot', method: 'GET', path: '/folders' }]
+  e.out.calls = [{ instance: 'joplin', method: 'GET', path: '/folders' }]
   const f = await check(e)
   assert.ok(f.some(x => x.startsWith('calls ')), 'no calls failure in ' + JSON.stringify(f))
 })

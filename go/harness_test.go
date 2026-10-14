@@ -154,21 +154,23 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 		}
 	}
 
+	// Each connection becomes a declared station instance, its account the
+	// likeness.json entry beside it, and its seed the SDK's offline transport.
+	sdk := map[string]any{}
+	ctx.Accounts = map[string]string{}
 	conns, _ := ectx["connections"].([]any)
 	for _, c := range conns {
 		cm := c.(map[string]any)
 		inst := str(cm, "instance")
-		ctx.Connections = append(ctx.Connections, Connection{
-			Instance: inst,
-			Source:   str(cm, "source"),
-			Account:  str(cm, "account"),
-		})
+		sdk[inst] = map[string]any{}
+		ctx.Accounts[inst] = str(cm, "account")
 		own := cloneMap(seed)
 		if net, ok := cm["net"]; ok {
 			own["net"] = net
 		}
 		ctx.Fixture[inst] = own
 	}
+	ctx.Station = map[string]any{"station": 1, "profiles": map[string]any{"default": map[string]any{"sdk": sdk}}}
 	return ctx
 }
 

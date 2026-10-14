@@ -1,8 +1,8 @@
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
-import { join, delimiter } from 'node:path'
+import { join, delimiter, dirname } from 'node:path'
 import { homedir } from 'node:os'
-import { run, type Ctx, type Connection, PORT, VERSION } from './core.js'
+import { run, openStation, type Ctx, PORT, VERSION } from './core.js'
 import { rfc3339 } from './identity.js'
 import { renderRaw } from './envelope.js'
 import { compareCodePoints } from './note.js'
@@ -14,33 +14,40 @@ const REMEDY = 'fix the file, or point --config at another'
 function has (v: unknown): boolean { return undefined !== v && null !== v }
 function text (v: unknown): string { return 'string' === typeof v ? v : renderRaw(v) }
 
-// The connections a station file declares, in instance order. Pure, so the
-// unit corpus holds both ports to it.
-export function parseStation (source: string, path: string): Connection[] {
-  let doc: any
-  try { doc = JSON.parse(source) }
+function parseJson (source: string, path: string): any {
+  try { return JSON.parse(source) }
   catch { throw new ConfigError(path + ' is not valid JSON') }
-  const sdk = doc?.sdk ?? {}
-  return Object.keys(sdk).sort(compareCodePoints).map(instance => {
-    const e = sdk[instance] ?? {}
-    let account = has(e.account) ? text(e.account) : ''
-    if ('' === account && has(e.org)) account = text(e.org)
-    if ('' === account) {
-      throw new ConfigError(
-        'connection "' + instance + '" has no `account` or `org`, and identity ' +
-        'may not be derived from the instance name - see ' + path)
-    }
-    const c: Connection = { instance, source: has(e.api) ? text(e.api) : '', account }
-    if (has(e.apikey)) c.apikey = text(e.apikey)
-    if (has(e.base)) c.base = text(e.base)
-    return c
-  })
 }
 
-function loadConnections (configPath?: string): Connection[] {
+// station.json, parsed here and validated by station against its own shape.
+export function parseStation (source: string, path: string): unknown {
+  const doc = parseJson(source, path)
+  try { openStation(doc) }
+  catch (err: any) {
+    if ('station_config_invalid' === err?.code) throw new ConfigError(path + ': ' + err.message)
+    throw err
+  }
+  return doc
+}
+
+// The account each instance ref belongs to, from likeness.json.
+export function parseAccounts (source: string, path: string): Record<string, string> {
+  const instances = parseJson(source, path)?.instances ?? {}
+  const out: Record<string, string> = {}
+  for (const ref of Object.keys(instances).sort(compareCodePoints)) {
+    const account = instances[ref]?.account
+    if (has(account)) out[ref] = text(account)
+  }
+  return out
+}
+
+function loadConfig (configPath?: string): { station: unknown, accounts: Record<string, string> } {
   const path = configPath ?? join(homedir(), '.config', 'likeness', 'station.json')
-  if (!existsSync(path)) return []
-  return parseStation(readFileSync(path, 'utf8'), path)
+  if (!existsSync(path)) return { station: null, accounts: {} }
+  const station = parseStation(readFileSync(path, 'utf8'), path)
+  const lpath = join(dirname(path), 'likeness.json')
+  const accounts = existsSync(lpath) ? parseAccounts(readFileSync(lpath, 'utf8'), lpath) : {}
+  return { station, accounts }
 }
 
 function probePath (env: Record<string, string>): { path: string, port: string, version: string }[] {
@@ -94,9 +101,9 @@ export async function main (argv: string[]): Promise<number> {
   const { rest, value: configPath } = takeConfigOption(argv)
   const env = process.env as Record<string, string>
 
-  let connections: Connection[]
+  let config: { station: unknown, accounts: Record<string, string> }
   try {
-    connections = loadConnections(configPath)
+    config = loadConfig(configPath)
   }
   catch (err) {
     if (err instanceof ConfigError) {
@@ -110,7 +117,8 @@ export async function main (argv: string[]): Promise<number> {
     argv: rest,
     env,
     clock: rfc3339(Date.now()),
-    connections,
+    station: config.station,
+    accounts: config.accounts,
     path: probePath(env),
   }
 

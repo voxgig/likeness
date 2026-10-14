@@ -138,7 +138,7 @@ const joplinFields = "id,parent_id,title,body,created_time,updated_time"
 
 func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) {
 	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes?fields="+joplinFields)
+	calls.Record(o.Instance, "GET", "/notes")
 	found, err := client.Note(nil).List(map[string]any{"fields": joplinFields}, nil)
 	if nil != err {
 		return nil, false, err
@@ -158,7 +158,7 @@ func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) 
 
 func JoplinLoad(o SourceOpts, calls *Calls, id string, withRaw bool) (*Note, error) {
 	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes/"+id+"?fields="+joplinFields)
+	calls.Record(o.Instance, "GET", "/notes/"+id)
 	ent, err := client.Note(nil).Load(map[string]any{"id": id, "fields": joplinFields}, nil)
 	if nil != err {
 		if 404 == statusOf(err) {
@@ -181,7 +181,7 @@ func JoplinLoad(o SourceOpts, calls *Calls, id string, withRaw bool) (*Note, err
 // modes a user experiences as one, because the remedy differs for each.
 func JoplinCheck(o SourceOpts, calls *Calls) (ok bool, code, detail string) {
 	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes?fields="+joplinFields)
+	calls.Record(o.Instance, "GET", "/notes")
 	_, err := client.Note(nil).List(map[string]any{"fields": joplinFields}, nil)
 	if nil == err {
 		return true, "", "ok"

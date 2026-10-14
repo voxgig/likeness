@@ -85,54 +85,105 @@ func optText(m map[string]any, k string) string {
 	return ""
 }
 
-// parseStation reads the connections a station file declares, in instance
-// order. Pure, so the unit corpus holds both ports to it.
-func parseStation(text, path string) ([]Connection, error) {
+func parseJSON(text, path string) (map[string]any, error) {
 	var doc map[string]any
 	if err := json.Unmarshal([]byte(text), &doc); nil != err {
 		return nil, fmt.Errorf("%s is not valid JSON", path)
 	}
-	sdk, _ := doc["sdk"].(map[string]any)
-	names := make([]string, 0, len(sdk))
-	for k := range sdk {
-		names = append(names, k)
-	}
-	sort.Strings(names)
+	return doc, nil
+}
 
-	out := make([]Connection, 0, len(names))
-	for _, name := range names {
-		e, _ := sdk[name].(map[string]any)
-		account := optText(e, "account")
-		if "" == account {
-			account = optText(e, "org")
+// parseAccounts reads the account each instance ref belongs to.
+func parseAccounts(text, path string) (map[string]string, error) {
+	doc, err := parseJSON(text, path)
+	if nil != err {
+		return nil, err
+	}
+	instances, _ := doc["instances"].(map[string]any)
+	out := map[string]string{}
+	for ref, v := range instances {
+		e, _ := v.(map[string]any)
+		if a, ok := present(e, "account"); ok {
+			out[ref] = textOf(a)
 		}
+	}
+	return out, nil
+}
+
+func profileOf(env map[string]string) string {
+	if p := env["VOXGIG_STATION_PROFILE"]; "" != p {
+		return p
+	}
+	return "default"
+}
+
+// connectionsOf lists the profile's active instances in ref order. An instance
+// with no account is refused: identity may not be derived from the ref.
+func connectionsOf(station map[string]any, accounts map[string]string, profile string) ([]Connection, error) {
+	profiles, _ := station["profiles"].(map[string]any)
+	prof, _ := profiles[profile].(map[string]any)
+	sdk, _ := prof["sdk"].(map[string]any)
+	refs := make([]string, 0, len(sdk))
+	for ref := range sdk {
+		refs = append(refs, ref)
+	}
+	sort.Strings(refs)
+
+	out := []Connection{}
+	for _, ref := range refs {
+		block, _ := sdk[ref].(map[string]any)
+		if false == block["active"] {
+			continue
+		}
+		account := accounts[ref]
 		if "" == account {
-			return nil, fmt.Errorf(
-				"connection %q has no `account` or `org`, and identity may not be "+
-					"derived from the instance name - see %s", name, path)
+			return nil, &LikenessError{
+				Code:   "invalid-project",
+				Msg:    "instance \"" + ref + "\" has no account in likeness.json",
+				Remedy: "add `\"" + ref + "\": { \"account\": \"<id>\" }` under `instances` in likeness.json",
+			}
 		}
 		out = append(out, Connection{
-			Instance: name, Source: optText(e, "api"), Account: account,
-			APIKey: optText(e, "apikey"), Base: optText(e, "base"),
+			Instance: ref, Source: strings.SplitN(ref, "$", 2)[0], Account: account, Base: optText(block, "base"),
 		})
 	}
 	return out, nil
 }
 
-func loadConnections(configPath string) ([]Connection, error) {
+var envTokenRe = regexp.MustCompile(`[^A-Z0-9]+`)
+
+// apikeyEnv is the variable station's env provider reads for a ref's key.
+func apikeyEnv(ref string) string {
+	return strings.Trim(envTokenRe.ReplaceAllString(strings.ToUpper(ref), "_"), "_") + "_APIKEY"
+}
+
+func loadConfig(configPath string) (map[string]any, map[string]string, error) {
 	path := configPath
 	if "" == path {
 		home, err := os.UserHomeDir()
 		if nil != err {
-			return nil, err
+			return nil, nil, err
 		}
 		path = filepath.Join(home, ".config", "likeness", "station.json")
 	}
 	raw, err := os.ReadFile(path)
 	if nil != err {
-		return nil, nil
+		return nil, map[string]string{}, nil
 	}
-	return parseStation(string(raw), path)
+	station, err := parseJSON(string(raw), path)
+	if nil != err {
+		return nil, nil, err
+	}
+	lpath := filepath.Join(filepath.Dir(path), "likeness.json")
+	lraw, err := os.ReadFile(lpath)
+	if nil != err {
+		return station, map[string]string{}, nil
+	}
+	accounts, err := parseAccounts(string(lraw), lpath)
+	if nil != err {
+		return nil, nil, err
+	}
+	return station, accounts, nil
 }
 
 // Main is the whole process: build the context, run, write, return the status.
@@ -153,18 +204,19 @@ func Main(argv []string) int {
 		}
 	}
 
-	conns, cerr := loadConnections(configPath)
+	station, accounts, cerr := loadConfig(configPath)
 	if nil != cerr {
 		fmt.Fprint(os.Stderr, "error: invalid-project\n  "+cerr.Error()+"\n  remedy  "+configRemedy+"\n")
 		return 3
 	}
 
 	res := Run(Ctx{
-		Argv:        rest,
-		Env:         env,
-		Clock:       Rfc3339(time.Now().UnixMilli()),
-		Connections: conns,
-		Path:        probePath(env),
+		Argv:     rest,
+		Env:      env,
+		Clock:    Rfc3339(time.Now().UnixMilli()),
+		Station:  station,
+		Accounts: accounts,
+		Path:     probePath(env),
 	})
 
 	if "" != res.Stdout {

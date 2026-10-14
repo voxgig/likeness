@@ -13,7 +13,8 @@
     "clean": "rm -rf dist node_modules package-lock.json"
   },
   "dependencies": {
-    "@voxgig-sdk/joplin-sdk": "file:../../voxgig-sdk/joplin-sdk/ts"
+    "@voxgig-sdk/joplin-sdk": "file:../../voxgig-sdk/joplin-sdk/ts",
+    "@voxgig/station": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

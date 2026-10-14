@@ -1,4 +1,6 @@
 
+import { Station } from '@voxgig/station'
+
 import { serialise, render, type Envelope } from './envelope.js'
 import { parseSelector, fieldsOf, SelectorError } from './selector.js'
 import { evaluate } from './evaluate.js'
@@ -14,8 +16,6 @@ export type Connection = {
   instance: string
   source: string
   account: string
-  apikey?: string
-  base?: string
 }
 
 export type Ctx = {
@@ -23,11 +23,45 @@ export type Ctx = {
   env?: Record<string, string>
   clock: string
   seed?: number
-  connections: Connection[]
+  /* station.json in station's own grammar, and each instance's account from
+   * likeness.json beside it. The connections are station's declared
+   * instances, so the two cannot disagree. */
+  station?: unknown
+  accounts?: Record<string, string>
   /* Seed maps for the SDKs' offline test mode, by instance. Present in every
    * test and absent in production. */
   fixture?: Record<string, unknown>
   path?: { path: string, port: string, version: string }[]
+}
+
+type Session = {
+  conns: Connection[]
+  calls: Calls
+  client: (c: Connection) => any
+}
+
+export function openStation (config: unknown, env?: Record<string, string>): Station {
+  return new Station({
+    config: (config ?? null) as any,
+    profile: env?.VOXGIG_STATION_PROFILE || 'default',
+    proxy: 'off',
+    load: false,
+  })
+}
+
+// Every declared instance, in station's name order, with the account its
+// notes' identity derives from. An instance with no account is refused:
+// identity may not be derived from the instance name.
+export function connectionsOf (station: Station, accounts: Record<string, string>): Connection[] {
+  return station.instances().filter(i => i.active).map(i => {
+    const account = accounts[i.name]
+    if ('string' !== typeof account || '' === account) {
+      throw new LikenessError('invalid-project',
+        'instance "' + i.name + '" has no account in likeness.json',
+        'add `"' + i.name + '": { "account": "<id>" }` under `instances` in likeness.json')
+    }
+    return { instance: i.name, source: i.api, account }
+  })
 }
 
 export type Result = {
@@ -113,23 +147,23 @@ function fails (env: Envelope, message: string, remedy: string): Envelope {
   return env
 }
 
-function selected (ctx: Ctx, flags: Flags): Connection[] {
+function selected (all: Connection[], flags: Flags): Connection[] {
   const unknownInstance = flags.instance.filter(
-    i => !ctx.connections.some(c => c.instance === i))
+    i => !all.some(c => c.instance === i))
   if (0 < unknownInstance.length) {
     throw new LikenessError('no-such-source',
       'no connection named ' + unknownInstance.sort().map(q).join(', '),
       'run `likeness doctor` to see the configured connections')
   }
   const unknownSource = flags.source.filter(
-    src => !ctx.connections.some(c => c.source === src))
+    src => !all.some(c => c.source === src))
   if (0 < unknownSource.length) {
     throw new LikenessError('no-such-source',
       'no connection uses source ' + unknownSource.sort().map(q).join(', '),
       'run `likeness doctor` to see the configured connections')
   }
 
-  let conns = ctx.connections
+  let conns = all
   if (0 < flags.instance.length) conns = conns.filter(c => flags.instance.includes(c.instance))
   if (0 < flags.source.length) conns = conns.filter(c => flags.source.includes(c.source))
   return conns
@@ -143,22 +177,12 @@ function adapterFor (c: Connection): typeof joplin | undefined {
   return ADAPTERS[c.source]
 }
 
-function optsFor (ctx: Ctx, c: Connection): joplin.JoplinOpts {
-  return {
-    instance: c.instance,
-    account: c.account,
-    seed: ctx.fixture?.[c.instance],
-    apikey: c.apikey,
-    base: c.base,
-  }
-}
-
 /* Fetch from every selected connection, carrying a failure the whole length of
  * the pipeline rather than dropping it. Silently dropping a source gives a
  * confident, smaller, wrong answer, which is much worse than a partial one
  * that says so.
  */
-async function gather (ctx: Ctx, conns: Connection[], calls: Calls, withRaw: boolean, strict: boolean):
+async function gather (session: Session, conns: Connection[], withRaw: boolean, strict: boolean):
 Promise<{ notes: Note[], ok: string[], failed: string[], short: string[] }> {
   const notes: Note[] = []
   const ok: string[] = []
@@ -173,8 +197,9 @@ Promise<{ notes: Note[], ok: string[], failed: string[], short: string[] }> {
         'no adapter for source "' + c.source + '" (connection "' + c.instance + '")',
         'drop that connection, or narrow to one that is supported with --source')
     }
+    const client = session.client(c)
     try {
-      const got = await adapter.listNotes(optsFor(ctx, c), calls, withRaw)
+      const got = await adapter.listNotes(client, c, withRaw)
       notes.push(...got.notes)
       ok.push(c.instance)
       if (got.more) short.push(c.instance)
@@ -209,8 +234,8 @@ function unanswerable (conns: Connection[], fields: string[]): string[] {
 }
 
 
-async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Promise<Envelope> {
-  const conns = selected(ctx, flags)
+async function cmdList (ctx: Ctx, flags: Flags, rest: string[], session: Session): Promise<Envelope> {
+  const conns = selected(session.conns, flags)
   const clockMs = Date.parse(ctx.clock)
 
   let filter = null
@@ -224,7 +249,7 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): P
     }
   }
 
-  const got = await gather(ctx, conns, calls, flags.raw, flags.strict)
+  const got = await gather(session, conns, flags.raw, flags.strict)
   let notes = got.notes
   if (null !== filter) notes = notes.filter(n => evaluate(filter, n, clockMs))
   notes = sortNotes(notes, flags.sort)
@@ -256,7 +281,7 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): P
     'ok'
 
   const env = envelope(['list'], code, notes, {
-    count: notes.length, truncated, sources: got.ok, incomplete, calls: calls.count(),
+    count: notes.length, truncated, sources: got.ok, incomplete, calls: session.calls.count(),
   })
   if ('fanout-halted' === code) {
     return fails(env,
@@ -276,7 +301,7 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): P
   return env
 }
 
-async function cmdGet (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Promise<Envelope> {
+async function cmdGet (flags: Flags, rest: string[], session: Session): Promise<Envelope> {
   if (0 === rest.length) {
     throw new LikenessError('invalid-ref', 'get needs a ref', 'try `likeness get plan:CORE-412`')
   }
@@ -293,7 +318,7 @@ async function cmdGet (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Pr
       throw new LikenessError('invalid-ref', 'not a ref: ' + ref + ' (no id after the colon)',
         'a ref is <instance>:<id>, a lid, #n or @alias')
     }
-    const c = ctx.connections.find(x => x.instance === instance)
+    const c = session.conns.find(x => x.instance === instance)
     if (undefined === c) {
       throw new LikenessError('no-such-source', 'no connection named "' + instance + '"',
         'run `likeness doctor` to see the configured connections')
@@ -304,7 +329,7 @@ async function cmdGet (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Pr
         'no adapter for source "' + c.source + '" (connection "' + c.instance + '")',
         'this source arrives in a later stage')
     }
-    const note = await adapter.loadNote(optsFor(ctx, c), calls, id, flags.raw)
+    const note = await adapter.loadNote(session.client(c), c, id, flags.raw)
     if (null === note) {
       throw new LikenessError('not-found', ref + ' does not exist',
         'check the ref, or run `likeness list` to see what is there')
@@ -312,12 +337,12 @@ async function cmdGet (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Pr
     out.push(note)
   }
   return envelope(['get'], 'ok', out, {
-    count: out.length, sources: [...new Set(out.map(n => n.instance))].sort(), calls: calls.count(),
+    count: out.length, sources: [...new Set(out.map(n => n.instance))].sort(), calls: session.calls.count(),
   })
 }
 
-async function cmdDoctor (ctx: Ctx, flags: Flags, calls: Calls): Promise<Envelope> {
-  const conns = selected(ctx, flags)
+async function cmdDoctor (flags: Flags, session: Session): Promise<Envelope> {
+  const conns = selected(session.conns, flags)
   const rows: Record<string, unknown>[] = []
   const failures: string[] = []
   let bad = 0
@@ -334,7 +359,7 @@ async function cmdDoctor (ctx: Ctx, flags: Flags, calls: Calls): Promise<Envelop
       bad++
       continue
     }
-    const r = await adapter.check(optsFor(ctx, c), calls)
+    const r = await adapter.check(session.client(c))
     const row: Record<string, unknown> = {
       instance: c.instance, source: c.source, check: r.ok ? 'ok' : 'FAIL', detail: r.detail,
     }
@@ -347,7 +372,7 @@ async function cmdDoctor (ctx: Ctx, flags: Flags, calls: Calls): Promise<Envelop
   })
   const code = 0 === bad ? 'ok' : codes[0]
   const env = envelope(['doctor'], code, rows, {
-    count: rows.length, sources: conns.map(c => c.instance).sort(), calls: calls.count(),
+    count: rows.length, sources: conns.map(c => c.instance).sort(), calls: session.calls.count(),
   })
   if (0 < bad) {
     return fails(env,
@@ -398,9 +423,18 @@ const STUBS: Record<string, string> = {
 
 
 export async function run (ctx: Ctx): Promise<Result> {
-  const calls = new Calls()
   const [name, ...args] = ctx.argv
   const started = Date.now()
+
+  let session: Session
+  try {
+    session = openSession(ctx)
+  }
+  catch (err) {
+    return finish(ctx, name ?? '', err, new Calls(null), started,
+      { json: args.includes('--json'), deterministic: args.includes('--deterministic') })
+  }
+  const calls = session.calls
 
   // Parsed before the try, so that a bad flag is still reported through the
   // envelope rather than thrown out of `run`.
@@ -432,9 +466,9 @@ export async function run (ctx: Ctx): Promise<Result> {
         'try `likeness list`, or `likeness help` for the command list')
     }
     if (name === '--help' || name === '-h' || name === 'help') return render(cmdHelp())
-    if (name === 'list') return render(await cmdList(ctx, flags, rest, calls))
-    if (name === 'get') return render(await cmdGet(ctx, flags, rest, calls))
-    if (name === 'doctor') return render(await cmdDoctor(ctx, flags, calls))
+    if (name === 'list') return render(await cmdList(ctx, flags, rest, session))
+    if (name === 'get') return render(await cmdGet(flags, rest, session))
+    if (name === 'doctor') return render(await cmdDoctor(flags, session))
     if (name === 'version') return render(cmdVersion())
     if (name === 'which') return render(cmdWhich(ctx))
 
@@ -453,6 +487,26 @@ export async function run (ctx: Ctx): Promise<Result> {
   }
 }
 
+// One station per run: every client is connected through it lazily, and the
+// calls a command made are the requests it observed.
+function openSession (ctx: Ctx): Session {
+  const station = openStation(ctx.station, ctx.env)
+  const conns = connectionsOf(station, ctx.accounts ?? {})
+  const clients = new Map<string, any>()
+  return {
+    conns,
+    calls: new Calls(station),
+    client: (c: Connection): any => {
+      let client = clients.get(c.instance)
+      if (undefined === client) {
+        client = (adapterFor(c) as typeof joplin).connect(station, c.instance, ctx.fixture?.[c.instance])
+        clients.set(c.instance, client)
+      }
+      return client
+    },
+  }
+}
+
 function errorEnvelope (name: string, err: unknown, calls: Calls): Envelope {
   if (err instanceof SelectorError) {
     return envelope([name], 'invalid-selector', null, { calls: calls.count() }, {
@@ -463,6 +517,12 @@ function errorEnvelope (name: string, err: unknown, calls: Calls): Envelope {
   if (err instanceof LikenessError) {
     return envelope([name], err.code, null, { calls: calls.count() },
       { message: err.message, remedy: err.remedy, ...err.detail })
+  }
+  if ('station_config_invalid' === (err as { code?: string })?.code) {
+    return envelope([name], 'invalid-project', null, { calls: calls.count() }, {
+      message: String((err as Error).message),
+      remedy: 'fix station.json; station validates it against its own shape',
+    })
   }
   const anyErr = err as { status?: number, message?: string }
   const code =

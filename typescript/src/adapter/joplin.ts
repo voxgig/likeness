@@ -1,7 +1,8 @@
 
+import type { Station } from '@voxgig/station'
+
 import { lid, rfc3339 } from '../identity.js'
 import type { Note } from '../note.js'
-import type { Calls } from '../calls.js'
 import { LikenessError } from '../errors.js'
 import { pageMax } from '../caps.js'
 import { renderRaw } from '../envelope.js'
@@ -28,28 +29,24 @@ function ms (v: unknown): number {
   return 'number' === typeof v && Number.isInteger(v) ? v : 0
 }
 
-export type JoplinOpts = {
+export type Conn = {
   instance: string
   account: string
-  seed?: unknown
-  apikey?: string
-  base?: string
 }
 
-function sdkFor (opts: JoplinOpts): any {
-  const SDK: any = (pkg as any).JoplinSDK ?? (pkg as any).default ?? pkg
-  if (undefined !== opts.seed) {
-    return SDK.test(opts.seed)
-  }
-  return new SDK({ apikey: opts.apikey, base: opts.base })
+export const SDK: any = (pkg as any).JoplinSDK ?? (pkg as any).default ?? pkg
+
+// The ref goes in the station feature's options: the SDK refuses a top-level instance option.
+export function connect (station: Station, instance: string, seed?: unknown): any {
+  const feature: Record<string, unknown> = { station: { instance } }
+  if (undefined !== seed) feature.test = { ...(seed as Record<string, unknown>), active: true }
+  return station.connect(SDK, { feature })
 }
 
 export function project (raw: JoplinNote, instance: string, account: string, withRaw: boolean): Note {
   const id = has(raw.id) ? text(raw.id) : ''
-  // REFUSED, not fabricated. An empty id derives a valid-LOOKING lid from the
-  // empty string, so every such row shares one identity and the note violates
-  // the schema's non-empty SourceId invariant. A source that returned a record
-  // with no id has returned nothing usable, and the adapter says so.
+  // Refused, not fabricated: an empty id gives every such row one valid-looking
+  // lid, and breaks the schema's non-empty SourceId.
   if ('' === id) {
     throw new LikenessError('source-unavailable',
       'the source returned a ' + SOURCE + ' record with no id',
@@ -86,27 +83,23 @@ function data (ent: any): JoplinNote {
 // `fields`; the client declares `field`, which Joplin ignores (sdkgen#406).
 export const FIELDS = 'id,parent_id,title,body,created_time,updated_time'
 
-export async function listNotes (opts: JoplinOpts, calls: Calls, withRaw: boolean):
+export async function listNotes (client: any, conn: Conn, withRaw: boolean):
 Promise<{ notes: Note[], more: boolean }> {
-  const client = sdkFor(opts)
-  calls.record(opts.instance, 'GET', '/notes?fields=' + FIELDS)
   const found = await client.Note().list({ fields: FIELDS })
   const rows: JoplinNote[] = (found ?? []).map(data)
   const limit = pageMax(SOURCE)
   return {
-    notes: rows.map(r => project(r, opts.instance, opts.account, withRaw)),
+    notes: rows.map(r => project(r, conn.instance, conn.account, withRaw)),
     more: 0 < limit && rows.length >= limit,
   }
 }
 
-export async function loadNote (opts: JoplinOpts, calls: Calls, id: string, withRaw: boolean): Promise<Note | null> {
-  const client = sdkFor(opts)
-  calls.record(opts.instance, 'GET', '/notes/' + id + '?fields=' + FIELDS)
+export async function loadNote (client: any, conn: Conn, id: string, withRaw: boolean): Promise<Note | null> {
   try {
     const ent = await client.Note().load({ id, fields: FIELDS })
     const row = data(ent)
     if (null === row || undefined === row || undefined === row.id) return null
-    return project(row, opts.instance, opts.account, withRaw)
+    return project(row, conn.instance, conn.account, withRaw)
   }
   catch (err: any) {
     if (true === err?.notFound || 404 === err?.status) return null
@@ -114,9 +107,7 @@ export async function loadNote (opts: JoplinOpts, calls: Calls, id: string, with
   }
 }
 
-export async function check (opts: JoplinOpts, calls: Calls): Promise<{ ok: boolean, code?: string, detail: string }> {
-  const client = sdkFor(opts)
-  calls.record(opts.instance, 'GET', '/notes?fields=' + FIELDS)
+export async function check (client: any): Promise<{ ok: boolean, code?: string, detail: string }> {
   try {
     await client.Note().list({ fields: FIELDS })
     return { ok: true, detail: 'ok' }
@@ -125,9 +116,7 @@ export async function check (opts: JoplinOpts, calls: Calls): Promise<{ ok: bool
     if (401 === err?.status || 403 === err?.status) {
       return { ok: false, code: 'auth-failed', detail: 'the token was rejected' }
     }
-    // 429 is a DIFFERENT condition with a different remedy, and the registry
-    // has a retryable code for it. Folding it into "did not answer" tells
-    // someone being throttled to start a program that is already running.
+    // Throttling has its own retryable code: "did not answer" sends the user to start a running app.
     if (429 === err?.status) {
       return { ok: false, code: 'rate-limited', detail: 'the source is rate limiting this client' }
     }

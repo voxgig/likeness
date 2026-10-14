@@ -559,26 +559,56 @@ primary: unit: {
 
     {
       id: "config/station-not-json"
-      fn: "parseStation"
-      in: "{not json"
-      err: "is not valid JSON"
+      fn: "connections"
+      in: { station:"{not json" likeness:"{}" }
+      err: "station.json is not valid JSON"
     }
 
     {
-      id: "config/station-connections-in-name-order"
-      fn: "parseStation"
-      in: "{\"sdk\":{\"zed\":{\"api\":\"joplin\",\"account\":\"z\"},\"abe\":{\"api\":\"joplin\",\"org\":\"a\",\"base\":\"http://x\"}}}"
+      id: "config/likeness-not-json"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+        likeness: "{not json"
+      }
+      err: "likeness.json is not valid JSON"
+    }
+
+    {
+      id: "config/connections-in-name-order"
+      # Station's declared instances, in code-point order of the ref: `$` sorts
+      # before every letter, so a tagged instance follows its untagged api.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin$zed\":{},\"joplin\":{},\"joplin$abe\":{\"base\":\"http://x\"}}}}}"
+        likeness: "{\"likeness\":1,\"instances\":{\"joplin$zed\":{\"account\":\"z\"},\"joplin\":{\"account\":\"local\"},\"joplin$abe\":{\"account\":\"a\"}}}"
+      }
       out: [
-        { instance:"abe" source:"joplin" account:"a" base:"http://x" }
-        { instance:"zed" source:"joplin" account:"z" }
+        { instance:"joplin" source:"joplin" account:"local" }
+        { instance:"joplin$abe" source:"joplin" account:"a" }
+        { instance:"joplin$zed" source:"joplin" account:"z" }
       ]
     }
 
     {
-      id: "config/station-without-account"
-      fn: "parseStation"
-      in: "{\"sdk\":{\"jot\":{\"api\":\"joplin\"}}}"
-      err: "has no `account` or `org`"
+      id: "config/inactive-instance-omitted"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{\"active\":false},\"joplin$on\":{}}}}}"
+        likeness: "{\"likeness\":1,\"instances\":{\"joplin$on\":{\"account\":\"on\"}}}"
+      }
+      out: [{ instance:"joplin$on" source:"joplin" account:"on" }]
+    }
+
+    {
+      id: "config/instance-without-account"
+      # Identity may not be derived from the instance ref.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+        likeness: "{\"likeness\":1,\"instances\":{}}"
+      }
+      err: "instance \"joplin\" has no account in likeness.json"
     }
   ]
 

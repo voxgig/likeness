@@ -49,34 +49,71 @@
             }
           },
           {
-            "err": "is not valid JSON",
-            "fn": "parseStation",
+            "err": "station.json is not valid JSON",
+            "fn": "connections",
             "id": "config/station-not-json",
-            "in": "{not json"
+            "in": {
+              "likeness": "{}",
+              "station": "{not json"
+            }
           },
           {
-            "fn": "parseStation",
-            "id": "config/station-connections-in-name-order",
-            "in": "{\"sdk\":{\"zed\":{\"api\":\"joplin\",\"account\":\"z\"},\"abe\":{\"api\":\"joplin\",\"org\":\"a\",\"base\":\"http://x\"}}}",
+            "err": "likeness.json is not valid JSON",
+            "fn": "connections",
+            "id": "config/likeness-not-json",
+            "in": {
+              "likeness": "{not json",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+            }
+          },
+          {
+            "fn": "connections",
+            "id": "config/connections-in-name-order",
+            "in": {
+              "likeness": "{\"likeness\":1,\"instances\":{\"joplin$zed\":{\"account\":\"z\"},\"joplin\":{\"account\":\"local\"},\"joplin$abe\":{\"account\":\"a\"}}}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin$zed\":{},\"joplin\":{},\"joplin$abe\":{\"base\":\"http://x\"}}}}}"
+            },
             "out": [
               {
+                "account": "local",
+                "instance": "joplin",
+                "source": "joplin"
+              },
+              {
                 "account": "a",
-                "base": "http://x",
-                "instance": "abe",
+                "instance": "joplin$abe",
                 "source": "joplin"
               },
               {
                 "account": "z",
-                "instance": "zed",
+                "instance": "joplin$zed",
                 "source": "joplin"
               }
             ]
           },
           {
-            "err": "has no `account` or `org`",
-            "fn": "parseStation",
-            "id": "config/station-without-account",
-            "in": "{\"sdk\":{\"jot\":{\"api\":\"joplin\"}}}"
+            "fn": "connections",
+            "id": "config/inactive-instance-omitted",
+            "in": {
+              "likeness": "{\"likeness\":1,\"instances\":{\"joplin$on\":{\"account\":\"on\"}}}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{\"active\":false},\"joplin$on\":{}}}}}"
+            },
+            "out": [
+              {
+                "account": "on",
+                "instance": "joplin$on",
+                "source": "joplin"
+              }
+            ]
+          },
+          {
+            "err": "instance \"joplin\" has no account in likeness.json",
+            "fn": "connections",
+            "id": "config/instance-without-account",
+            "in": {
+              "likeness": "{\"likeness\":1,\"instances\":{}}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+            }
           }
         ]
       },

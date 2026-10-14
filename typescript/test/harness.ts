@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 import { serialise, stripParityExceptions } from '../src/envelope.js'
-import { run, PORT, type Ctx, type Connection } from '../src/core.js'
+import { run, PORT, type Ctx } from '../src/core.js'
 import type { Call } from '../src/calls.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -12,7 +12,6 @@ export const ROOT = join(here, '..', '..', '..')
 
 export type CorpusConn = {
   instance: string
-  source: string
   account: string
   net?: Record<string, unknown>
 }
@@ -56,15 +55,19 @@ export function entries<T> (name: string): T[] {
   return out
 }
 
+// Each connection becomes a declared station instance, its account the
+// likeness.json entry beside it, and its seed the SDK's offline transport.
 export function buildCtx (e: CliEntry): Ctx {
   const seed = JSON.parse(
     readFileSync(join(ROOT, 'fixtures', 'sources', e.ctx.fixture, 'seed.json'), 'utf8'))
   delete seed._doc
 
+  const sdk: Record<string, unknown> = {}
+  const accounts: Record<string, string> = {}
   const fixture: Record<string, unknown> = {}
-  const connections: Connection[] = []
   for (const c of e.ctx.connections) {
-    connections.push({ instance: c.instance, source: c.source, account: c.account })
+    sdk[c.instance] = {}
+    accounts[c.instance] = c.account
     const own = JSON.parse(JSON.stringify(seed))
     if (undefined !== c.net) own.net = c.net
     fixture[c.instance] = own
@@ -75,7 +78,8 @@ export function buildCtx (e: CliEntry): Ctx {
     env: e.ctx.env,
     clock: e.ctx.clock,
     seed: e.ctx.seed,
-    connections,
+    station: { station: 1, profiles: { default: { sdk } } },
+    accounts,
     fixture,
     // Absent stays absent: an entry that declares no PATH is asserting what
     // `which` does when it was told about nothing, which is a different case

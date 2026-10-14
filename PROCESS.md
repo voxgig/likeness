@@ -58,7 +58,7 @@ file that begins `@"./def/source.aontu"` puts the shape's declarations on the
 back `incomplete` (exit 3) rather than `valid`. This is the single most
 confusing failure in the toolchain and it looks like a schema bug. (The
 `incomplete` comes from `disjunct_no_gen` on the shapes' disjunctive
-definitions — `Ident`, `Port`, `Exit`, `Method`, `Semver`; a shape without
+definitions — `Ident`, `InstanceRef`, `Port`, `Exit`, `Method`, `Semver`; a shape without
 one imports clean. The rule holds; its symptom is not universal.)
 
 **Use `type(...)` for structures and `hide(...)` for enumerations.** Both keep a
@@ -145,6 +145,13 @@ Every source is reached through a generated SDK from
 HTTP client.** Doing so would put the project's own claim in doubt, since the
 point of likeness is that generated SDKs can carry a real application in five
 languages.
+
+Every client is bound through [voxgig/station](https://github.com/voxgig/station),
+which is what likeness exists to demonstrate: `station.json` declares the
+instances, station resolves their secrets, and the calls a command reports in
+`meta.calls` and the corpus are the requests station observed at the transport.
+The Go port reads the same configuration, and binds through station once its
+SDK is regenerated with the station feature.
 
 `spec/sources.aontu` is the registry: which SDK, at which revision, with the exact
 dependency line per language.

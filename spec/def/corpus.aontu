@@ -1,6 +1,6 @@
 @"./base.aontu"
 
-Call: type(close({ instance:$.Ident method:$.Method path:string }))
+Call: type(close({ instance:$.InstanceRef method:$.Method path:string }))
 
 Net: type(close({
   offline?: boolean
@@ -13,7 +13,7 @@ Net: type(close({
   errorTimes?: $.Count
 }))
 
-Conn: type(close({ instance:$.Ident source:$.Ident account:string net?:$.Net }))
+Conn: type(close({ instance:$.InstanceRef account:string net?:$.Net }))
 
 Ctx: type(close({
   fixture: string

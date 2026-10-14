@@ -10,12 +10,11 @@ import (
 
 var limitRe = regexp.MustCompile(`^[1-9][0-9]{0,8}$`)
 
-// Connection is one configured source, as the station file describes it.
+// Connection is one declared station instance and the account it belongs to.
 type Connection struct {
 	Instance string
 	Source   string
 	Account  string
-	APIKey   string
 	Base     string
 }
 
@@ -25,9 +24,13 @@ type Ctx struct {
 	Env  map[string]string
 	// RFC 3339. Injected always: a command that read the wall clock could not
 	// be a corpus entry.
-	Clock       string
-	Seed        int
-	Connections []Connection
+	Clock string
+	Seed  int
+	// station.json in station's own grammar, and each instance's account from
+	// likeness.json beside it.
+	Station  map[string]any
+	Accounts map[string]string
+	conns    []Connection
 	// Seed maps for the SDKs' offline test mode, by instance. Present in every
 	// test and absent in production.
 	Fixture map[string]map[string]any
@@ -165,7 +168,7 @@ func (c Ctx) selected(f flags) ([]Connection, error) {
 	var unknownInstance []string
 	for _, want := range f.instance {
 		found := false
-		for _, conn := range c.Connections {
+		for _, conn := range c.conns {
 			if conn.Instance == want {
 				found = true
 				break
@@ -187,7 +190,7 @@ func (c Ctx) selected(f flags) ([]Connection, error) {
 	var unknownSource []string
 	for _, want := range f.source {
 		found := false
-		for _, conn := range c.Connections {
+		for _, conn := range c.conns {
 			if conn.Source == want {
 				found = true
 				break
@@ -207,7 +210,7 @@ func (c Ctx) selected(f flags) ([]Connection, error) {
 	}
 
 	out := []Connection{}
-	for _, conn := range c.Connections {
+	for _, conn := range c.conns {
 		if 0 < len(f.instance) && !contains(f.instance, conn.Instance) {
 			continue
 		}
@@ -235,7 +238,7 @@ func (c Ctx) optsFor(conn Connection) SourceOpts {
 		Instance: conn.Instance,
 		Account:  conn.Account,
 		Seed:     c.Fixture[conn.Instance],
-		APIKey:   conn.APIKey,
+		APIKey:   c.Env[apikeyEnv(conn.Instance)],
 		Base:     conn.Base,
 	}
 }
@@ -444,9 +447,9 @@ func cmdGet(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 				"a ref is <instance>:<id>, a lid, #n or @alias", nil}
 		}
 		var conn *Connection
-		for i := range c.Connections {
-			if c.Connections[i].Instance == instance {
-				conn = &c.Connections[i]
+		for i := range c.conns {
+			if c.conns[i].Instance == instance {
+				conn = &c.conns[i]
 				break
 			}
 		}
@@ -630,7 +633,12 @@ func Run(c Ctx) Result {
 	if 0 < len(c.Argv) {
 		name, args = c.Argv[0], c.Argv[1:]
 	}
+	conns, cerr := connectionsOf(c.Station, c.Accounts, profileOf(c.Env))
+	c.conns = conns
 	f, rest, ferr := parseFlags(args)
+	if nil != cerr {
+		ferr = cerr
+	}
 
 	var env *envelope
 	if nil != ferr {

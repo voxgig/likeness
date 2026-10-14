@@ -4,7 +4,7 @@ primary: cli: broken: set: [
     args: ["list" "--json"]
     ctx: {
       fixture: "joplin"
-      connections: [{ instance:"jot" source:"joplin" account:"local" }]
+      connections: [{ instance:"joplin" account:"local" }]
       clock: "2026-09-18T00:00:00Z"
       seed: 1
     }
