@@ -131,7 +131,7 @@ export function tokenise (input: string): Tok[] {
     // tokeniser marks it and lets a word absorb it otherwise.
     if (ch === '-') {
       const prev = toks[toks.length - 1]
-      const opensAtom = undefined === prev || prev.kind === 'lparen' ||
+      const opensAtom = 0 === i || isSpace(chars[i - 1]) || prev.kind === 'lparen' ||
         prev.kind === 'op' || prev.kind === 'dash' ||
         (prev.kind === 'word' && isKeyword(prev.text))
       if (opensAtom) {

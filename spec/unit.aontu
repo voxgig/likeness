@@ -189,6 +189,52 @@ primary: unit: {
     }
 
     {
+      id: "selector/dash-after-a-term-negates"
+      # A `-` that follows whitespace opens a new atom, wherever it stands.
+      fn: "parseSelector"
+      in: "title:a -title:b"
+      out: {
+        t: "and"
+        kids: [
+          { t:"cmp" field:"title" op:":" value: { k:"word" v:"a" } }
+          {
+            t: "not"
+            kid: { t:"cmp" field:"title" op:":" value: { k:"word" v:"b" } }
+          }
+        ]
+      }
+    }
+
+    {
+      id: "selector/dash-before-a-term-negates"
+      fn: "parseSelector"
+      in: "-title:b title:a"
+      out: {
+        t: "and"
+        kids: [
+          {
+            t: "not"
+            kid: { t:"cmp" field:"title" op:":" value: { k:"word" v:"b" } }
+          }
+          { t:"cmp" field:"title" op:":" value: { k:"word" v:"a" } }
+        ]
+      }
+    }
+
+    {
+      id: "selector/dash-after-a-word-negates"
+      fn: "parseSelector"
+      in: "retention -draft"
+      out: {
+        t: "and"
+        kids: [
+          { t:"text" v:"retention" }
+          { t:"not" kid: { t:"text" v:"draft" } }
+        ]
+      }
+    }
+
+    {
       id: "selector/duration"
       fn: "parseSelector"
       in: "updated>14d"

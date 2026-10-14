@@ -935,6 +935,68 @@
           {
             "args": [
               "list",
+              "title:e -title:limit",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/negation-after-a-term",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/list/negation.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "-title:limit title:e",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/negation-before-a-term",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/list/negation.json"
+            }
+          },
+          {
+            "args": [
+              "list",
               "--instance",
               "jot",
               "--json"

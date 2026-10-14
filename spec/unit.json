@@ -398,6 +398,89 @@
           },
           {
             "fn": "parseSelector",
+            "id": "selector/dash-after-a-term-negates",
+            "in": "title:a -title:b",
+            "out": {
+              "kids": [
+                {
+                  "field": "title",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "a"
+                  }
+                },
+                {
+                  "kid": {
+                    "field": "title",
+                    "op": ":",
+                    "t": "cmp",
+                    "value": {
+                      "k": "word",
+                      "v": "b"
+                    }
+                  },
+                  "t": "not"
+                }
+              ],
+              "t": "and"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/dash-before-a-term-negates",
+            "in": "-title:b title:a",
+            "out": {
+              "kids": [
+                {
+                  "kid": {
+                    "field": "title",
+                    "op": ":",
+                    "t": "cmp",
+                    "value": {
+                      "k": "word",
+                      "v": "b"
+                    }
+                  },
+                  "t": "not"
+                },
+                {
+                  "field": "title",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "a"
+                  }
+                }
+              ],
+              "t": "and"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/dash-after-a-word-negates",
+            "in": "retention -draft",
+            "out": {
+              "kids": [
+                {
+                  "t": "text",
+                  "v": "retention"
+                },
+                {
+                  "kid": {
+                    "t": "text",
+                    "v": "draft"
+                  },
+                  "t": "not"
+                }
+              ],
+              "t": "and"
+            }
+          },
+          {
+            "fn": "parseSelector",
             "id": "selector/duration",
             "in": "updated>14d",
             "out": {

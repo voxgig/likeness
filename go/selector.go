@@ -188,7 +188,7 @@ func tokenise(input string) ([]tok, error) {
 		// '-' negates only when it opens an atom, which the parser decides;
 		// the tokeniser marks it and lets a word absorb it otherwise.
 		if '-' == r {
-			opensAtom := 0 == len(toks)
+			opensAtom := 0 == i || isSpace(rs[i-1])
 			if !opensAtom {
 				prev := toks[len(toks)-1]
 				opensAtom = "lparen" == prev.kind || "op" == prev.kind ||

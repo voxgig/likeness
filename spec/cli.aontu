@@ -402,6 +402,52 @@ primary: cli: {
     }
 
     {
+      id: "list/negation-after-a-term"
+      # The same question asked in both orders, so both entries share one
+      # expectation file: a port that parsed only one of them cannot pass.
+      args: ["list" "title:e -title:limit" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/negation.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/negation-before-a-term"
+      args: ["list" "-title:limit title:e" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/negation.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
       id: "list/instance-filter"
       # `--instance` narrows the fan-out BEFORE it happens: the second
       # connection is never called, which the empty second call proves.
