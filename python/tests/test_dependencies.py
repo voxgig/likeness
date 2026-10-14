@@ -8,8 +8,9 @@ import unittest
 
 from tests.harness import ROOT
 
-# Its own package, station, and the generated SDK each adapter reaches its source through.
-ALLOWED = {'likeness', 'voxgig_station', 'joplin_sdk'}
+# Its own package, station, sekreto for the vault, and the generated SDK each
+# adapter reaches its source through.
+ALLOWED = {'likeness', 'voxgig_station', 'voxgig_sekreto', 'joplin_sdk'}
 
 
 def imported(source: str) -> set[str]:

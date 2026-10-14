@@ -54,6 +54,16 @@ def connect(station: Any, instance: str, seed: dict[str, Any] | None = None) -> 
     return station.connect(JoplinSDK, {'feature': feature})
 
 
+def _stamp(v: Any, field: str) -> str:
+    try:
+        return rfc3339(_ms(v))
+    except ValueError:
+        raise LikenessError(
+            'source-unavailable',
+            'the source returned a ' + SOURCE + ' record whose ' + field + ' is outside the years 0000 to 9999',
+            'this is a bug in the source or its SDK; run with --raw to capture the payload') from None
+
+
 def project(raw: dict[str, Any], instance: str, account: str, with_raw: bool) -> Note:
     id = _text(raw['id']) if raw.get('id') is not None else ''
     # Refused, not fabricated: an empty id gives every such row one valid-looking lid.
@@ -68,8 +78,8 @@ def project(raw: dict[str, Any], instance: str, account: str, with_raw: bool) ->
         'id': id,
         'title': _text(raw['title']) if raw.get('title') is not None else '',
         'url': 'joplin://x-callback-url/openNote?id=' + id,
-        'created': rfc3339(_ms(raw.get('created_time'))),
-        'updated': rfc3339(_ms(raw.get('updated_time'))),
+        'created': _stamp(raw.get('created_time'), 'created_time'),
+        'updated': _stamp(raw.get('updated_time'), 'updated_time'),
     }
     if raw.get('parent_id') is not None:
         space = _text(raw['parent_id'])

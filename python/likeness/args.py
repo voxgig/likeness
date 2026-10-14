@@ -18,6 +18,18 @@ def command_def(name: str) -> dict[str, Any] | None:
     return _table()['command'].get(name)
 
 
+def actions_of(group: str) -> list[str]:
+    """The actions of a group, `secrets` in `secrets init`, in code-point order."""
+    return sorted(n[len(group) + 1:] for n in _table()['command'] if n.startswith(group + ' '))
+
+
+def command_words(argv: list[str]) -> list[str]:
+    """The words naming the command argv starts with, as far as they can be read."""
+    if 1 < len(argv) and command_def(argv[0]) is None and command_def(argv[0] + ' ' + argv[1]) is not None:
+        return [argv[0], argv[1]]
+    return [argv[0] if argv else '']
+
+
 def help_text(name: str) -> str | None:
     return spec.load('help')['text'].get(name)
 
@@ -36,6 +48,11 @@ class Parsed:
 _NAME = re.compile('[a-z][a-z0-9-]*')
 _INTEGER = re.compile('0|[1-9][0-9]*')
 _INSTANCE = re.compile(r'[a-z][a-z0-9-]*(\$[a-z0-9-]+)?')
+_SECRET = re.compile(r'[a-z0-9_]+(\.[a-z0-9_]+)*')
+_ENVVAR = re.compile('[A-Za-z_][A-Za-z0-9_]*')
+
+# Where a secret is most likely to be typed by mistake, so never repeated.
+_UNECHOED = ('envvar', 'stdin')
 
 
 def _bad(message: str, remedy: str) -> LikenessError:
@@ -59,6 +76,10 @@ def _described(definition: dict[str, Any]) -> str:
         return 'an instance ref (api or api$tag)'
     if 'path' == kind:
         return 'a path'
+    if 'secret' == kind:
+        return 'a secret name ([a-z0-9_] words joined by dots)'
+    if 'envvar' == kind:
+        return 'an environment variable name'
     return 'a string'
 
 
@@ -71,7 +92,7 @@ def _in_range(raw: str, definition: dict[str, Any]) -> bool:
     return (low is None or low <= n) and (high is None or n <= high)
 
 
-def _checked(label: str, definition: dict[str, Any], raw: str, remedy: str) -> Any:
+def _checked(label: str, definition: dict[str, Any], raw: str, remedy: str, echo: bool) -> Any:
     kind = definition['type']
     if 'integer' == kind:
         ok = _INTEGER.fullmatch(raw) is not None and _in_range(raw, definition)
@@ -81,10 +102,15 @@ def _checked(label: str, definition: dict[str, Any], raw: str, remedy: str) -> A
         ok = _INSTANCE.fullmatch(raw) is not None
     elif 'path' == kind:
         ok = '' != raw
+    elif 'secret' == kind:
+        ok = _SECRET.fullmatch(raw) is not None
+    elif 'envvar' == kind:
+        ok = _ENVVAR.fullmatch(raw) is not None
     else:
         ok = True
     if not ok:
-        raise _bad(label + ' takes ' + _described(definition) + ', not "' + raw + '"', remedy)
+        shown = ', not "' + raw + '"' if echo and kind not in _UNECHOED else ''
+        raise _bad(label + ' takes ' + _described(definition) + shown, remedy)
     return int(raw) if 'integer' == kind else raw
 
 
@@ -108,14 +134,27 @@ def parse_argv(argv: list[str]) -> Parsed:
     elif _flag_shaped(name):
         raise _bad('the command comes first, and ' + name + ' is a flag',
                    'put the command first: `likeness list ' + name + '`')
+    at = 1
+    actions = actions_of(name) if command_def(name) is None else []
+    if actions:
+        action = argv[1] if 1 < len(argv) else None
+        if action is None or action.startswith('-'):
+            raise _bad('`' + name + '` needs an action: ' + ', '.join(actions[:-1]) + ' or ' + actions[-1],
+                       'run `likeness help ' + name + '` for what each does')
+        if command_def(name + ' ' + action) is None:
+            raise _bad('no such command: ' + name + ' ' + action,
+                       'run `likeness help ' + name + '` for its actions')
+        name = name + ' ' + action
+        at = 2
     cmd = command_def(name)
     if cmd is None:
         raise _bad('no such command: ' + name, 'run `likeness help` for the command list')
 
+    echo = cmd.get('echo') is not False
     remedy = 'run `likeness help ' + name + '` for its arguments'
     flags: dict[str, Any] = {}
     positional: list[str] = []
-    rest = argv[1:]
+    rest = argv[at:]
 
     i = 0
     while i < len(rest):
@@ -127,6 +166,9 @@ def parse_argv(argv: list[str]) -> Parsed:
         if not a.startswith('--'):
             # A command still being built reads its global flags and nothing else.
             if _flag_shaped(a) and cmd['ready']:
+                if not echo:
+                    raise _bad('an argument begins with - and is not a flag; it is not repeated here, '
+                               'in case it is a secret', 'a positional that begins with - must follow --')
                 raise _bad(a + ' begins with - and is not a flag; a positional that begins with - '
                            'must follow --', 'write `likeness ' + name + ' -- ' + a + '`')
             if not _flag_shaped(a):
@@ -145,7 +187,8 @@ def parse_argv(argv: list[str]) -> Parsed:
         if definition is None:
             if not cmd['ready']:
                 continue
-            raise _bad('`' + name + '` has no flag --' + given, remedy)
+            raise _bad('`' + name + '` has no flag --' + given if echo else
+                       '`' + name + '` has no such flag; it is not repeated here, in case it is a secret', remedy)
 
         if 'boolean' == definition['type']:
             if -1 != eq:
@@ -163,7 +206,7 @@ def parse_argv(argv: list[str]) -> Parsed:
                 raise _bad('--' + key + ' needs a value',
                            'write --' + key + ' ' + str(shown) + ', or --' + key + '=' + str(shown) +
                            ' for a value that begins with -')
-            value = _checked('--' + key, definition, raw, remedy)
+            value = _checked('--' + key, definition, raw, remedy, echo)
 
         if definition.get('repeat') is True:
             flags.setdefault(key, []).append(value)
@@ -182,8 +225,13 @@ def parse_argv(argv: list[str]) -> Parsed:
         if definition['required'] and 0 == len(taken):
             raise _bad('`' + name + '` needs <' + definition['name'] + '>', remedy)
         for raw in taken:
-            args.append(_checked('<' + definition['name'] + '>', definition, raw, remedy))
+            if 'stdin' == definition['type'] and '-' != raw:
+                raise _bad('`' + name + '` takes - there, never the value itself',
+                           'pipe the value in, with - after the name')
+            args.append(_checked('<' + definition['name'] + '>', definition, raw, remedy, echo))
         p += len(taken)
     if p < len(positional):
-        raise _bad('`' + name + '` does not take the argument "' + positional[p] + '"', remedy)
+        raise _bad('`' + name + '` does not take the argument "' + positional[p] + '"' if echo else
+                   '`' + name + '` takes no further argument; it is not repeated here, in case it is a secret',
+                   remedy)
     return Parsed(name, flags, args)

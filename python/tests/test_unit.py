@@ -16,6 +16,7 @@ from likeness.errors import partial_codes
 from likeness.evaluate import fold_case
 from likeness.identity import CROCKFORD, lid, rfc3339
 from likeness.selector import SelectorError, parse_selector
+from likeness.vault import vault_entry
 from tests.harness import entries
 
 
@@ -48,6 +49,12 @@ def _connections(v: dict[str, str]) -> list[dict[str, str]]:
     return [asdict(c) for c in connections_of(station, parse_accounts(v['likeness'], 'likeness.json'))]
 
 
+def _vault_entry(v: dict[str, Any]) -> dict[str, str]:
+    profile = v.get('profile')
+    return asdict(vault_entry(v['station'], 'default' if profile is None else profile, '/home/u',
+                              '/home/u/.config/likeness', v.get('key')))
+
+
 REGISTRY: dict[str, Callable[[Any], Any]] = {
     'serialise': serialise,
     'parseSelector': parse_selector,
@@ -62,6 +69,7 @@ REGISTRY: dict[str, Callable[[Any], Any]] = {
     'connections': _connections,
     'projectJoplin': lambda v: project(v['raw'], v['instance'], v['account'], False),
     'partialCodes': lambda _: partial_codes(),
+    'vaultEntry': _vault_entry,
 }
 
 ALL = entries('unit')

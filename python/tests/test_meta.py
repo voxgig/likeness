@@ -55,6 +55,26 @@ class Meta(unittest.TestCase):
         finally:
             tmp.unlink()
 
+    def test_a_vault_left_holding_the_wrong_names_is_reported(self) -> None:
+        e = entry('secrets/remove')
+        self.assertIn('vault', e['out'], 'secrets/remove asserts no vault state')
+        e['out']['vault']['names'] = ['joplin.apikey', 'notion.apikey']
+        f = check(e)
+        self.assertTrue(starts(f, 'vault names '), f)
+
+    def test_a_vault_value_that_differs_is_reported(self) -> None:
+        e = entry('secrets/set-from-stdin')
+        self.assertIn('values', e['out'].get('vault', {}), 'secrets/set-from-stdin asserts no values')
+        e['out']['vault']['values'] = {'joplin.apikey': 'rotated-token\n'}
+        f = check(e)
+        self.assertTrue(starts(f, 'vault value of '), f)
+
+    def test_a_prompt_that_was_not_expected_is_reported(self) -> None:
+        e = entry('secrets/passphrase-typed')
+        e['out']['prompts'] = []
+        f = check(e)
+        self.assertTrue(starts(f, 'prompts '), f)
+
     def test_a_missing_call_is_reported(self) -> None:
         e = entry('list/all')
         e['out']['calls'] = []

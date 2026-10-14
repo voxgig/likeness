@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import copy
 import importlib
+import os
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
-from likeness.args import Parsed, command_def, help_rows, help_text, parse_argv
+from likeness.args import Parsed, command_def, command_words, help_rows, help_text, parse_argv
 from likeness.calls import Call, Calls
 from likeness.envelope import render, serialise
 from likeness.errors import LikenessError, exit_for
@@ -16,6 +19,7 @@ from likeness.evaluate import evaluate
 from likeness.identity import parse_time
 from likeness.note import Note, sort_notes
 from likeness.selector import SelectorError, fields_of, parse_selector
+from likeness.vault import VaultEntry, secrets, vault_chain, vault_entry
 
 if TYPE_CHECKING:
     from voxgig_station import Station
@@ -45,6 +49,14 @@ class Ctx:
     # test and absent in production.
     fixture: dict[str, Any] | None = None
     path: list[dict[str, str]] | None = None
+    # A path under home is shown from `~`; a relative vault path is read from
+    # dir, where station.json is.
+    home: str | None = None
+    dir: str | None = None
+    stdin: Callable[[], str] | None = None
+    # Stdin is a terminal, so what the environment lacks may be asked for.
+    tty: bool = False
+    prompt: Callable[[str], str | None] | None = None
 
 
 @dataclass
@@ -65,6 +77,11 @@ class Flags:
     sort: str | None = None
     instance: list[str] = field(default_factory=list)
     source: list[str] = field(default_factory=list)
+    passphrase_env: str | None = None
+    new_passphrase_env: str | None = None
+    vault_key: str | None = None
+    reveal: bool = False
+    write: bool = False
 
 
 def _flags_of(parsed: Parsed) -> Flags:
@@ -78,7 +95,18 @@ def _flags_of(parsed: Parsed) -> Flags:
         sort=f.get('sort'),
         instance=list(f.get('instance') or []),
         source=list(f.get('source') or []),
+        passphrase_env=f.get('passphrase-env'),
+        new_passphrase_env=f.get('new-passphrase-env'),
+        vault_key=f.get('vault-key'),
+        reveal=True is f.get('reveal'),
+        write=True is f.get('write'),
     )
+
+
+def homedir() -> str:
+    """As the canonical port's os.homedir(): HOME whenever it is set, even empty."""
+    home = os.environ.get('HOME')
+    return home if home is not None else os.path.expanduser('~')
 
 
 def open_station(config: Any, env: dict[str, str] | None = None) -> Station:
@@ -115,7 +143,7 @@ def _envelope(cmd: list[str], code: str, data: Any, count: int = 0, truncated: b
     env: dict[str, Any] = {
         'ok': error is None,
         'code': code,
-        'cmd': cmd,
+        'cmd': [w for c in cmd for w in c.split(' ')],
         'data': data,
         'meta': {
             'count': count,
@@ -169,14 +197,45 @@ def _adapter_for(c: Connection) -> ModuleType | None:
     return None if name is None else importlib.import_module(name)
 
 
+def with_chain(config: Any, chain: list[Any]) -> Any:
+    """station.json with its secret chain replaced, in every profile, by the one likeness decided on."""
+    if not isinstance(config, (dict, list)):
+        return config
+    out = copy.deepcopy(config)
+    profiles = out.get('profiles') if isinstance(out, dict) else None
+    members = profiles.values() if isinstance(profiles, dict) else profiles if isinstance(profiles, list) else []
+    for p in members:
+        if isinstance(p, dict):
+            p['secrets'] = {'providers': chain}
+    return out
+
+
+def _entry_of(ctx: Ctx, flags: Flags) -> VaultEntry:
+    home = ctx.home if ctx.home is not None else homedir()
+    return vault_entry(ctx.station, (ctx.env or {}).get('VOXGIG_STATION_PROFILE') or 'default', home,
+                       ctx.dir if ctx.dir is not None else os.path.join(home, '.config', 'likeness'),
+                       flags.vault_key)
+
+
 class Session:
     """One station per run: every client is connected through it lazily, and
-    the calls a command made are the requests it observed."""
+    the calls a command made are the requests it observed. A live run with a
+    connection to make opens it on the vault."""
 
-    def __init__(self, ctx: Ctx) -> None:
-        self._station = open_station(ctx.station, ctx.env)
-        self.conns = connections_of(self._station, ctx.accounts or {})
-        self.calls = Calls(self._station)
+    def __init__(self, ctx: Ctx, flags: Flags) -> None:
+        entry = _entry_of(ctx, flags)
+        station = open_station(with_chain(ctx.station, []), ctx.env)
+        self.conns = connections_of(station, ctx.accounts or {})
+        if ctx.fixture is None and self.conns:
+            chain = vault_chain(ctx, entry, flags)
+            try:
+                station = open_station(with_chain(ctx.station, chain), ctx.env)
+            except Exception:
+                raise LikenessError(
+                    'secret-backend-unavailable', 'station could not open the vault as its secret store',
+                    'this port\'s station must read minivault stores; see "Secrets" in the README') from None
+        self._station = station
+        self.calls = Calls(station)
         self._fixture = ctx.fixture or {}
         self._clients: dict[str, Any] = {}
 
@@ -375,13 +434,19 @@ def _cmd_which(ctx: Ctx) -> dict[str, Any]:
 
 
 def _cmd_help(args: list[str]) -> tuple[dict[str, Any], str]:
-    name = args[0] if args else ''
+    name = ' '.join(args)
     text = help_text(name)
     if text is None:
         raise LikenessError('invalid-argument', 'no such command: ' + name,
                             'run `likeness help` for the command list')
-    rows = [r for r in help_rows() if '' == name or r['command'] == name]
+    rows = [r for r in help_rows()
+            if '' == name or r['command'] == name or r['command'].startswith(name + ' ')]
     return _envelope(['help'], 'ok', rows, count=len(rows)), text
+
+
+def _cmd_secrets(ctx: Ctx, name: str, flags: Flags, args: list[str]) -> tuple[dict[str, Any], str]:
+    got = secrets(name[len('secrets '):], args, _entry_of(ctx, flags), ctx, flags)
+    return _envelope([name], 'no-match' if got.empty else 'ok', got.data, count=got.count), got.text
 
 
 def _elapsed_ms(started: int) -> int:
@@ -408,7 +473,7 @@ def run(ctx: Ctx) -> Result:
         parsed = parse_argv(ctx.argv)
     except Exception as err:
         calls = Calls()
-        env = _error_envelope(ctx.argv[0] if ctx.argv else '', err, calls)
+        env = _error_envelope(' '.join(command_words(ctx.argv)), err, calls)
         return _result(env, '--json' in ctx.argv, '--deterministic' in ctx.argv, started, calls)
 
     name = parsed.command
@@ -429,8 +494,11 @@ def run(ctx: Ctx) -> Result:
             return _result(_cmd_version(), flags.json, flags.deterministic, started, calls)
         if 'which' == name:
             return _result(_cmd_which(ctx), flags.json, flags.deterministic, started, calls)
+        if name.startswith('secrets '):
+            env, text = _cmd_secrets(ctx, name, flags, parsed.args)
+            return _result(env, flags.json, flags.deterministic, started, calls, text)
 
-        session = Session(ctx)
+        session = Session(ctx, flags)
         calls = session.calls
         if 'list' == name:
             env = _cmd_list(ctx, flags, parsed.args, session)

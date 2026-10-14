@@ -10,9 +10,9 @@ from likeness.text import utf8
 
 CROCKFORD = '0123456789abcdefghjkmnpqrstvwxyz'
 
-# The canonical port's Date range: beyond it every field of a timestamp is NaN.
-DATE_LIMIT_MS = 8_640_000_000_000_000
-INVALID_DATE = '0NaN-NaN-NaNTNaN:NaN:NaNZ'
+# The first and last millisecond with a four-digit year.
+RFC3339_MIN = -62_167_219_200_000
+RFC3339_MAX = 253_402_300_799_999
 
 DAY_MS = 86_400_000
 
@@ -71,13 +71,11 @@ def _pad(n: int, width: int = 2) -> str:
 
 
 def rfc3339(ms: int | float) -> str:
-    """RFC 3339, UTC, second precision, Z."""
-    if isinstance(ms, float):
-        if not math.isfinite(ms):
-            return INVALID_DATE
-        ms = math.trunc(ms)
-    if DATE_LIMIT_MS < abs(ms):
-        return INVALID_DATE
+    """RFC 3339, UTC, second precision, Z. A year outside 0000-9999 is refused,
+    never written some other way."""
+    if isinstance(ms, float) and not math.isfinite(ms) or ms < RFC3339_MIN or RFC3339_MAX < ms:
+        raise ValueError('rfc3339: ' + str(ms) + ' ms is outside the years 0000 to 9999')
+    ms = math.trunc(ms)
     days, rest = divmod(ms // 1000, 86400)
     year, month, day = civil_from_days(days)
     return (_pad(year, 4) + '-' + _pad(month) + '-' + _pad(day) + 'T' + _pad(rest // 3600) +

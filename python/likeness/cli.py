@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import getpass
 import json
 import os
 import re
@@ -9,7 +10,7 @@ import sys
 import time
 from typing import Any, BinaryIO
 
-from likeness.core import PORT, VERSION, Ctx, open_station, run
+from likeness.core import PORT, VERSION, Ctx, homedir, open_station, run, with_chain
 from likeness.envelope import compare_code_points, render_raw
 from likeness.identity import rfc3339
 from likeness.text import utf8
@@ -25,20 +26,25 @@ def _refuse_constant(name: str) -> Any:
     raise ValueError('not JSON: ' + name)
 
 
-def _parse_json(source: str, path: str) -> Any:
+def _parse_json(source: str, path: str) -> dict[str, Any]:
     try:
-        return json.loads(source, parse_constant=_refuse_constant)
+        doc = json.loads(source, parse_constant=_refuse_constant)
     except (ValueError, RecursionError):
         raise ConfigError(path + ' is not valid JSON') from None
+    if not isinstance(doc, dict):
+        raise ConfigError(path + ' is not a JSON object')
+    return doc
 
 
 def parse_station(source: str, path: str) -> Any:
-    """station.json, parsed here and validated by station against its own shape."""
+    """station.json, parsed here and validated by station against its own
+    shape. Its secret chain is likeness's to check, and is checked when used."""
     doc = _parse_json(source, path)
     try:
-        open_station(doc)
+        open_station(with_chain(doc, []))
     except Exception as err:
-        if 'station_config_invalid' == getattr(err, 'code', None):
+        code = getattr(err, 'code', None)
+        if isinstance(code, str) and code.startswith('station_'):
             raise ConfigError(path + ': ' + str(err)) from None
         raise
     return doc
@@ -46,8 +52,7 @@ def parse_station(source: str, path: str) -> Any:
 
 def parse_accounts(source: str, path: str) -> dict[str, str]:
     """The account each instance ref belongs to, from likeness.json."""
-    doc = _parse_json(source, path)
-    instances = doc.get('instances') if isinstance(doc, dict) else None
+    instances = _parse_json(source, path).get('instances')
     out: dict[str, str] = {}
     if not isinstance(instances, dict):
         return out
@@ -64,9 +69,7 @@ def _read(path: str) -> str:
         return handle.read()
 
 
-def load_config(config_path: str | None = None) -> tuple[Any, dict[str, str]]:
-    path = config_path if config_path is not None else \
-        os.path.join(os.path.expanduser('~'), '.config', 'likeness', 'station.json')
+def load_config(path: str) -> tuple[Any, dict[str, str]]:
     if not os.path.exists(path):
         return None, {}
     station = parse_station(_read(path), path)
@@ -135,6 +138,22 @@ def take_config_option(argv: list[str]) -> tuple[list[str], str | None]:
     return argv[:at] + argv[at + width:], value
 
 
+def prompt(label: str) -> str | None:
+    """One line from the terminal with echo off; None at end of input."""
+    try:
+        return getpass.getpass(label + ': ', stream=sys.stderr)
+    except EOFError:
+        sys.stderr.write('\n')
+        return None
+    except KeyboardInterrupt:
+        sys.stderr.write('\n')
+        sys.exit(130)
+
+
+def read_stdin() -> str:
+    return sys.stdin.buffer.read().decode('utf-8', errors='replace')
+
+
 def _write(stream: BinaryIO, text: str) -> bool:
     """False when the reader has gone away."""
     try:
@@ -150,9 +169,11 @@ def _write(stream: BinaryIO, text: str) -> bool:
 def main(argv: list[str]) -> int:
     rest, config_path = take_config_option(argv)
     env = dict(os.environ)
+    home = homedir()
+    path = config_path if config_path is not None else os.path.join(home, '.config', 'likeness', 'station.json')
 
     try:
-        station, accounts = load_config(config_path)
+        station, accounts = load_config(path)
     except ConfigError as err:
         quiet = not _write(sys.stderr.buffer,
                            'error: invalid-project\n  ' + str(err) + '\n  remedy  ' + REMEDY + '\n')
@@ -165,6 +186,11 @@ def main(argv: list[str]) -> int:
         station=station,
         accounts=accounts,
         path=probe_path(env),
+        home=home,
+        dir=os.path.dirname(path) or '.',
+        stdin=read_stdin,
+        tty=sys.stdin is not None and sys.stdin.isatty(),
+        prompt=prompt,
     ))
 
     # A reader that went away is not the port's failure: exit quietly with 0.
