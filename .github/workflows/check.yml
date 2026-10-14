@@ -59,7 +59,7 @@ jobs:
         run: npm install
         working-directory: typescript
 
-      # The schema and its data, both ports against both corpora, the
+      # The schema and its data, every port against both corpora, the
       # cross-port byte comparison, and the comparison's own self-test.
       - name: make check
         run: make check

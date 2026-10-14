@@ -36,7 +36,7 @@ surprises you, and before changing the thing you assume produced it.
 | `make spec-check` | a data file that violates its shape — with a path, an expected, an actual, and both source lines |
 | `make spec-check` red cases | a gate that has stopped gating. `spec/example/likeness-broken.aontu` **must fail**; if it passes, the build fails |
 | `make spec-agree` | an empty or misspelled registry root, a capability row that does not match the registry, a source no port can reach, and a registry entity or operation the cloned SDK model does not declare. It needs the clones `make sdk` creates, and its self-test falsifies a capability to prove it goes red |
-| `make spec-fresh` | a compiled JSON file — under `spec/`, or an embedded copy under `typescript/src/spec/` or `go/spec/` — that no longer matches its `.aontu` source |
+| `make spec-fresh` | a compiled JSON file — under `spec/`, or an embedded copy under `typescript/src/spec/`, `go/spec/` or `ruby/lib/likeness/spec/` — that no longer matches its `.aontu` source |
 | `make spec-fmt` | formatting drift, so a diff is about meaning |
 | `make spec-hash` | a pin per schema file, for the AGENTS.md stanza and for release notes |
 
@@ -153,7 +153,10 @@ instances, station resolves their secrets, and the calls a command reports in
 Station's Go module cannot be required outside a go workspace yet
 ([voxgig/station#27](https://github.com/voxgig/station/issues/27)), so
 `go/go.mod` maps its unresolvable versions to real revisions with `replace`
-lines; move them with the station pin.
+lines; move them with the station pin. station, sekreto and plugin are not
+published as gems at all, so the Ruby port loads them from checkouts at the
+revisions `ruby/libs.json` pins: `make rb-libs` clones them, and `make rb-deps`
+refuses one off its pin or dirty, exactly as `sdk-check` does for an SDK.
 
 `spec/sources.aontu` is the registry: which SDK, at which revision, with the exact
 dependency line per language.
