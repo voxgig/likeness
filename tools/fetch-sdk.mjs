@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Put the generated SDKs on disk at the revisions spec/sources.aon pins.
+/* Put the generated SDKs on disk at the revisions spec/sources.aontu pins.
  *
  *   node tools/fetch-sdk.mjs          # clone or move each clone to its pin
  *   node tools/fetch-sdk.mjs --check  # report, change nothing

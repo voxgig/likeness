@@ -1,5 +1,5 @@
-@"./base.aon"
-@"./note.aon"
+@"./base.aontu"
+@"./note.aontu"
 
 ReplicaDriver: type(close({
   driver: string

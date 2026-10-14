@@ -1,5 +1,5 @@
-@"./base.aon"
-@"./note.aon"
+@"./base.aontu"
+@"./note.aontu"
 
 FlagType: hide("boolean"|"string"|"integer"|"path"|"selector"|"ref")
 

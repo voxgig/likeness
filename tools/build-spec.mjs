@@ -4,7 +4,7 @@
  *   node tools/build-spec.mjs          # write spec/*.json
  *   node tools/build-spec.mjs --check  # fail if the committed JSON is stale
  *
- * NEVER HAND-EDIT THE JSON. It is build output; the .aon file is the source,
+ * NEVER HAND-EDIT THE JSON. It is build output; the .aontu file is the source,
  * and `make spec-fresh` runs the --check mode so drift fails a build rather
  * than being discovered a month later when a port disagrees with the spec it
  * claims to implement.
@@ -24,11 +24,11 @@ const AONTU = AONTU_RAW.split(/\s+/)
 // Data files only: a shape file under spec/def/ is a truth rather than a
 // value, so it has nothing to compile.
 const SOURCES = [
-  'errors.aon', 'caps.aon', 'sources.aon', 'replica.aon',
+  'errors.aontu', 'caps.aontu', 'sources.aontu', 'replica.aontu',
   // The two corpora. They are ground truth like everything else here: written
-  // in aontu, checked against spec/def/corpus.aon, and compiled to the JSON
+  // in aontu, checked against spec/def/corpus.aontu, and compiled to the JSON
   // that each port's harness runs. A port reads the JSON; nobody writes it.
-  'unit.aon', 'cli.aon',
+  'unit.aontu', 'cli.aontu',
 ]
 
 const check = process.argv.includes('--check')
@@ -37,7 +37,7 @@ let wrote = 0
 
 for (const name of SOURCES) {
   const src = join('spec', name)
-  const dst = join('spec', name.replace(/\.aon$/, '.json'))
+  const dst = join('spec', name.replace(/\.aontu$/, '.json'))
   if (!existsSync(src)) {
     console.error(`  MISSING ${src}`)
     process.exit(2)

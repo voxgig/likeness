@@ -27,7 +27,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-// AONTU may be a command line ("npx --yes aontu@0.67.0"), not just a binary
+// AONTU may be a command line ("npx --yes aontu@0.76.0"), not just a binary
 // path. execFileSync does not split one, so a default-configured `make
 // spec-agree` failed with ENOENT every time - the script only ever ran for
 // someone who overrode AONTU with a single path.
@@ -55,8 +55,8 @@ function load (file) {
   }
 }
 
-const sourcesDoc = load('spec/sources.aon')
-const capsDoc = load('spec/caps.aon')
+const sourcesDoc = load('spec/sources.aontu')
+const capsDoc = load('spec/caps.aontu')
 if (0 < fail.length) { report(); process.exit(2) }
 
 const sources = sourcesDoc.source
@@ -64,11 +64,11 @@ const caps = capsDoc.capability
 
 // -- presence: an empty registry, or a misspelled root key, vets valid -------
 if (null == sources || 0 === Object.keys(sources).length) {
-  fail.push('spec/sources.aon declares no sources under `source:` - an empty ' +
+  fail.push('spec/sources.aontu declares no sources under `source:` - an empty ' +
             'or misspelled root key vets valid, so it is checked here')
 }
 if (null == caps || 0 === Object.keys(caps).length) {
-  fail.push('spec/caps.aon declares no capabilities under `capability:` - same reason')
+  fail.push('spec/caps.aontu declares no capabilities under `capability:` - same reason')
 }
 if (0 < fail.length) { report(); process.exit(1) }
 
@@ -82,10 +82,10 @@ for (const [key, sc] of Object.entries(caps)) {
 
 // -- every capability has a source, and every source has capabilities --------
 for (const key of Object.keys(caps)) {
-  if (null == sources[key]) fail.push(`capability "${key}" names no source in spec/sources.aon`)
+  if (null == sources[key]) fail.push(`capability "${key}" names no source in spec/sources.aontu`)
 }
 for (const key of Object.keys(sources)) {
-  if (null == caps[key]) fail.push(`source "${key}" has no capability row in spec/caps.aon`)
+  if (null == caps[key]) fail.push(`source "${key}" has no capability row in spec/caps.aontu`)
 }
 
 // -- every likeness port can reach every source ------------------------------

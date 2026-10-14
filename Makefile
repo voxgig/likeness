@@ -5,7 +5,7 @@
 # built. `make spec-check` should be the first thing a change runs and the
 # first thing CI runs.
 
-AONTU ?= npx --yes aontu@0.67.0
+AONTU ?= npx --yes aontu@0.76.0
 SPEC  := spec
 DEF   := $(SPEC)/def
 
@@ -13,13 +13,13 @@ DEF   := $(SPEC)/def
 # without adding it here is the one gap this Makefile cannot catch, so
 # `spec-list` prints both lists for comparison.
 VET_PAIRS := \
-	$(DEF)/source.aon:$(SPEC)/sources.aon \
-	$(DEF)/capability.aon:$(SPEC)/caps.aon \
-	$(DEF)/error.aon:$(SPEC)/errors.aon \
-	$(DEF)/project.aon:$(SPEC)/example/likeness.aon \
-	$(DEF)/replica.aon:$(SPEC)/replica.aon \
-	$(DEF)/corpus.aon:$(SPEC)/unit.aon \
-	$(DEF)/corpus.aon:$(SPEC)/cli.aon
+	$(DEF)/source.aontu:$(SPEC)/sources.aontu \
+	$(DEF)/capability.aontu:$(SPEC)/caps.aontu \
+	$(DEF)/error.aontu:$(SPEC)/errors.aontu \
+	$(DEF)/project.aontu:$(SPEC)/example/likeness.aontu \
+	$(DEF)/replica.aontu:$(SPEC)/replica.aontu \
+	$(DEF)/corpus.aontu:$(SPEC)/unit.aontu \
+	$(DEF)/corpus.aontu:$(SPEC)/cli.aontu
 
 # Files that MUST fail to vet, AND MUST FAIL FOR THE RIGHT REASON. `aontu vet`
 # exits 1 for a contradiction, 2 for a usage error and 3 for an incomplete
@@ -28,9 +28,9 @@ VET_PAIRS := \
 # which is the exact failure this target exists to prevent. Exit 1, or it is a
 # build failure.
 VET_MUSTFAIL := \
-	$(DEF)/project.aon:$(SPEC)/example/likeness-broken.aon \
-	$(DEF)/corpus.aon:$(SPEC)/example/unit-broken.aon \
-	$(DEF)/corpus.aon:$(SPEC)/example/cli-broken.aon
+	$(DEF)/project.aontu:$(SPEC)/example/likeness-broken.aontu \
+	$(DEF)/corpus.aontu:$(SPEC)/example/unit-broken.aontu \
+	$(DEF)/corpus.aontu:$(SPEC)/example/cli-broken.aontu
 
 
 .PHONY: help
@@ -69,7 +69,7 @@ spec-build:
 	@AONTU="$(AONTU)" node tools/build-spec.mjs
 
 
-# Drift between a .aon file and the JSON committed beside it fails a build here
+# Drift between a .aontu file and the JSON committed beside it fails a build here
 # rather than being discovered a month later, when a port disagrees with the
 # spec it claims to implement.
 .PHONY: spec-fresh
@@ -179,22 +179,22 @@ spec-json:
 	@echo '  admits anything, and every type() definition appears as a REQUIRED' >&2
 	@echo '  top-level property, so no likeness document satisfies the export.' >&2
 	@echo '  `aontu vet` is the authority. This is for readers, not validators.' >&2
-	@$(AONTU) jsonschema $(DEF)/likeness.aon
+	@$(AONTU) jsonschema $(DEF)/likeness.aontu
 
 
 .PHONY: spec-fmt
 spec-fmt:
-	@$(AONTU) fmt --check $(DEF)/*.aon $(SPEC)/*.aon $(SPEC)/example/*.aon && echo '  fmt ok'
+	@$(AONTU) fmt --check $(DEF)/*.aontu $(SPEC)/*.aontu $(SPEC)/example/*.aontu && echo '  fmt ok'
 
 
 .PHONY: spec-hash
 spec-hash:
-	@for f in $(DEF)/*.aon $(SPEC)/*.aon; do printf '  %-32s ' "$$(basename $$f)"; $(AONTU) hash "$$f"; done
+	@for f in $(DEF)/*.aontu $(SPEC)/*.aontu; do printf '  %-32s ' "$$(basename $$f)"; $(AONTU) hash "$$f"; done
 
 
 .PHONY: spec-list
 spec-list:
-	@echo 'data files present:'; ls $(SPEC)/*.aon $(SPEC)/example/*.aon
+	@echo 'data files present:'; ls $(SPEC)/*.aontu $(SPEC)/example/*.aontu
 	@echo 'data files vetted:'; for p in $(VET_PAIRS) $(VET_MUSTFAIL); do echo "  $${p#*:}"; done
 
 

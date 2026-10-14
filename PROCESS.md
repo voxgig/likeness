@@ -20,8 +20,8 @@ Four commands, after every change. They are the shape of the `check.sh` that
 ```sh
 make spec-check                      # 1. does every data file satisfy its shape?
 make spec-agree                      # 2. does the capability matrix match the SDKs?
-aontu model get '$.capability.notion.entity.note.op' spec/caps.aon   # 3. what does it say?
-aontu model why  '$.capability.notion.entity.note.op' spec/caps.aon  # 4. why does it say that?
+aontu model get '$.capability.notion.entity.note.op' spec/caps.aontu   # 3. what does it say?
+aontu model why  '$.capability.notion.entity.note.op' spec/caps.aontu  # 4. why does it say that?
 ```
 
 Steps 3 and 4 are not decoration. `model why` reports **every contribution to a
@@ -34,7 +34,7 @@ surprises you, and before changing the thing you assume produced it.
 | Gate | Catches |
 |---|---|
 | `make spec-check` | a data file that violates its shape — with a path, an expected, an actual, and both source lines |
-| `make spec-check` red cases | a gate that has stopped gating. `spec/example/likeness-broken.aon` **must fail**; if it passes, the build fails |
+| `make spec-check` red cases | a gate that has stopped gating. `spec/example/likeness-broken.aontu` **must fail**; if it passes, the build fails |
 | `make spec-agree` | an empty or misspelled registry root, a capability row that does not match the registry, and a source no port can reach. With `LIKENESS_SDK_ROOT` set, also the registry against the real SDK models |
 | `make spec-fmt` | formatting drift, so a diff is about meaning |
 | `make spec-hash` | a pin per schema file, for the AGENTS.md stanza and for release notes |
@@ -43,17 +43,22 @@ surprises you, and before changing the thing you assume produced it.
 
 ## 2. Rules for writing schema
 
-Learned by running aontu 0.67.0, not assumed. Each one cost time to find.
+Learned by running aontu 0.67.0 and re-verified on 0.76.0 (2026-10-14), not assumed. Each one
+cost time to find. The move to 0.76.0 changed none of the gates' results: every schema hash,
+every compiled JSON file and the JSON Schema export are byte-identical across it.
 
 **A schema file does not evaluate on its own, and that is correct.** A shape is
-a truth, not a value. `aontu spec/def/project.aon` reports that it has no value
+a truth, not a value. `aontu spec/def/project.aontu` reports that it has no value
 for `$.project.name`, which is exactly what it should say. Use `vet`.
 
 **A data file must never import its own shape.** `vet` composes the two. A data
-file that begins `@"./def/source.aon"` puts the shape's declarations on the
+file that begins `@"./def/source.aontu"` puts the shape's declarations on the
 *data* side, where they read as unsatisfied requirements, and the verdict comes
 back `incomplete` (exit 3) rather than `valid`. This is the single most
-confusing failure in the toolchain and it looks like a schema bug.
+confusing failure in the toolchain and it looks like a schema bug. (The
+`incomplete` comes from `disjunct_no_gen` on the shapes' disjunctive
+definitions — `Ident`, `Port`, `Exit`, `Method`, `Semver`; a shape without
+one imports clean. The rule holds; its symptom is not universal.)
 
 **Use `type(...)` for structures and `hide(...)` for enumerations.** Both keep a
 definition out of generated output. A bare disjunction that is neither cannot
@@ -62,9 +67,9 @@ generate and surfaces as `disjunct_no_gen`.
 **Literal disjunctions are fine.** The SDK repositories' `AGENTS.md` says
 literal disjunctions are "fragile in aontu" and recommends `*'prod' | string`
 with the enum enforced in code. That guidance is about *generating* a value from
-an unresolved disjunction. As a **schema** on 0.67 a literal disjunction is
-exact and gives a far better error than a bare `string` ever will. Do not
-"fix" the enumerations in `spec/def/` into `*x | string`.
+an unresolved disjunction. As a **schema** on 0.67 and 0.76 alike a literal
+disjunction is exact and gives a far better error than a bare `string` ever
+will. Do not "fix" the enumerations in `spec/def/` into `*x | string`.
 
 **`close()` is what catches a typo.** Without it, `instanse: 'plan'` is simply
 an extra key nobody asked about. With it, it is a failure with a line number.
@@ -73,12 +78,21 @@ Every record shape in `spec/def/` is closed.
 **A quoted `"*"` is a key named `*`, not a wildcard.** A schema written that way
 constrains nothing and still reports `valid`. Reach for `&:`.
 
-**To look up an error code, strip the `aontu/` prefix first.** A report prints
-`[aontu/constraint]`, and `aontu explain aontu/constraint` answers "no such
-error code". `aontu explain constraint` works. Several codes have no text
-registered at all, the `compat_*` ones that `breaking` reports among them, so
-`explain` sometimes answers with nothing useful even when asked correctly. Both
-are filed as `upstream/issue/08`.
+**`explain` takes the code as printed.** `aontu explain aontu/constraint` and
+`aontu explain constraint` both answer, and every registered code has text.
+On 0.67.0 neither was true — the prefix was refused and 29 of 168 codes,
+every `compat_*` among them, had no text — and both were filed as
+`upstream/issue/08` ([aontu#246](https://github.com/aontu-lang/aontu/issues/246)),
+fixed in 0.68.0.
+
+**`--strict-coverage` still has one hole.** The vacuous-coverage report filed
+as `upstream/issue/03` ([aontu#245](https://github.com/aontu-lang/aontu/issues/245))
+is fixed for the case as filed, but a constraint that reaches the data through
+a disjunction of records still reports nothing checked: `vet --strict-coverage`
+rejects a valid `unit.aontu` with `VACUOUS 0/382`. Do not add
+`--strict-coverage` to the gates until that is fixed, and never to the
+must-fail loop, where a corrected red case would still exit 1 and read as
+"fails as required".
 
 **Regex is restricted, on purpose.** `re()` refuses backreferences, lookaround
 and a quantifier applied to a group that contains one, because those backtrack
@@ -106,12 +120,17 @@ A change to `spec/def/` is a change to the application's contract. Before
 proposing one:
 
 ```sh
-aontu breaking --against HEAD spec/def/error.aon
+aontu breaking --against git#HEAD spec/def/error.aontu
 ```
 
 It exits `1` on a breaking verdict and `0` otherwise, so a CI gate can be
 written against the exit status directly. The output names the class —
-`compat_required_added`, `sub_unresolved` — with both source lines.
+`compat_required_added`, `sub_unresolved` — with both source lines. The
+`git#` prefix is required: a bare `HEAD` is read as a file name and exits 2
+with `cannot read HEAD`, which an earlier version of this section got wrong.
+Across the `.aon` → `.aontu` rename itself `breaking` cannot compare (the old
+revision's imports no longer resolve); the identical `aontu hash` of every
+schema file on both sides is the proof for that one change.
 
 Renaming an error code, removing a capability key, or making an optional field
 required are all breaking. They are allowed; they are not allowed to be silent.
@@ -126,7 +145,7 @@ HTTP client.** Doing so would put the project's own claim in doubt, since the
 point of likeness is that generated SDKs can carry a real application in five
 languages.
 
-`spec/sources.aon` is the registry: which SDK, at which revision, with the exact
+`spec/sources.aontu` is the registry: which SDK, at which revision, with the exact
 dependency line per language.
 
 ### Pinning is by commit sha, and that is not a style choice
@@ -134,7 +153,7 @@ dependency line per language.
 None of the four SDK repositories carries a git tag, and none of their packages
 resolves from npm, PyPI, RubyGems or the Go module proxy. Their READMEs offer
 "install from git tag" and the tag list is empty. A commit sha is therefore the
-only pin that pins. When the packages are published, `spec/sources.aon` gains a
+only pin that pins. When the packages are published, `spec/sources.aontu` gains a
 `published: true` per target and the `pin` lines become ordinary version ranges;
 until then, `rev` is required and `make spec-check` enforces it.
 
@@ -142,7 +161,7 @@ until then, `rev` is required and `make spec-check` enforces it.
 
 Re-pinning an SDK is a deliberate change with its own commit:
 
-1. Update `rev` and `pin` for that source in `spec/sources.aon`.
+1. Update `rev` and `pin` for that source in `spec/sources.aontu`.
 2. `make spec-agree` — the SDK's operation surface may have changed, and a
    capability row that no longer matches must fail here rather than at runtime.
 3. Re-run the parity corpora. A parity failure six months from now is far more
@@ -166,7 +185,7 @@ The seeding shape is `{entity: {<entity>: {<id>: <record>}}}`, and the SDK
 stamps the map key onto the record's own identifier field.
 
 **That field is derived, not fixed.** The SDK works it out from the entity's
-route, so it is declared per source in `spec/sources.aon` under `test.idfield`
+route, so it is declared per source in `spec/sources.aontu` under `test.idfield`
 rather than assumed. For all four sources it derives to `id` — verified by
 running each SDK's own resolver over its own config, not by reading the routes,
 which is a distinction worth keeping: the Obsidian vault route is
@@ -181,7 +200,7 @@ builds it from four unpadded `Math.random()` values then pads the result to
 sixteen characters; Go, Python, Ruby and C each format four full 16-bit values
 as `%04x`. So a created record's identifier is both non-reproducible *and*
 differently shaped between ports, which defeats byte-identical output at its
-root. This is recorded as `mints_id: true` in `spec/sources.aon` and is filed
+root. This is recorded as `mints_id: true` in `spec/sources.aontu` and is filed
 upstream; supplying the id avoids it entirely.
 
 **Network conditions come from the same feature.** `SDK.test({net: {...}})`
@@ -280,7 +299,7 @@ from the SDK repository so the trail is followable.
 An issue from likeness is worth more than a bug report from a stranger because
 it can be exact. Include:
 
-- the **repository and revision** it was observed at, from `spec/sources.aon`;
+- the **repository and revision** it was observed at, from `spec/sources.aontu`;
 - the **generated file and line**, and the **model or template file** the fix
   belongs in;
 - a **minimal reproduction** that runs with no credentials and no network — the
