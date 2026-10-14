@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'pathname'
 require 'voxgig_sekreto/plugins/minivault'
 
 require_relative 'envelope'
@@ -41,16 +42,21 @@ module Likeness
     path.start_with?("#{h}/") ? "~/#{path[(h.length + 1)..]}" : path
   end
 
+  # Node's path.join, over parts that may be empty.
+  def joined(*parts)
+    path = parts.reject(&:empty?).join('/')
+    path.empty? ? '.' : Pathname.new(path).cleanpath.to_s
+  end
+
   def located(file, home, dir)
-    return resolved(file[2..], home) if file.start_with?('~/')
+    return resolved(joined(home, file[2..])) if file.start_with?('~/')
 
     file.start_with?('/') ? resolved(file) : resolved(file, dir)
   end
 
-  # A JSON null is a chain; a missing key is none.
   def chain_of(profile)
     secrets = profile.is_a?(Hash) ? profile['secrets'] : nil
-    secrets.is_a?(Hash) && secrets.key?('providers') ? [secrets['providers']] : []
+    secrets.is_a?(Hash) ? secrets['providers'] : nil
   end
 
   def checked_entry(providers)
@@ -59,6 +65,8 @@ module Likeness
     end
 
     only = providers[0]
+    raise refused('the vault entry in station.json does not name its kind') if only.is_a?(Hash) && !only.key?('kind')
+
     kind = only.is_a?(Hash) ? only['kind'] : only
     if !only.is_a?(Hash) || 'minivault' != kind
       raise refused('likeness reads secrets from its vault alone, and station.json names the store ' \
@@ -87,9 +95,9 @@ module Likeness
   # chooses its profile's chain, with no passphrase written beside it.
   def vault_entry(station, profile:, home:, dir:, key: nil)
     profiles = station.is_a?(Hash) && station['profiles'].is_a?(Hash) ? station['profiles'] : {}
-    named = 'default' == profile ? [] : chain_of(profiles[profile])
-    named = chain_of(profiles['default']) if named.empty? || named[0].nil?
-    entry = named.empty? ? {} : checked_entry(named[0])
+    providers = 'default' == profile ? nil : chain_of(profiles[profile])
+    providers = chain_of(profiles['default']) if providers.nil?
+    entry = providers.nil? ? {} : checked_entry(providers)
 
     file = located(entry['file'].is_a?(String) ? entry['file'] : DEFAULT_FILE, home, dir)
     key ||= entry['vaultkey'].is_a?(String) ? entry['vaultkey'] : 'master'

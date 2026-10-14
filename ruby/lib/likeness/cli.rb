@@ -143,12 +143,6 @@ module Likeness
     stderr.write("\n")
   end
 
-  # Node's path.join over a home that may be empty.
-  def joined(*parts)
-    path = parts.reject(&:empty?).join('/')
-    path.empty? ? '.' : Pathname.new(path).cleanpath.to_s
-  end
-
   def main(argv, stdout: $stdout, stderr: $stderr, env: ENV.to_h, stdin: $stdin)
     taken = take_config_option(argv)
     home = env.fetch('HOME') { Dir.home }

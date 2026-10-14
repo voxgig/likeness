@@ -193,9 +193,8 @@ module Likeness
       # Refused BEFORE the network, not sent through whichever adapter is loaded.
       raise no_adapter(conn, 'drop that connection, or narrow to one that is supported with --source') if adapter.nil?
 
-      client = session.client(conn)
       begin
-        got = adapter.list_notes(client, conn, with_raw)
+        got = adapter.list_notes(session.client(conn), conn, with_raw)
         notes.concat(got[:notes])
         ok << conn.instance
         short << conn.instance if got[:more]
@@ -324,7 +323,11 @@ module Likeness
         next { 'instance' => conn.instance, 'source' => conn.source, 'check' => 'FAIL',
                'detail' => 'no adapter for this source yet', 'code' => 'unsupported-capability' }
       end
-      r = adapter.check(session.client(conn))
+      r = begin
+        adapter.check(session.client(conn))
+      rescue StandardError
+        { ok: false, code: 'source-unavailable', detail: 'station could not connect this instance' }
+      end
       row = { 'instance' => conn.instance, 'source' => conn.source, 'check' => r[:ok] ? 'ok' : 'FAIL',
               'detail' => r[:detail] }
       unless r[:ok]
