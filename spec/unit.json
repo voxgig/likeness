@@ -586,6 +586,33 @@
             }
           },
           {
+            "err": "station.json is not a JSON object",
+            "fn": "connections",
+            "id": "config/station-not-an-object",
+            "in": {
+              "likeness": "{}",
+              "station": "[]"
+            }
+          },
+          {
+            "err": "station.json: station_secret_collision",
+            "fn": "connections",
+            "id": "config/station-refused-for-a-shared-secret",
+            "in": {
+              "likeness": "{}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"notes-a\":{},\"notes$a\":{}}}}}"
+            }
+          },
+          {
+            "err": "likeness.json is not a JSON object",
+            "fn": "connections",
+            "id": "config/likeness-not-an-object",
+            "in": {
+              "likeness": "1",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+            }
+          },
+          {
             "err": "likeness.json is not valid JSON",
             "fn": "connections",
             "id": "config/likeness-not-json",
@@ -723,6 +750,14 @@
               "n": 9007199254740991
             },
             "out": "{\"n\":9007199254740991}\n"
+          },
+          {
+            "err": "integer beyond exact double precision",
+            "fn": "serialise",
+            "id": "envelope/integer-beyond-a-double-is-refused",
+            "in": {
+              "n": 9007199254740992
+            }
           },
           {
             "fn": "serialise",

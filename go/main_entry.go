@@ -103,9 +103,13 @@ func optText(m map[string]any, k string) string {
 }
 
 func parseJSON(text, path string) (map[string]any, error) {
-	var doc map[string]any
-	if err := json.Unmarshal([]byte(text), &doc); nil != err {
+	var parsed any
+	if err := json.Unmarshal([]byte(text), &parsed); nil != err {
 		return nil, fmt.Errorf("%s is not valid JSON", path)
+	}
+	doc, ok := parsed.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("%s is not a JSON object", path)
 	}
 	return doc, nil
 }
@@ -118,7 +122,7 @@ func parseStation(text, path string) (map[string]any, error) {
 		return nil, err
 	}
 	if _, err := openStation(withChain(doc, []any{}), nil); nil != err {
-		if se, ok := err.(*station.Error); ok && "station_config_invalid" == se.Code {
+		if se, ok := err.(*station.Error); ok {
 			return nil, fmt.Errorf("%s: %s", path, se.Error())
 		}
 		return nil, err
