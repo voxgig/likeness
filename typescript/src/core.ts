@@ -193,9 +193,8 @@ Promise<{ notes: Note[], ok: string[], failed: string[], short: string[] }> {
         'no adapter for source "' + c.source + '" (connection "' + c.instance + '")',
         'drop that connection, or narrow to one that is supported with --source')
     }
-    const client = session.client(c)
     try {
-      const got = await adapter.listNotes(client, c, withRaw)
+      const got = await adapter.listNotes(session.client(c), c, withRaw)
       notes.push(...got.notes)
       ok.push(c.instance)
       if (got.more) short.push(c.instance)
@@ -358,7 +357,13 @@ async function cmdDoctor (flags: Flags, session: Session): Promise<Envelope> {
       bad++
       continue
     }
-    const r = await adapter.check(session.client(c))
+    let r: { ok: boolean, code?: string, detail: string }
+    try {
+      r = await adapter.check(session.client(c))
+    }
+    catch {
+      r = { ok: false, code: 'source-unavailable', detail: 'station could not connect this instance' }
+    }
     const row: Record<string, unknown> = {
       instance: c.instance, source: c.source, check: r.ok ? 'ok' : 'FAIL', detail: r.detail,
     }

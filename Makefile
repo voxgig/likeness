@@ -39,6 +39,7 @@ VET_MUSTFAIL := \
 help:
 	@echo 'likeness make targets:'
 	@echo '  spec-check    every data file satisfies its shape, and the red tests go red'
+	@echo '  spec-expect   every committed JSON expectation satisfies the envelope shape'
 	@echo '  spec-agree    the registry is present, capability rows match it, and the'
 	@echo '                registry matches the cloned SDK models (needs `make sdk`)'
 	@echo '  spec-build    compile the data files to the JSON every port reads'
@@ -46,7 +47,7 @@ help:
 	@echo '  spec-json     export the shapes as JSON Schema'
 	@echo '  spec-fmt      check schema formatting'
 	@echo '  spec-hash     print a content hash per schema file'
-	@echo '  spec          spec-fmt, spec-check, spec-fresh and spec-agree'
+	@echo '  spec          spec-fmt, spec-check, spec-expect, spec-fresh and spec-agree'
 	@echo '  sdk           clone the generated SDKs at their pinned revisions'
 	@echo '  sdk-check     fail if a clone is missing or off its pin'
 	@echo '  test-ts       build and run the TypeScript port against both corpora'
@@ -61,12 +62,17 @@ help:
 
 
 .PHONY: spec
-spec: spec-fmt spec-check spec-fresh spec-agree
+spec: spec-fmt spec-check spec-expect spec-fresh spec-agree
 
 
 # Everything. What CI runs, and what a change should run before it is pushed.
 .PHONY: check
 check: comments spec test-ts test-go test-rb parity
+
+
+.PHONY: spec-expect
+spec-expect:
+	@AONTU="$(AONTU)" node tools/vet-expect.mjs
 
 
 .PHONY: spec-build

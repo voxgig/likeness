@@ -18,8 +18,8 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 143 entries, run by every port |
-| `spec/cli.aontu` — the transcript corpus | 138 whole commands, run by every port |
+| `spec/unit.aontu` — the pure-function corpus | 146 entries, run by every port |
+| `spec/cli.aontu` — the transcript corpus | 141 whole commands, run by every port |
 | `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
 | `ruby/` — the Ruby port | the same again, on station's Ruby library and the SDK's `rb` gem |

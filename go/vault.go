@@ -98,6 +98,9 @@ func vaultEntry(station map[string]any, profile, home, dir, key string) (VaultEn
 			return VaultEntry{}, refused("station.json's secrets.providers must name one store, the vault", vaultRemedy)
 		}
 		only, isMap := list[0].(map[string]any)
+		if _, has := only["kind"]; isMap && !has {
+			return VaultEntry{}, refused("the vault entry in station.json does not name its kind", vaultRemedy)
+		}
 		kind := list[0]
 		if isMap {
 			kind = only["kind"]

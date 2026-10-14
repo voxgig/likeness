@@ -236,13 +236,24 @@ type session struct {
 	fixture map[string]map[string]any
 }
 
-func (s *session) client(conn Connection) *joplin.JoplinSDK {
+// Station refuses a binding by panicking with its own error type; that is one
+// connection failing, which the caller reports, so it comes back as an error.
+func (s *session) client(conn Connection) (cl *joplin.JoplinSDK, err error) {
 	if cl, ok := s.clients[conn.Instance]; ok {
-		return cl
+		return cl, nil
 	}
-	cl := joplinConnect(s.st, conn.Instance, s.fixture[conn.Instance])
+	defer func() {
+		if r := recover(); nil != r {
+			se, ok := r.(*station.Error)
+			if !ok {
+				panic(r)
+			}
+			cl, err = nil, se
+		}
+	}()
+	cl = joplinConnect(s.st, conn.Instance, s.fixture[conn.Instance])
 	s.clients[conn.Instance] = cl
-	return cl
+	return cl, nil
 }
 
 func profileOf(env map[string]string) string {
@@ -420,15 +431,14 @@ func gather(c Ctx, conns []Connection, calls *Calls, withRaw, strict bool) (
 				Remedy: "drop that connection, or narrow to one that is supported with --source",
 			}
 		}
-		rows, more, lerr := JoplinList(c.sess.client(conn), conn, withRaw)
+		cl, lerr := c.sess.client(conn)
+		var rows []Note
+		var more bool
+		if nil == lerr {
+			rows, more, lerr = JoplinList(cl, conn, withRaw)
+		}
 		if nil != lerr {
-			if le, isLik := lerr.(*LikenessError); isLik && "source-unavailable" == le.Code {
-				// A malformed record is the source's fault and is reported as
-				// that connection failing, not as the whole command dying.
-				failed = append(failed, conn.Instance)
-			} else {
-				failed = append(failed, conn.Instance)
-			}
+			failed = append(failed, conn.Instance)
 			// `--strict` HALTS. `fanout-halted` means the fan-out stopped after
 			// a member failed; continuing through every remaining connection
 			// and only then choosing that code made the name a lie and spent
@@ -584,7 +594,11 @@ func cmdGet(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 				"no adapter for source \"" + conn.Source + "\" (connection \"" + conn.Instance + "\")",
 				"this source arrives in a later stage", nil}
 		}
-		note, err := JoplinLoad(c.sess.client(*conn), *conn, id, f.raw)
+		cl, err := c.sess.client(*conn)
+		if nil != err {
+			return nil, err
+		}
+		note, err := JoplinLoad(cl, *conn, id, f.raw)
 		if nil != err {
 			return nil, err
 		}
@@ -631,7 +645,10 @@ func cmdDoctor(c Ctx, f flags, calls *Calls) (*envelope, error) {
 			instances = append(instances, conn.Instance)
 			continue
 		}
-		ok, code, detail := JoplinCheck(c.sess.client(conn))
+		ok, code, detail := false, "source-unavailable", "station could not connect this instance"
+		if cl, cerr := c.sess.client(conn); nil == cerr {
+			ok, code, detail = JoplinCheck(cl)
+		}
 		row := map[string]any{
 			"instance": conn.Instance, "source": conn.Source, "detail": detail,
 			"check": "ok",

@@ -3,7 +3,7 @@
 ProjectSource: type(close({
   # The connection name, as configured. Must be a connection that exists;
   # `project check` resolves it and refuses a name that does not.
-  instance: $.Ident
+  instance: $.InstanceRef
   space?: string
 }))
 
@@ -25,7 +25,7 @@ Project: type(close({
   # preferred first. Where precedence does not settle a field, the field
   # becomes a CONFLICT OBJECT listing every value - it is never resolved by
   # picking the first, because most conflicts are information.
-  prefer: [&: $.Ident]
+  prefer: [&: $.InstanceRef]
 
   alias?: { &: string }
 
