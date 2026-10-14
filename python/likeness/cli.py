@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import getpass
 import json
 import os
 import re
 import sys
+import termios
 import time
 from typing import Any, BinaryIO
 
@@ -145,16 +145,53 @@ def take_config_option(argv: list[str]) -> tuple[list[str], str | None]:
     return argv[:at] + argv[at + width:], value
 
 
+_INTERRUPTED = object()
+
+
+def _raw(mode: list[Any]) -> list[Any]:
+    """The terminal mode the canonical port's runtime calls raw."""
+    raw = [*mode[:6], list(mode[6])]
+    raw[0] &= ~(termios.BRKINT | termios.ICRNL | termios.INPCK | termios.ISTRIP | termios.IXON)
+    raw[1] |= termios.ONLCR
+    raw[2] |= termios.CS8
+    raw[3] &= ~(termios.ECHO | termios.ICANON | termios.IEXTEN | termios.ISIG)
+    raw[6][termios.VMIN] = 1
+    raw[6][termios.VTIME] = 0
+    return raw
+
+
+def _typed(fd: int) -> Any:
+    typed = ''
+    while True:
+        chunk = os.read(fd, 65536)
+        if not chunk:
+            return typed or None
+        # What follows the line ending in its chunk is dropped, as there.
+        for ch in chunk.decode('utf-8', errors='replace'):
+            if ch in ('\r', '\n'):
+                return typed
+            if '\x04' == ch:
+                return typed or None
+            if '\x03' == ch:
+                return _INTERRUPTED
+            typed = typed[:-1] if ch in ('\x7f', '\b') else typed + ch
+
+
 def prompt(label: str) -> str | None:
-    """One line from the terminal with echo off; None at end of input."""
+    """One line from the terminal with echo off; None at end of input. Read
+    raw, so what was typed ahead of the prompt is kept: getpass flushes it."""
+    fd = sys.stdin.fileno()
+    _write(sys.stderr.buffer, label + ': ')
+    saved = termios.tcgetattr(fd)
+    termios.tcsetattr(fd, termios.TCSADRAIN, _raw(saved))
     try:
-        return getpass.getpass(label + ': ', stream=sys.stderr)
-    except EOFError:
-        sys.stderr.write('\n')
-        return None
-    except KeyboardInterrupt:
-        sys.stderr.write('\n')
+        answer = _typed(fd)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+        _write(sys.stderr.buffer, '\n')
+    if answer is _INTERRUPTED:
         sys.exit(130)
+    return answer
 
 
 def read_stdin() -> str:
