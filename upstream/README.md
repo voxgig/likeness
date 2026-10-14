@@ -22,7 +22,7 @@ and Linear carry the fixes at their pins; Notion is still on the generator of
 |---|---|---|
 | `issue/01` | [sdkgen#166](https://github.com/voxgig/sdkgen/issues/166) | closed |
 | `issue/02` | [joplin-sdk#2](https://github.com/voxgig-sdk/joplin-sdk/issues/2), [linear-sdk#2](https://github.com/voxgig-sdk/linear-sdk/issues/2), [obsidian-sdk#2](https://github.com/voxgig-sdk/obsidian-sdk/issues/2), [notion-sdk#3](https://github.com/voxgig-sdk/notion-sdk/issues/3) | open; the pins stay commit shas |
-| `issue/03` | [aontu-lang/aontu#245](https://github.com/aontu-lang/aontu/issues/245) | fixed upstream: on 0.76.0 `vet --coverage` counts the leaves it checked and `--strict-coverage` accepts a correct schema |
+| `issue/03` | [aontu-lang/aontu#245](https://github.com/aontu-lang/aontu/issues/245) | fixed upstream for the case it reported: on 0.76.0 a constraint reached through a named `type()` is counted. The case that still reads as vacuous - a disjunction of records, which the unit corpus is - is [aontu#318](https://github.com/aontu-lang/aontu/issues/318), below |
 | `issue/04` | [joplin-sdk#3](https://github.com/voxgig-sdk/joplin-sdk/issues/3), [notion-sdk#4](https://github.com/voxgig-sdk/notion-sdk/issues/4) | open |
 | `issue/05` | [sdkgen#165](https://github.com/voxgig/sdkgen/issues/165) | closed |
 | `issue/07` | [sdkgen#167](https://github.com/voxgig/sdkgen/issues/167) | closed; Linear's offline test mode works in C and Ruby from sdkgen 4.30.2 |
@@ -50,6 +50,8 @@ waits on which.
 | [sdkgen#405](https://github.com/voxgig/sdkgen/issues/405) | `voxgig/sdkgen` | two C SDKs cannot be linked into one program |
 | [sdkgen#406](https://github.com/voxgig/sdkgen/issues/406) | `voxgig/sdkgen` | a query parameter declared `fields` is generated as `field`, which Joplin ignores; both adapters pass the wire name until it is fixed |
 | [sdkgen#407](https://github.com/voxgig/sdkgen/issues/407) | `voxgig/sdkgen` | the generated client discards the response body text, so `--raw` cannot be verbatim; `raw` is the record re-rendered canonically until it is fixed |
+| [sdkgen#408](https://github.com/voxgig/sdkgen/issues/408) | `voxgig/sdkgen` | no generated transport can trust a self-signed certificate, so the Obsidian fingerprint pin has nothing to verify it; each port installs the check through the SDK's `utility.fetcher` seam until it lands, and the C port cannot |
+| [aontu#318](https://github.com/aontu-lang/aontu/issues/318) | `aontu-lang/aontu` | `vet --coverage` reads a corpus whose entries are a disjunction of records as having checked nothing (`spec/unit.aontu`: 0 of 519 leaves), so `--strict-coverage` cannot gate this repository yet |
 | [station#23](https://github.com/voxgig/station/issues/23) | `voxgig/station` | station's C port is env-only and does not use sekreto's C port |
 
 ## A correction worth keeping
