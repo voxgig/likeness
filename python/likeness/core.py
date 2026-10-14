@@ -272,9 +272,9 @@ def _gather(session: Session, conns: list[Connection], with_raw: bool, strict: b
         if adapter is None:
             raise _no_adapter(
                 c, 'drop that connection, or narrow to one that is supported with --source')
-        client = session.client(c)
+        # Inside the boundary: station refusing one binding is that connection failing.
         try:
-            notes, more = adapter.list_notes(client, c, with_raw)
+            notes, more = adapter.list_notes(session.client(c), c, with_raw)
             got.notes.extend(notes)
             got.ok.append(c.instance)
             if more:
@@ -408,12 +408,16 @@ def _cmd_doctor(flags: Flags, session: Session) -> dict[str, Any]:
                          'detail': 'no adapter for this source yet', 'code': 'unsupported-capability'})
             failures.append('unsupported-capability')
             continue
-        r = adapter.check(session.client(c))
+        try:
+            r = adapter.check(session.client(c))
+            ok, code, detail = r.ok, r.code, r.detail
+        except Exception:
+            ok, code, detail = False, 'source-unavailable', 'station could not connect this instance'
         row: dict[str, Any] = {'instance': c.instance, 'source': c.source,
-                               'check': 'ok' if r.ok else 'FAIL', 'detail': r.detail}
-        if not r.ok:
-            row['code'] = r.code
-            failures.append(r.code)
+                               'check': 'ok' if ok else 'FAIL', 'detail': detail}
+        if not ok:
+            row['code'] = code
+            failures.append(code)
         rows.append(row)
     # The worst row wins: highest exit status, then code name to break a tie.
     codes = sorted(set(failures), key=lambda c: (-exit_for(c), c))
