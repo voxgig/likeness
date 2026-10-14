@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'io/console'
 require 'json'
 require 'pathname'
 
@@ -17,20 +18,27 @@ module Likeness
   module_function
 
   def parse_json(source, path)
-    raise JSON::ParserError if source.scan(NOT_JSON).any? { |escape, slash| escape || slash }
+    begin
+      raise JSON::ParserError if source.scan(NOT_JSON).any? { |escape, slash| escape || slash }
 
-    JSON.parse(source)
-  rescue JSON::ParserError
-    raise ConfigError, "#{path} is not valid JSON"
+      doc = JSON.parse(source)
+    rescue JSON::ParserError
+      raise ConfigError, "#{path} is not valid JSON"
+    end
+    raise ConfigError, "#{path} is not a JSON object" unless doc.is_a?(Hash)
+
+    doc
   end
 
-  # station.json, validated by station against its own shape.
+  # station.json, validated by station against its own shape. Its secret chain
+  # is likeness's to check, and is checked when it is used.
   def parse_station(source, path)
     doc = parse_json(source, path)
     begin
-      open_station(doc)
-    rescue VoxgigStation::StationError => e
-      raise ConfigError, "#{path}: #{e.message}" if 'station_config_invalid' == e.code
+      open_station(with_chain(doc, []))
+    rescue StandardError => e
+      code = e.respond_to?(:code) ? e.code : nil
+      raise ConfigError, "#{path}: #{e.message}" if code.is_a?(String) && code.start_with?('station_')
 
       raise
     end
@@ -39,8 +47,7 @@ module Likeness
 
   # The account each instance ref belongs to, from likeness.json.
   def parse_accounts(source, path)
-    doc = parse_json(source, path)
-    instances = doc.is_a?(Hash) ? doc['instances'] : nil
+    instances = parse_json(source, path)['instances']
     instances = instances.each_with_index.to_h { |v, i| [i.to_s, v] } if instances.is_a?(Array)
     return {} unless instances.is_a?(Hash)
 
@@ -54,8 +61,7 @@ module Likeness
     File.read(path, encoding: 'UTF-8').scrub
   end
 
-  def load_config(config_path)
-    path = config_path || File.join(Dir.home, '.config', 'likeness', 'station.json')
+  def load_config(path)
     return [nil, {}] unless File.exist?(path)
 
     station = parse_station(read_text(path), path)
@@ -125,17 +131,41 @@ module Likeness
     { 'rest' => argv[0...at] + argv[(at + width)..], 'value' => value }
   end
 
-  def main(argv, stdout: $stdout, stderr: $stderr, env: ENV.to_h)
+  # One line from the terminal with echo off; nil at the end of input.
+  def prompt(label, stdin, stderr)
+    stderr.write("#{label}: ")
+    stderr.flush
+    line = stdin.noecho(&:gets)
+    line&.chomp&.force_encoding(Encoding::UTF_8)&.scrub
+  rescue Interrupt
+    exit 130
+  ensure
+    stderr.write("\n")
+  end
+
+  # Node's path.join over a home that may be empty.
+  def joined(*parts)
+    path = parts.reject(&:empty?).join('/')
+    path.empty? ? '.' : Pathname.new(path).cleanpath.to_s
+  end
+
+  def main(argv, stdout: $stdout, stderr: $stderr, env: ENV.to_h, stdin: $stdin)
     taken = take_config_option(argv)
+    home = env.fetch('HOME') { Dir.home }
+    path = taken['value'] || joined(home, '.config', 'likeness', 'station.json')
     begin
-      station, accounts = load_config(taken['value'])
+      station, accounts = load_config(path)
     rescue ConfigError => e
       stderr.write("error: invalid-project\n  #{e.message}\n  remedy  #{CONFIG_REMEDY}\n")
       return 3
     end
 
-    res = run(Ctx.new(argv: taken['rest'], env: env, clock: rfc3339(Process.clock_gettime(Process::CLOCK_REALTIME, :millisecond)),
-                      station: station, accounts: accounts, path: probe_path(env)))
+    clock = rfc3339(Process.clock_gettime(Process::CLOCK_REALTIME, :millisecond))
+    ctx = Ctx.new(argv: taken['rest'], env: env, clock: clock, station: station, accounts: accounts,
+                  path: probe_path(env), home: home, dir: File.dirname(path),
+                  stdin: -> { stdin.binmode.read.force_encoding(Encoding::UTF_8).scrub },
+                  tty: stdin.tty?, prompt: ->(label) { prompt(label, stdin, stderr) })
+    res = run(ctx)
     # A reader that went away is not the port's failure: exit quietly with 0.
     begin
       [[stdout, res.stdout], [stderr, res.stderr]].each do |io, text|

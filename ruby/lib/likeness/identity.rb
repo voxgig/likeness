@@ -30,7 +30,16 @@ module Likeness
     "lk_#{crockford32(Digest::SHA256.digest([source, account, entity, id].join("\0")), 12)}"
   end
 
+  # The first and last instants with a four-digit year: outside them an
+  # instant is refused, never written some other way.
+  RFC3339_MIN = -62_167_219_200_000
+  RFC3339_MAX = 253_402_300_799_999
+
   def rfc3339(ms)
+    if !ms.is_a?(Numeric) || (ms.is_a?(Float) && !ms.finite?) || ms < RFC3339_MIN || RFC3339_MAX < ms
+      raise RangeError, "rfc3339: #{ms} ms is outside the years 0000 to 9999"
+    end
+
     Time.at(Rational(ms, 1000)).utc.strftime('%Y-%m-%dT%H:%M:%SZ')
   end
 

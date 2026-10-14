@@ -11,20 +11,24 @@ require_relative 'evaluate'
 require_relative 'identity'
 require_relative 'note'
 require_relative 'selector'
+require_relative 'vault'
 require_relative 'version'
 
 module Likeness
-  # Every impure input, named. `station` is station.json in station's own
-  # grammar and `accounts` each instance's account from likeness.json beside
-  # it; `fixture` seeds the SDKs' offline test mode, by instance, and is absent
-  # in production.
-  Ctx = Struct.new(:argv, :env, :clock, :seed, :station, :accounts, :fixture, :path, keyword_init: true)
+  # Every impure input, named. `station` is station.json in station's grammar,
+  # `accounts` each instance's account from likeness.json beside it, `fixture`
+  # the SDKs' offline seeds, absent in production. A path under `home` is shown
+  # from `~`, a relative vault path is read from `dir`, and with `tty` what the
+  # environment lacks may be asked for.
+  Ctx = Struct.new(:argv, :env, :clock, :seed, :station, :accounts, :fixture, :path,
+                   :home, :dir, :stdin, :tty, :prompt, keyword_init: true)
 
   Result = Struct.new(:exit, :stdout, :stderr, :calls, keyword_init: true)
 
   Connection = Struct.new(:instance, :source, :account, keyword_init: true)
 
-  Flags = Struct.new(:json, :raw, :limit, :sort, :strict, :deterministic, :instance, :source, keyword_init: true)
+  Flags = Struct.new(:json, :raw, :limit, :sort, :strict, :deterministic, :instance, :source,
+                     :passphrase_env, :new_passphrase_env, :vault_key, :reveal, :write, keyword_init: true)
 
   ADAPTERS = { 'joplin' => Joplin }.freeze
 
@@ -35,11 +39,11 @@ module Likeness
   class Session
     attr_reader :conns, :calls
 
-    def initialize(ctx)
-      @station = Likeness.open_station(ctx.station, ctx.env)
-      @conns = Likeness.connections_of(@station, ctx.accounts || {})
-      @calls = Calls.new(@station)
-      @fixture = ctx.fixture || {}
+    def initialize(station, conns, fixture)
+      @station = station
+      @conns = conns
+      @calls = Calls.new(station)
+      @fixture = fixture || {}
       @clients = {}
     end
 
@@ -50,10 +54,49 @@ module Likeness
 
   module_function
 
-  def open_station(config, env = nil)
+  def profile_of(env)
     profile = env&.fetch('VOXGIG_STATION_PROFILE', nil)
-    profile = 'default' if profile.nil? || profile.empty?
-    VoxgigStation::Station.new('config' => config, 'profile' => profile, 'proxy' => 'off', 'load' => false)
+    profile.nil? || profile.empty? ? 'default' : profile
+  end
+
+  def open_station(config, env = nil)
+    VoxgigStation::Station.new('config' => config, 'profile' => profile_of(env), 'proxy' => 'off', 'load' => false)
+  end
+
+  # station.json with its secret chain replaced, in every profile, by the one
+  # likeness decided on.
+  def with_chain(config, chain)
+    return config unless config.is_a?(Hash)
+
+    copy = Marshal.load(Marshal.dump(config))
+    profiles = copy['profiles']
+    (profiles.is_a?(Hash) ? profiles.values : []).each do |p|
+      p['secrets'] = { 'providers' => chain } if p.is_a?(Hash)
+    end
+    copy
+  end
+
+  def entry_of(ctx, flags)
+    home = ctx.home || Dir.home
+    vault_entry(ctx.station, profile: profile_of(ctx.env), home: home,
+                             dir: ctx.dir || File.join(home, '.config', 'likeness'), key: flags.vault_key)
+  end
+
+  # A live run with a connection to make opens its station on the vault.
+  def open_session(ctx, flags)
+    entry = entry_of(ctx, flags)
+    station = open_station(with_chain(ctx.station, []), ctx.env)
+    conns = connections_of(station, ctx.accounts || {})
+    if ctx.fixture.nil? && !conns.empty?
+      chain = vault_chain(ctx, entry, flags)
+      begin
+        station = open_station(with_chain(ctx.station, chain), ctx.env)
+      rescue StandardError
+        raise LikenessError.new('secret-backend-unavailable', 'station could not open the vault as its secret store',
+                                'this port\'s station must read minivault stores; see "Secrets" in the README')
+      end
+    end
+    Session.new(station, conns, ctx.fixture)
   end
 
   # Every declared active instance, in station's ref order, with the account
@@ -74,14 +117,21 @@ module Likeness
     f = parsed['flags']
     Flags.new(json: true == f['json'], raw: true == f['raw'], strict: true == f['strict'],
               deterministic: true == f['deterministic'], limit: f['limit'], sort: f['sort'],
-              instance: f['instance'] || [], source: f['source'] || [])
+              instance: f['instance'] || [], source: f['source'] || [],
+              passphrase_env: f['passphrase-env'], new_passphrase_env: f['new-passphrase-env'],
+              vault_key: f['vault-key'], reveal: true == f['reveal'], write: true == f['write'])
+  end
+
+  # Split as JavaScript splits: an empty name is one empty word.
+  def words(name)
+    name.empty? ? [''] : name.split(/ /, -1)
   end
 
   def envelope(cmd, code, data, meta = {}, error = nil)
     env = {
       'ok' => error.nil?,
       'code' => code,
-      'cmd' => cmd,
+      'cmd' => cmd.flat_map { |c| words(c) },
       'data' => data,
       'meta' => {
         'count' => meta.fetch(:count, 0),
@@ -239,6 +289,11 @@ module Likeness
         raise LikenessError.new('invalid-ref', "not a ref: #{ref} (no id after the colon)",
                                 'a ref is <instance>:<id>, a lid, #n or @alias')
       end
+      # A dot segment substituted into a route would name another resource.
+      if '.' == id || '..' == id
+        raise LikenessError.new('invalid-ref', "not a ref: #{ref} (an id is never . or ..)",
+                                'a ref is <instance>:<id>, a lid, #n or @alias')
+      end
       conn = session.conns.find { |c| c.instance == instance }
       if conn.nil?
         raise LikenessError.new('no-such-source', "no connection named \"#{instance}\"",
@@ -301,12 +356,17 @@ module Likeness
 
   # The text is rendered from the command table at build time; JSON gets the rows.
   def cmd_help(args)
-    name = args[0] || ''
+    name = args.join(' ')
     text = help_text(name)
     raise LikenessError.new('invalid-argument', "no such command: #{name}", 'run `likeness help` for the command list') if text.nil?
 
-    rows = help_rows.select { |r| name.empty? || r['command'] == name }
+    rows = help_rows.select { |r| name.empty? || r['command'] == name || r['command'].start_with?("#{name} ") }
     [envelope(['help'], 'ok', rows, count: rows.length), text]
+  end
+
+  def cmd_secrets(ctx, name, flags, args)
+    got = secrets(name.delete_prefix('secrets '), args, entry_of(ctx, flags), ctx, flags)
+    [envelope([name], got.empty ? 'no-match' : 'ok', got.data, count: got.count), got.text]
   end
 
   def run(ctx)
@@ -317,7 +377,7 @@ module Likeness
     begin
       parsed = parse_argv(argv)
     rescue StandardError => e
-      return result(error_envelope(argv[0] || '', e, Calls.new), argv.include?('--json'),
+      return result(error_envelope(command_words(argv).join(' '), e, Calls.new), argv.include?('--json'),
                     argv.include?('--deterministic'), nil, Calls.new, started)
     end
 
@@ -338,8 +398,11 @@ module Likeness
           help
         when 'version' then cmd_version
         when 'which' then cmd_which(ctx)
+        when /\Asecrets /
+          answer, text = cmd_secrets(ctx, name, flags, parsed['args'])
+          answer
         else
-          session = Session.new(ctx)
+          session = open_session(ctx, flags)
           calls = session.calls
           case name
           when 'list' then cmd_list(ctx, flags, parsed['args'], session)

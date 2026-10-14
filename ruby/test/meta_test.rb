@@ -50,6 +50,26 @@ class MetaTest < Minitest::Test
     end
   end
 
+  def test_a_vault_left_holding_the_wrong_names_is_reported
+    e = entry('secrets/remove')
+    refute_nil e['out']['vault'], 'secrets/remove asserts no vault state'
+    e['out']['vault']['names'] = %w[joplin.apikey notion.apikey]
+    assert_reported Harness.check(e), 'vault names '
+  end
+
+  def test_a_vault_value_that_differs_is_reported
+    e = entry('secrets/set-from-stdin')
+    refute_nil e['out']['vault']['values'], 'secrets/set-from-stdin asserts no values'
+    e['out']['vault']['values'] = { 'joplin.apikey' => "rotated-token\n" }
+    assert_reported Harness.check(e), 'vault value of '
+  end
+
+  def test_a_prompt_that_was_not_expected_is_reported
+    e = entry('secrets/passphrase-typed')
+    e['out']['prompts'] = []
+    assert_reported Harness.check(e), 'prompts '
+  end
+
   def test_a_missing_call_is_reported
     e = entry('list/all')
     e['out']['calls'] = []

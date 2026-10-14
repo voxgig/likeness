@@ -1,13 +1,21 @@
 # frozen_string_literal: true
 
+require 'fileutils'
 require 'json'
 require 'minitest/autorun'
+require 'tmpdir'
 
 require_relative '../lib/likeness'
 
 # The corpus runner every suite shares: an entry in, every way it failed out.
 module Harness
   ROOT = File.expand_path('../..', __dir__)
+
+  HOMES = []
+  Minitest.after_run { HOMES.each { |home| FileUtils.rm_rf(home) } }
+
+  # The prompts each run showed, for the entry to compare.
+  PROMPTS = {}.compare_by_identity
 
   module_function
 
@@ -30,6 +38,7 @@ module Harness
 
   # Each connection becomes a declared station instance, its account the
   # likeness.json entry beside it, and its seed the SDK's offline transport.
+  # Every run gets a home of its own, holding the entry's files.
   def build_ctx(entry)
     ectx = entry['ctx']
     seed = JSON.parse(read("fixtures/sources/#{ectx['fixture']}/seed.json"))
@@ -46,10 +55,64 @@ module Harness
       fixture[c['instance']] = own
     end
 
+    home = Dir.mktmpdir('likeness-')
+    HOMES << home
+    dir = File.join(home, '.config', 'likeness')
+    FileUtils.mkdir_p(dir)
+    (ectx['files'] || {}).each do |name, src|
+      dst = run_path(home, dir, name)
+      FileUtils.mkdir_p(File.dirname(dst))
+      FileUtils.cp(File.join(ROOT, src), dst)
+    end
+
+    profile = { 'sdk' => sdk }
+    profile['secrets'] = ectx['secrets'] if ectx.key?('secrets')
+
     # No PATH in the entry is `which` told about nothing, not about an empty list.
-    Likeness::Ctx.new(argv: entry['args'], env: ectx['env'], clock: ectx['clock'], seed: ectx['seed'],
-                      station: { 'station' => 1, 'profiles' => { 'default' => { 'sdk' => sdk } } },
-                      accounts: accounts, fixture: fixture, path: ectx['path'])
+    ctx = Likeness::Ctx.new(argv: entry['args'], env: ectx['env'], clock: ectx['clock'], seed: ectx['seed'],
+                            station: { 'station' => 1, 'profiles' => { 'default' => profile } },
+                            accounts: accounts, fixture: fixture, path: ectx['path'],
+                            home: home, dir: dir, stdin: -> { ectx['stdin'] || '' })
+    if ectx.key?('tty')
+      typed = ectx['tty'].dup
+      shown = []
+      ctx.tty = true
+      ctx.prompt = lambda { |label|
+        shown << label
+        typed.shift
+      }
+      PROMPTS[ctx] = shown
+    end
+    ctx
+  end
+
+  def run_path(home, dir, name)
+    name.start_with?('~/') ? File.join(home, name[2..]) : File.join(dir, name)
+  end
+
+  def vault_failures(entry, ctx, failures)
+    want = entry['out']['vault']
+    return if want.nil?
+
+    file = run_path(ctx.home, ctx.dir, want['file'] || 'likeness.skmv')
+    vault = VoxgigSekreto.openvault('file' => file, 'key' => want['key'] || 'master', 'passphrase' => want['passphrase'])
+    begin
+      names = vault.list
+    rescue StandardError => e
+      failures << "the vault does not open afterwards: #{e.message}"
+      return
+    end
+    failures << "vault names #{JSON.generate(names)}, expected #{JSON.generate(want['names'])}" if names != want['names']
+    if want.key?('keys')
+      fields = %w[key master write grants]
+      keys = vault.keys.sort_by { |k| k['key'] }.map { |k| k.slice(*fields) }
+      if keys != want['keys'].map { |k| k.slice(*fields) }
+        failures << "vault keys #{JSON.generate(keys)}, expected #{JSON.generate(want['keys'])}"
+      end
+    end
+    (want['values'] || {}).each do |name, value|
+      failures << "vault value of #{name} is not the one expected" if vault.get(name) != value
+    end
   end
 
   def member(value, key)
@@ -110,13 +173,18 @@ module Harness
   def check(entry)
     failures = []
     out = entry['out']
-    r = Likeness.run(build_ctx(entry))
+    ctx = build_ctx(entry)
+    r = Likeness.run(ctx)
 
     failures << "exit #{r.exit}, expected #{out['exit']}" if r.exit != out['exit']
     check_stdout(entry, r.stdout, failures)
     want_err = out['stderr'] || ''
     failures << "stderr #{JSON.generate(r.stderr)}, expected #{JSON.generate(want_err)}" if r.stderr != want_err
     failures << "calls #{JSON.generate(r.calls)}, expected #{JSON.generate(out['calls'])}" unless same_calls?(out['calls'], r.calls)
+    prompts = PROMPTS[ctx] || []
+    want_prompts = out['prompts'] || []
+    failures << "prompts #{JSON.generate(prompts)}, expected #{JSON.generate(want_prompts)}" if prompts != want_prompts
+    vault_failures(entry, ctx, failures)
     failures
   end
 end

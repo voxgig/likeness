@@ -29,6 +29,11 @@ class UnitCorpusTest < Minitest::Test
     },
     'projectJoplin' => ->(v) { Likeness::Joplin.project(v['raw'], v['instance'], v['account'], false) },
     'partialCodes' => ->(_) { Likeness.partial_codes },
+    'vaultEntry' => lambda { |v|
+      entry = Likeness.vault_entry(v['station'], profile: v['profile'] || 'default', home: '/home/u',
+                                                 dir: '/home/u/.config/likeness', key: v['key'])
+      entry.to_h.transform_keys(&:to_s)
+    },
   }.freeze
 
   ALL = Harness.entries('unit')

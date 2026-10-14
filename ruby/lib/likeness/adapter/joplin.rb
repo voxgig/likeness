@@ -33,6 +33,14 @@ module Likeness
       0
     end
 
+    def stamp(value, field)
+      Likeness.rfc3339(ms(value))
+    rescue RangeError
+      raise LikenessError.new('source-unavailable',
+                              "the source returned a #{SOURCE} record whose #{field} is outside the years 0000 to 9999",
+                              'this is a bug in the source or its SDK; run with --raw to capture the payload')
+    end
+
     def project(raw, instance, account, with_raw)
       raw = {} unless raw.is_a?(Hash)
       id = raw['id'].nil? ? '' : Likeness.text_of(raw['id'])
@@ -47,8 +55,8 @@ module Likeness
         'id' => id,
         'title' => raw['title'].nil? ? '' : Likeness.text_of(raw['title']),
         'url' => "joplin://x-callback-url/openNote?id=#{id}",
-        'created' => Likeness.rfc3339(ms(raw['created_time'])),
-        'updated' => Likeness.rfc3339(ms(raw['updated_time'])),
+        'created' => stamp(raw['created_time'], 'created_time'),
+        'updated' => stamp(raw['updated_time'], 'updated_time'),
       }
       space = raw['parent_id'].nil? ? '' : Likeness.text_of(raw['parent_id'])
       note['space'] = space unless space.empty?
