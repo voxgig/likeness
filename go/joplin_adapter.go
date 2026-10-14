@@ -121,10 +121,14 @@ func entData(v any) map[string]any {
 	return map[string]any{}
 }
 
+// Joplin answers id, parent_id and title unless asked. The wire name is
+// `fields`; the client declares `field`, which Joplin ignores (sdkgen#406).
+const joplinFields = "id,parent_id,title,body,created_time,updated_time"
+
 func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) {
 	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes")
-	found, err := client.Note(nil).List(map[string]any{}, nil)
+	calls.Record(o.Instance, "GET", "/notes?fields="+joplinFields)
+	found, err := client.Note(nil).List(map[string]any{"fields": joplinFields}, nil)
 	if nil != err {
 		return nil, false, err
 	}
@@ -143,8 +147,8 @@ func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) 
 
 func JoplinLoad(o SourceOpts, calls *Calls, id string, withRaw bool) (*Note, error) {
 	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes/"+id)
-	ent, err := client.Note(nil).Load(map[string]any{"id": id}, nil)
+	calls.Record(o.Instance, "GET", "/notes/"+id+"?fields="+joplinFields)
+	ent, err := client.Note(nil).Load(map[string]any{"id": id, "fields": joplinFields}, nil)
 	if nil != err {
 		if 404 == statusOf(err) {
 			return nil, nil
@@ -169,8 +173,8 @@ func JoplinLoad(o SourceOpts, calls *Calls, id string, withRaw bool) (*Note, err
 // differs for each.
 func JoplinCheck(o SourceOpts, calls *Calls) (ok bool, code, detail string) {
 	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes")
-	_, err := client.Note(nil).List(map[string]any{}, nil)
+	calls.Record(o.Instance, "GET", "/notes?fields="+joplinFields)
+	_, err := client.Note(nil).List(map[string]any{"fields": joplinFields}, nil)
 	if nil == err {
 		return true, "", "ok"
 	}

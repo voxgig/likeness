@@ -53,6 +53,7 @@ help:
 	@echo '  check         spec, every port, and the parity comparison'
 	@echo '  expect        REGENERATE the committed expectations - read the diff'
 	@echo '  mock          run the local source mock server'
+	@echo '  mock-deps     install the mock server dependencies the wire tests need'
 
 
 .PHONY: spec
@@ -93,12 +94,12 @@ sdk-check:
 # sdk-check first: a port built against a drifted clone produces a corpus
 # result about an SDK nobody else has.
 .PHONY: test-ts
-test-ts: sdk-check
+test-ts: sdk-check mock-deps
 	@cd typescript && npm run build && npm test
 
 
 .PHONY: test-go
-test-go: sdk-check
+test-go: sdk-check mock-deps
 	@cd go && gofmt -l . | (! grep .) && go vet ./... && go test ./...
 
 
@@ -114,7 +115,7 @@ test-go: sdk-check
 PARITY_DIR := build/parity
 
 .PHONY: parity
-parity: sdk-check
+parity: sdk-check mock-deps
 	@rm -rf $(PARITY_DIR) && mkdir -p $(PARITY_DIR)
 	@cd typescript && npm run build >/dev/null && \
 	  LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" npm test >/dev/null
@@ -201,6 +202,13 @@ spec-list:
 .PHONY: mock
 mock:
 	@cd mock && npm start
+
+
+# Each port's wire tests drive its real transport against mock/, so the mock's
+# own dependencies must be installed. `npm ci` honours its lockfile.
+.PHONY: mock-deps
+mock-deps:
+	@test -d mock/node_modules || (cd mock && npm ci --no-audit --no-fund >/dev/null)
 
 
 .PHONY: comments comments-test hooks

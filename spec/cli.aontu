@@ -12,7 +12,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/all.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -30,7 +36,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/free-text.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -46,7 +58,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/relative-duration.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -62,7 +80,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/limit-truncates.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -82,7 +106,13 @@ primary: cli: {
         # on. The source WAS asked, so the call list is not empty.
         exit: 1
         stdout: "spec/expect/list/no-match.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -100,7 +130,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/human.txt"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -118,7 +154,13 @@ primary: cli: {
       out: {
         exit: 1
         stdout: "spec/expect/list/human-no-match.txt"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -222,8 +264,16 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/list/all-sources-down.json"
         calls: [
-          { instance:"jot" method:"GET" path:"/notes" }
-          { instance:"spare" method:"GET" path:"/notes" }
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+          {
+            instance: "spare"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
         ]
       }
     }
@@ -248,7 +298,13 @@ primary: cli: {
       out: {
         exit: 4
         stdout: "spec/expect/list/strict-halts-first.json"
-        calls: [{ instance:"down" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "down"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -268,8 +324,16 @@ primary: cli: {
         exit: 2
         stdout: "spec/expect/list/partial.json"
         calls: [
-          { instance:"jot" method:"GET" path:"/notes" }
-          { instance:"spare" method:"GET" path:"/notes" }
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+          {
+            instance: "spare"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
         ]
       }
     }
@@ -293,8 +357,16 @@ primary: cli: {
         stdout: "spec/expect/list/partial-human.txt"
         stderr: "spare unavailable - results are incomplete\n"
         calls: [
-          { instance:"jot" method:"GET" path:"/notes" }
-          { instance:"spare" method:"GET" path:"/notes" }
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+          {
+            instance: "spare"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
         ]
       }
     }
@@ -315,8 +387,16 @@ primary: cli: {
         exit: 4
         stdout: "spec/expect/list/strict-halts.json"
         calls: [
-          { instance:"jot" method:"GET" path:"/notes" }
-          { instance:"spare" method:"GET" path:"/notes" }
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+          {
+            instance: "spare"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
         ]
       }
     }
@@ -338,7 +418,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/instance-filter.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
   ]
@@ -361,7 +447,7 @@ primary: cli: {
           {
             instance: "jot"
             method: "GET"
-            path: "/notes/a0e50000000000000000000000000001"
+            path: "/notes/a0e50000000000000000000000000001?fields=id,parent_id,title,body,created_time,updated_time"
           }
         ]
       }
@@ -381,7 +467,13 @@ primary: cli: {
       out: {
         exit: 1
         stdout: "spec/expect/get/not-found.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes/nosuchnote" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes/nosuchnote?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -450,7 +542,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/doctor/ok.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -468,7 +566,13 @@ primary: cli: {
       out: {
         exit: 3
         stdout: "spec/expect/doctor/unreachable.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -491,7 +595,13 @@ primary: cli: {
       out: {
         exit: 3
         stdout: "spec/expect/doctor/auth-rejected.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -512,7 +622,13 @@ primary: cli: {
       out: {
         exit: 4
         stdout: "spec/expect/doctor/no-adapter.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -537,8 +653,16 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/doctor/mixed-failures.json"
         calls: [
-          { instance:"jot" method:"GET" path:"/notes" }
-          { instance:"spare" method:"GET" path:"/notes" }
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+          {
+            instance: "spare"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
         ]
       }
     }

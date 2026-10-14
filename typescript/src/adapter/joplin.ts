@@ -78,11 +78,15 @@ function data (ent: any): JoplinNote {
   return 'function' === typeof ent?.data ? ent.data() : ent
 }
 
+// Joplin answers id, parent_id and title unless asked. The wire name is
+// `fields`; the client declares `field`, which Joplin ignores (sdkgen#406).
+export const FIELDS = 'id,parent_id,title,body,created_time,updated_time'
+
 export async function listNotes (opts: JoplinOpts, calls: Calls, withRaw: boolean):
 Promise<{ notes: Note[], more: boolean }> {
   const client = sdkFor(opts)
-  calls.record(opts.instance, 'GET', '/notes')
-  const found = await client.Note().list({})
+  calls.record(opts.instance, 'GET', '/notes?fields=' + FIELDS)
+  const found = await client.Note().list({ fields: FIELDS })
   const rows: JoplinNote[] = (found ?? []).map(data)
   const limit = pageMax(SOURCE)
   return {
@@ -93,9 +97,9 @@ Promise<{ notes: Note[], more: boolean }> {
 
 export async function loadNote (opts: JoplinOpts, calls: Calls, id: string, withRaw: boolean): Promise<Note | null> {
   const client = sdkFor(opts)
-  calls.record(opts.instance, 'GET', '/notes/' + id)
+  calls.record(opts.instance, 'GET', '/notes/' + id + '?fields=' + FIELDS)
   try {
-    const ent = await client.Note().load({ id })
+    const ent = await client.Note().load({ id, fields: FIELDS })
     const row = data(ent)
     if (null === row || undefined === row || undefined === row.id) return null
     return project(row, opts.instance, opts.account, withRaw)
@@ -108,9 +112,9 @@ export async function loadNote (opts: JoplinOpts, calls: Calls, id: string, with
 
 export async function check (opts: JoplinOpts, calls: Calls): Promise<{ ok: boolean, code?: string, detail: string }> {
   const client = sdkFor(opts)
-  calls.record(opts.instance, 'GET', '/notes')
+  calls.record(opts.instance, 'GET', '/notes?fields=' + FIELDS)
   try {
-    await client.Note().list({})
+    await client.Note().list({ fields: FIELDS })
     return { ok: true, detail: 'ok' }
   }
   catch (err: any) {
@@ -118,9 +122,8 @@ export async function check (opts: JoplinOpts, calls: Calls): Promise<{ ok: bool
       return { ok: false, code: 'auth-failed', detail: 'the token was rejected' }
     }
     // 429 is a DIFFERENT condition with a different remedy, and the registry
-    // has a code for it that is marked retryable. Folding it into
-    // "the application did not answer" tells someone whose requests are being
-    // throttled to go and start a program that is already running.
+    // has a retryable code for it. Folding it into "did not answer" tells
+    // someone being throttled to start a program that is already running.
     if (429 === err?.status) {
       return { ok: false, code: 'rate-limited', detail: 'the source is rate limiting this client' }
     }
