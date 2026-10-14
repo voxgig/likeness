@@ -2,7 +2,7 @@
 
 # A value is checked against its declared type and never coerced. A selector
 # or ref is checked by its own parser, and keeps that parser's error code.
-ArgType: hide("boolean"|"string"|"name"|"integer"|"path"|"selector"|"ref"|"instance")
+ArgType: hide("boolean"|"string"|"name"|"integer"|"path"|"selector"|"ref"|"instance"|"secret"|"stdin"|"envvar")
 
 Flag: type(close({
   type: $.ArgType
@@ -29,6 +29,9 @@ Command: type(close({
   # flags, then answers unsupported-capability.
   ready: boolean
   writes: boolean
+  # false: a refused argument is never repeated in the error, in case it is a
+  # secret typed where its name belongs.
+  echo?: boolean
   arg: [&: $.Arg]
   flag: { &: $.Flag }
   exits: [&: $.Code]

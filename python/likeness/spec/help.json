@@ -33,7 +33,7 @@
     {
       "command": "help",
       "does": "the command list, or one command's help",
-      "takes": "[<command>]"
+      "takes": "[<command>...]"
     },
     {
       "command": "link",
@@ -71,9 +71,49 @@
       "takes": ""
     },
     {
-      "command": "secrets",
-      "does": "the vault of source tokens (not implemented yet)",
+      "command": "secrets get",
+      "does": "whether a secret is set, and with --reveal its value",
+      "takes": "<name>"
+    },
+    {
+      "command": "secrets grant",
+      "does": "mint a restricted key that reads the named secrets",
+      "takes": "<key> <name>..."
+    },
+    {
+      "command": "secrets init",
+      "does": "create the vault station.json names, with its master key",
       "takes": ""
+    },
+    {
+      "command": "secrets keys",
+      "does": "every key in the vault, and what it may do",
+      "takes": ""
+    },
+    {
+      "command": "secrets list",
+      "does": "the names this key can read",
+      "takes": ""
+    },
+    {
+      "command": "secrets remove",
+      "does": "drop a secret",
+      "takes": "<name>"
+    },
+    {
+      "command": "secrets revoke",
+      "does": "drop a restricted key",
+      "takes": "<key>"
+    },
+    {
+      "command": "secrets rotate",
+      "does": "a new root key for every secret; every other key is dropped",
+      "takes": ""
+    },
+    {
+      "command": "secrets set",
+      "does": "store a secret, its value read from a terminal or from stdin",
+      "takes": "<name> [-]"
     },
     {
       "command": "sources",
@@ -97,25 +137,34 @@
     }
   ],
   "text": {
-    "": "likeness <command> [arguments] [flags]\n\n  doctor   check every selected connection\n  get      notes by ref\n  help     the command list, or one command's help\n  list     notes matching a selector, across the selected connections\n  version  this port and its version\n  which    every likeness on PATH: path, port, version\n\ndeclared, not implemented yet: archive, caps, describe, edit, link, move, new, open, rm, search, secrets, sources, tag\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\nrun `likeness help <command>` for one command\n",
-    "archive": "likeness archive\n\narchive notes, reversibly\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "caps": "likeness caps\n\nthe capability matrix\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "describe": "likeness describe\n\nthe whole surface, for agents\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "doctor": "likeness doctor\n\ncheck every selected connection\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "edit": "likeness edit\n\nchange a note\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "get": "likeness get <ref>... [--raw]\n\nnotes by ref\n\n  <ref>...  <instance>:<id>\n  --raw     carry the source's own record\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "help": "likeness help [<command>]\n\nthe command list, or one command's help\n\n  <command>  the command to describe\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "link": "likeness link\n\nlink two notes\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "list": "likeness list [<selector>...] [--limit N] [--raw] [--sort KEY]\n\nnotes matching a selector, across the selected connections\n\n  <selector>...  the selector's terms, joined with spaces\n  --limit N      at most N notes, 1 to 999999999\n  --raw          carry each source's own record\n  --sort KEY     order the notes by KEY\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "move": "likeness move\n\nmove notes to another space\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "new": "likeness new\n\ncreate a note\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "open": "likeness open\n\nopen a note in its own application\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "rm": "likeness rm\n\ndelete one note, irreversibly\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "search": "likeness search\n\ncross-source search\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "secrets": "likeness secrets\n\nthe vault of source tokens\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "sources": "likeness sources\n\nconnection management\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "tag": "likeness tag\n\nadd or remove tags\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "version": "likeness version\n\nthis port and its version\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
-    "which": "likeness which\n\nevery likeness on PATH: path, port, version\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n"
+    "": "likeness <command> [arguments] [flags]\n\n  doctor          check every selected connection\n  get             notes by ref\n  help            the command list, or one command's help\n  list            notes matching a selector, across the selected connections\n  secrets get     whether a secret is set, and with --reveal its value\n  secrets grant   mint a restricted key that reads the named secrets\n  secrets init    create the vault station.json names, with its master key\n  secrets keys    every key in the vault, and what it may do\n  secrets list    the names this key can read\n  secrets remove  drop a secret\n  secrets revoke  drop a restricted key\n  secrets rotate  a new root key for every secret; every other key is dropped\n  secrets set     store a secret, its value read from a terminal or from stdin\n  version         this port and its version\n  which           every likeness on PATH: path, port, version\n\ndeclared, not implemented yet: archive, caps, describe, edit, link, move, new, open, rm, search, sources, tag\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\nrun `likeness help <command>` for one command\n",
+    "archive": "likeness archive\n\narchive notes, reversibly\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "caps": "likeness caps\n\nthe capability matrix\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "describe": "likeness describe\n\nthe whole surface, for agents\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "doctor": "likeness doctor\n\ncheck every selected connection\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "edit": "likeness edit\n\nchange a note\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "get": "likeness get <ref>... [--raw]\n\nnotes by ref\n\n  <ref>...  <instance>:<id>\n  --raw     carry the source's own record\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "help": "likeness help [<command>...]\n\nthe command list, or one command's help\n\n  <command>...  the command to describe, as its words\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "link": "likeness link\n\nlink two notes\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "list": "likeness list [<selector>...] [--limit N] [--raw] [--sort KEY]\n\nnotes matching a selector, across the selected connections\n\n  <selector>...  the selector's terms, joined with spaces\n  --limit N      at most N notes, 1 to 999999999\n  --raw          carry each source's own record\n  --sort KEY     order the notes by KEY\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "move": "likeness move\n\nmove notes to another space\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "new": "likeness new\n\ncreate a note\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "open": "likeness open\n\nopen a note in its own application\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "rm": "likeness rm\n\ndelete one note, irreversibly\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "search": "likeness search\n\ncross-source search\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "secrets": "likeness secrets <action> [arguments] [flags]\n\n  get     whether a secret is set, and with --reveal its value\n  grant   mint a restricted key that reads the named secrets\n  init    create the vault station.json names, with its master key\n  keys    every key in the vault, and what it may do\n  list    the names this key can read\n  remove  drop a secret\n  revoke  drop a restricted key\n  rotate  a new root key for every secret; every other key is dropped\n  set     store a secret, its value read from a terminal or from stdin\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\nrun `likeness help secrets <action>` for one action\n",
+    "secrets get": "likeness secrets get <name> [--reveal]\n\nwhether a secret is set, and with --reveal its value\n\n  <name>    the secret's name\n  --reveal  print the value\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "secrets grant": "likeness secrets grant <key> <name>... [--new-passphrase-env VAR] [--write]\n\nmint a restricted key that reads the named secrets\n\n  <key>                     the new key's name\n  <name>...                 a secret the key may read\n  --new-passphrase-env VAR  read its passphrase from VAR, not LIKENESS_NEW_PASSPHRASE\n  --write                   it may also overwrite those secrets\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "secrets init": "likeness secrets init\n\ncreate the vault station.json names, with its master key\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "secrets keys": "likeness secrets keys\n\nevery key in the vault, and what it may do\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "secrets list": "likeness secrets list\n\nthe names this key can read\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "secrets remove": "likeness secrets remove <name>\n\ndrop a secret\n\n  <name>  the secret's name\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "secrets revoke": "likeness secrets revoke <key>\n\ndrop a restricted key\n\n  <key>  the key's name\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "secrets rotate": "likeness secrets rotate\n\na new root key for every secret; every other key is dropped\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "secrets set": "likeness secrets set <name> [-]\n\nstore a secret, its value read from a terminal or from stdin\n\n  <name>  the secret's name\n  -       read the value from stdin\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "sources": "likeness sources\n\nconnection management\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "tag": "likeness tag\n\nadd or remove tags\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "version": "likeness version\n\nthis port and its version\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "which": "likeness which\n\nevery likeness on PATH: path, port, version\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n"
   }
 }

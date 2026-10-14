@@ -1,13 +1,22 @@
 likeness <command> [arguments] [flags]
 
-  doctor   check every selected connection
-  get      notes by ref
-  help     the command list, or one command's help
-  list     notes matching a selector, across the selected connections
-  version  this port and its version
-  which    every likeness on PATH: path, port, version
+  doctor          check every selected connection
+  get             notes by ref
+  help            the command list, or one command's help
+  list            notes matching a selector, across the selected connections
+  secrets get     whether a secret is set, and with --reveal its value
+  secrets grant   mint a restricted key that reads the named secrets
+  secrets init    create the vault station.json names, with its master key
+  secrets keys    every key in the vault, and what it may do
+  secrets list    the names this key can read
+  secrets remove  drop a secret
+  secrets revoke  drop a restricted key
+  secrets rotate  a new root key for every secret; every other key is dropped
+  secrets set     store a secret, its value read from a terminal or from stdin
+  version         this port and its version
+  which           every likeness on PATH: path, port, version
 
-declared, not implemented yet: archive, caps, describe, edit, link, move, new, open, rm, search, secrets, sources, tag
+declared, not implemented yet: archive, caps, describe, edit, link, move, new, open, rm, search, sources, tag
 
-global flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict
+global flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME
 run `likeness help <command>` for one command

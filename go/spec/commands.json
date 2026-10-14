@@ -43,7 +43,9 @@
         "unsupported-capability",
         "source-unavailable",
         "auth-failed",
-        "rate-limited"
+        "rate-limited",
+        "vault-locked",
+        "secret-backend-unavailable"
       ],
       "flag": {},
       "ready": true,
@@ -81,7 +83,9 @@
         "unsupported-capability",
         "source-unavailable",
         "auth-failed",
-        "rate-limited"
+        "rate-limited",
+        "vault-locked",
+        "secret-backend-unavailable"
       ],
       "flag": {
         "raw": {
@@ -97,8 +101,9 @@
       "arg": [
         {
           "name": "command",
+          "repeat": true,
           "required": false,
-          "short": "the command to describe",
+          "short": "the command to describe, as its words",
           "type": "name"
         }
       ],
@@ -144,7 +149,9 @@
         "unsupported-capability",
         "source-unavailable",
         "auth-failed",
-        "rate-limited"
+        "rate-limited",
+        "vault-locked",
+        "secret-backend-unavailable"
       ],
       "flag": {
         "limit": {
@@ -223,15 +230,213 @@
       "short": "cross-source search",
       "writes": false
     },
-    "secrets": {
-      "arg": [],
+    "secrets get": {
+      "arg": [
+        {
+          "name": "name",
+          "required": true,
+          "short": "the secret's name",
+          "type": "secret"
+        }
+      ],
+      "echo": false,
       "exits": [
-        "unsupported-capability",
-        "invalid-argument"
+        "ok",
+        "not-found",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "secret-backend-unavailable"
+      ],
+      "flag": {
+        "reveal": {
+          "short": "print the value",
+          "type": "boolean"
+        }
+      },
+      "ready": true,
+      "short": "whether a secret is set, and with --reveal its value",
+      "writes": false
+    },
+    "secrets grant": {
+      "arg": [
+        {
+          "name": "key",
+          "required": true,
+          "short": "the new key's name",
+          "type": "name"
+        },
+        {
+          "name": "name",
+          "repeat": true,
+          "required": true,
+          "short": "a secret the key may read",
+          "type": "secret"
+        }
+      ],
+      "echo": false,
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "vault-exists",
+        "secret-backend-unavailable"
+      ],
+      "flag": {
+        "new-passphrase-env": {
+          "short": "read its passphrase from VAR, not LIKENESS_NEW_PASSPHRASE",
+          "type": "envvar",
+          "value": "VAR"
+        },
+        "write": {
+          "short": "it may also overwrite those secrets",
+          "type": "boolean"
+        }
+      },
+      "ready": true,
+      "short": "mint a restricted key that reads the named secrets",
+      "writes": true
+    },
+    "secrets init": {
+      "arg": [],
+      "echo": false,
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "vault-exists",
+        "secret-backend-unavailable"
       ],
       "flag": {},
-      "ready": false,
-      "short": "the vault of source tokens",
+      "ready": true,
+      "short": "create the vault station.json names, with its master key",
+      "writes": true
+    },
+    "secrets keys": {
+      "arg": [],
+      "echo": false,
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "every key in the vault, and what it may do",
+      "writes": false
+    },
+    "secrets list": {
+      "arg": [],
+      "echo": false,
+      "exits": [
+        "ok",
+        "no-match",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "the names this key can read",
+      "writes": false
+    },
+    "secrets remove": {
+      "arg": [
+        {
+          "name": "name",
+          "required": true,
+          "short": "the secret's name",
+          "type": "secret"
+        }
+      ],
+      "echo": false,
+      "exits": [
+        "ok",
+        "not-found",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "drop a secret",
+      "writes": true
+    },
+    "secrets revoke": {
+      "arg": [
+        {
+          "name": "key",
+          "required": true,
+          "short": "the key's name",
+          "type": "name"
+        }
+      ],
+      "echo": false,
+      "exits": [
+        "ok",
+        "not-found",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "drop a restricted key",
+      "writes": true
+    },
+    "secrets rotate": {
+      "arg": [],
+      "echo": false,
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "a new root key for every secret; every other key is dropped",
+      "writes": true
+    },
+    "secrets set": {
+      "arg": [
+        {
+          "name": "name",
+          "required": true,
+          "short": "the secret's name",
+          "type": "secret"
+        },
+        {
+          "name": "from",
+          "required": false,
+          "short": "read the value from stdin",
+          "type": "stdin"
+        }
+      ],
+      "echo": false,
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "store a secret, its value read from a terminal or from stdin",
       "writes": true
     },
     "sources": {
@@ -300,6 +505,11 @@
       "short": "print the envelope as one line of JSON",
       "type": "boolean"
     },
+    "passphrase-env": {
+      "short": "read the vault passphrase from VAR, not LIKENESS_PASSPHRASE",
+      "type": "envvar",
+      "value": "VAR"
+    },
     "source": {
       "repeat": true,
       "short": "only the connections to this API",
@@ -309,6 +519,11 @@
     "strict": {
       "short": "stop at the first connection that fails",
       "type": "boolean"
+    },
+    "vault-key": {
+      "short": "open the vault as the key NAME, not master",
+      "type": "name",
+      "value": "NAME"
     }
   }
 }

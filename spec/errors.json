@@ -101,7 +101,7 @@
     "not-found": {
       "code": "not-found",
       "exit": 1,
-      "means": "a named ref does not exist",
+      "means": "a named ref, secret or key does not exist",
       "partial": false,
       "retryable": false
     },
@@ -165,6 +165,27 @@
       "code": "unsupported-capability",
       "exit": 4,
       "means": "the source cannot perform this operation",
+      "partial": false,
+      "retryable": false
+    },
+    "vault-denied": {
+      "code": "vault-denied",
+      "exit": 4,
+      "means": "the vault key in use may not do this",
+      "partial": false,
+      "retryable": false
+    },
+    "vault-exists": {
+      "code": "vault-exists",
+      "exit": 4,
+      "means": "the vault, or a key in it, is already there and is never overwritten",
+      "partial": false,
+      "retryable": false
+    },
+    "vault-locked": {
+      "code": "vault-locked",
+      "exit": 3,
+      "means": "the vault does not open with the passphrase and key this run has",
       "partial": false,
       "retryable": false
     },

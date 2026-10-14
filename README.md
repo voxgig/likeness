@@ -18,9 +18,9 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 120 entries, run by every port |
-| `spec/cli.aontu` — the transcript corpus | 67 whole commands, run by every port |
-| `typescript/` — the canonical port | `list`, `get`, `doctor`, `version`, `which`; offline through the real generated SDK |
+| `spec/unit.aontu` — the pure-function corpus | 139 entries, run by every port |
+| `spec/cli.aontu` — the transcript corpus | 138 whole commands, run by every port |
+| `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
 | `python/` — the third port | the same again, through station's Python library |
 | The parity comparison | `make parity`: the ports agree, each names itself, and the comparison is proved to go red |
@@ -55,6 +55,13 @@ cd go && go run ./cmd/likeness list 'updated>7d' --json
 python/.venv/bin/likeness-py list 'updated>7d' --json
 ```
 
+Each parses its arguments from one declared table, `spec/commands.aontu`, so the
+command line is the same interface in every port: `likeness help` and
+`likeness help <command>` print the help rendered from it, and an undeclared flag,
+a mistyped value or a misplaced argument is refused as `invalid-argument` before
+anything runs. A selector term that begins with `-` follows `--`:
+`likeness list -- '-tag:draft title:a'`.
+
 Each reads `~/.config/likeness/station.json` (or `--config PATH`), which is a
 [voxgig/station](https://github.com/voxgig/station) configuration in station's
 own grammar. Each instance is a ref under `sdk`: `joplin` for the first Joplin
@@ -69,13 +76,47 @@ note identity derives from, is in `likeness.json` beside it:
 { "likeness": 1, "instances": { "joplin": { "account": "<the Joplin profile id>" } } }
 ```
 
-Station resolves each instance's key through its secret providers, from
-`JOPLIN_APIKEY` (`JOPLIN_WORK_APIKEY` for `joplin$work`) by default. Every port
-binds every client through station, and the calls a command reports are
-station's own request events. Live Joplin through station needs
-[voxgig/station#25](https://github.com/voxgig/station/issues/25): station places
-a key in headers only, and Joplin takes its key as the `token` query parameter,
-so every port is refused today with the same `auth-failed`.
+Every port binds every client through station, and the calls a command reports
+are station's own request events.
+
+### Secrets
+
+Every source token is kept in one [sekreto](https://github.com/voxgig/sekreto)
+minivault, `likeness.skmv` beside `station.json` unless the file names another.
+That one store is the whole chain: likeness refuses any other kind, so a token
+in the environment is never read, and it refuses a passphrase written in the
+file.
+
+```json
+{ "station": 1, "profiles": { "default": {
+  "secrets": { "providers": [{ "kind": "minivault", "file": "likeness.skmv" }] },
+  "sdk": { "joplin": { "base": "http://localhost:41184" } } } } }
+```
+
+The passphrase comes from `LIKENESS_PASSPHRASE`, or the variable
+`--passphrase-env` names, or a prompt when stdin is a terminal. likeness opens
+the vault with it and hands station the chain in memory. `--vault-key NAME`
+opens the vault as a restricted key, not `master`. `likeness secrets` is the
+vault's command line:
+
+```sh
+likeness secrets init                                    # the vault and its master key
+printf '%s\n' "$TOKEN" | likeness secrets set joplin.apikey -
+likeness secrets grant ci joplin.apikey                  # a key that reads only that
+likeness secrets list                                    # also get, remove, keys, revoke, rotate
+```
+
+Station looks for an instance's token under `<instance>.apikey`, with every
+character outside `a-z0-9` written as `_` (`joplin_work.apikey` for
+`joplin$work`), unless the instance's block names a `secret`.
+
+A live source reached through the vault needs two station changes that are not
+released yet. The TypeScript port's `@voxgig/station` 0.1.0 depends on a sekreto
+with no minivault ([voxgig/station#34](https://github.com/voxgig/station/issues/34)),
+and Joplin takes its key as the `token` query parameter, which station does not
+place ([voxgig/station#25](https://github.com/voxgig/station/issues/25), fixed by
+[voxgig/station#28](https://github.com/voxgig/station/pull/28)). With station
+`main` and #28 in place, `doctor` and `list` pass against the mock in both ports.
 
 With no instances configured they answer `no-match` and exit 1, which is the
 answer "none" rather than an error.

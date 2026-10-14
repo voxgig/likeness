@@ -62,6 +62,18 @@ func msval(m map[string]any, k string) int64 {
 	return 0
 }
 
+func stamp(raw map[string]any, field string) (string, error) {
+	s, err := Rfc3339(msval(raw, field))
+	if nil != err {
+		return "", &LikenessError{
+			Code:   "source-unavailable",
+			Msg:    "the source returned a " + joplinSource + " record whose " + field + " is outside the years 0000 to 9999",
+			Remedy: "this is a bug in the source or its SDK; run with --raw to capture the payload",
+		}
+	}
+	return s, nil
+}
+
 func projectNote(raw map[string]any, instance, account string, withRaw bool) (Note, error) {
 	id := ""
 	if v, ok := present(raw, "id"); ok {
@@ -76,14 +88,22 @@ func projectNote(raw map[string]any, instance, account string, withRaw bool) (No
 			Remedy: "this is a bug in the source or its SDK; run with --raw to capture the payload",
 		}
 	}
+	created, err := stamp(raw, "created_time")
+	if nil != err {
+		return Note{}, err
+	}
+	updated, err := stamp(raw, "updated_time")
+	if nil != err {
+		return Note{}, err
+	}
 	n := Note{
 		Lid:      Lid(joplinSource, account, "note", id),
 		Source:   joplinSource,
 		Instance: instance,
 		ID:       id,
 		URL:      "joplin://x-callback-url/openNote?id=" + id,
-		Created:  Rfc3339(msval(raw, "created_time")),
-		Updated:  Rfc3339(msval(raw, "updated_time")),
+		Created:  created,
+		Updated:  updated,
 	}
 	if v, ok := present(raw, "title"); ok {
 		n.Title = textOf(v)

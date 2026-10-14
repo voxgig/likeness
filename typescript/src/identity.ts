@@ -39,9 +39,16 @@ export function lid (source: string, account: string, entity: string, id: string
 }
 
 /* RFC 3339, UTC, second precision, Z. The ONLY timestamp form likeness emits,
- * and the reason the ports do not each reach for their own formatter.
+ * and the reason the ports do not each reach for their own formatter. A year
+ * outside 0000-9999 is refused, never written some other way.
  */
+export const RFC3339_MIN = -62167219200000
+export const RFC3339_MAX = 253402300799999
+
 export function rfc3339 (ms: number): string {
+  if (!Number.isFinite(ms) || ms < RFC3339_MIN || RFC3339_MAX < ms) {
+    throw new RangeError('rfc3339: ' + ms + ' ms is outside the years 0000 to 9999')
+  }
   const d = new Date(ms)
   const p = (n: number, w = 2) => String(n).padStart(w, '0')
   return p(d.getUTCFullYear(), 4) + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate()) +
