@@ -1,48 +1,55 @@
-# `upstream/` — issues to file, and why they are here rather than filed
+# `upstream/` — findings filed upstream, and the evidence behind them
 
 likeness consumes four generated SDKs and their toolchain and owns none of them.
 [PROCESS.md](../PROCESS.md) §6 says a gap found here is **filed, not worked
 around**, and says how to decide which repository owns the fix.
 
-Each file in `issue/` is one issue, written to be filed as-is: it names the
-repository, the revision it was observed at, the file and line, a reproduction
-that needs no credentials and no network, and what it costs likeness
-specifically. Filing one means pasting it into a new issue on the named
-repository.
+Each file in `issue/` is one finding as it was drafted: the repository, the
+revision it was observed at, the file and line, a reproduction that needs no
+credentials and no network, and what it costs likeness. The link at the top of
+each file is where it was filed.
 
-They are drafted here rather than filed directly because the session that found
-them had read-only access to the `voxgig-sdk` organisation. That is a permission
-boundary, not a judgement about whether they should be raised — they should.
+## Status, 2026-10-14
 
-## Filed
+Every draft is filed. "Closed" for a `sdkgen` issue means the generator carries
+the fix; an SDK carries it only once regenerated. Joplin was regenerated on
+2026-09-27 and this repository is pinned to that revision (`c762196`); Obsidian
+and Linear carry the fixes at their pins; Notion is still on the generator of
+2026-09-17 and carries every closed defect until
+[notion-sdk#1](https://github.com/voxgig-sdk/notion-sdk/issues/1) regenerates it.
 
-Every issue whose fix belongs in **`voxgig/sdkgen`** is now filed there, re-verified
-against `sdkgen@4089761` before filing rather than against the generated output where
-it was noticed — which is the rule in [PROCESS.md](../PROCESS.md) §6, and which changed
-one of them substantially.
-
-| Draft | Filed as | What |
+| Draft | Filed as | Status |
 |---|---|---|
-| `issue/10` | [sdkgen#163](https://github.com/voxgig/sdkgen/issues/163) | every numeric feature option is silently dropped when it arrives as `json.Number` |
-| `issue/11` | [sdkgen#164](https://github.com/voxgig/sdkgen/issues/164) | paging is inactive by default, blind to `has_more`, and reachable only via `client._paging` |
-| `issue/05` | [sdkgen#165](https://github.com/voxgig/sdkgen/issues/165) | the shared corpus tests only `cost`, which no SDK generates |
-| `issue/01` | [sdkgen#166](https://github.com/voxgig/sdkgen/issues/166) | test mode mints a random id whose TypeScript form differs from every other target |
-| `issue/07` | [sdkgen#167](https://github.com/voxgig/sdkgen/issues/167) | the test feature diverges per target; C and Ruby cannot run a GraphQL SDK at all |
+| `issue/01` | [sdkgen#166](https://github.com/voxgig/sdkgen/issues/166) | closed |
+| `issue/02` | [joplin-sdk#2](https://github.com/voxgig-sdk/joplin-sdk/issues/2), [linear-sdk#2](https://github.com/voxgig-sdk/linear-sdk/issues/2), [obsidian-sdk#2](https://github.com/voxgig-sdk/obsidian-sdk/issues/2), [notion-sdk#3](https://github.com/voxgig-sdk/notion-sdk/issues/3) | open; the pins stay commit shas |
+| `issue/03` | [aontu-lang/aontu#245](https://github.com/aontu-lang/aontu/issues/245) | fixed upstream: on 0.76.0 `vet --coverage` counts the leaves it checked and `--strict-coverage` accepts a correct schema |
+| `issue/04` | [joplin-sdk#3](https://github.com/voxgig-sdk/joplin-sdk/issues/3), [notion-sdk#4](https://github.com/voxgig-sdk/notion-sdk/issues/4) | open |
+| `issue/05` | [sdkgen#165](https://github.com/voxgig/sdkgen/issues/165) | closed |
+| `issue/07` | [sdkgen#167](https://github.com/voxgig/sdkgen/issues/167) | closed; Linear's offline test mode works in C and Ruby from sdkgen 4.30.2 |
+| `issue/08` | [aontu-lang/aontu#246](https://github.com/aontu-lang/aontu/issues/246) | fixed upstream: on 0.76.0 `explain` accepts a code as it is printed, with or without its `aontu/` prefix |
+| `issue/09` | [notion-sdk#2](https://github.com/voxgig-sdk/notion-sdk/issues/2) | open; the Ruby port cannot reach Notion until it lands |
+| `issue/10` | [sdkgen#163](https://github.com/voxgig/sdkgen/issues/163) | closed; the Go harness no longer rewrites `json.Number` before seeding |
+| `issue/11` | [sdkgen#164](https://github.com/voxgig/sdkgen/issues/164) | closed |
 
-- `issue/03` — **filed as [aontu-lang/aontu#245](https://github.com/aontu-lang/aontu/issues/245)**, by a session rooted at that repository, which reproduced the bug against its own build before filing.
-- `issue/08` — **filed as [aontu-lang/aontu#246](https://github.com/aontu-lang/aontu/issues/246)**, same way. It re-derived the counts rather than taking mine: 29 of 168 registered codes have no text, and the `compat` class is 13 of 13.
+## Filed directly, 2026-10-14
 
-## Still unfiled, and why
+Found in the review of the repository against its purpose and filed without a
+draft here; the reproduction is in each issue. SPEC.LIKENESS.md §22 in
+`metsitaba/project-specs` carries the same table with what each one blocks, and
+[`docs/decisions/stage-1.md`](../docs/decisions/stage-1.md) says which stage
+waits on which.
 
-Three drafts belong in `voxgig-sdk/*` repositories rather than in sdkgen, and the
-sessions doing this work cannot attach that organisation — a tooling boundary, not a
-judgement about whether they should be raised.
-
-| Draft | Belongs in | Why it is not a sdkgen issue |
+| Issue | Repository | What |
 |---|---|---|
-| `issue/02` | each SDK repository | no git tags and no published packages: a release-process gap in the repositories that would cut the releases |
-| `issue/04` | each SDK's `.sdk/def/` | the API definitions are subsets narrow enough that no source can offer search; the definition is per-SDK input, not generator behaviour |
-| `issue/09` | `voxgig-sdk/notion-sdk` | `.sdk/model/target/target-index.aon` imports nine targets and `rb` is not among them, where joplin-sdk's does include it. One import line, per SDK |
+| [joplin-sdk#1](https://github.com/voxgig-sdk/joplin-sdk/issues/1), [linear-sdk#1](https://github.com/voxgig-sdk/linear-sdk/issues/1), [obsidian-sdk#1](https://github.com/voxgig-sdk/obsidian-sdk/issues/1), [notion-sdk#1](https://github.com/voxgig-sdk/notion-sdk/issues/1) | each SDK | no SDK carries the `station` feature (`@voxgig/sdkgen-station`), so nothing can register with station |
+| [sdkgen#400](https://github.com/voxgig/sdkgen/issues/400) | `voxgig/sdkgen` | the regenerated Linear SDK queries `issueSearch`, `attachmentIssue` and `administrableTeams` for a bare list, load and team list |
+| [sdkgen#401](https://github.com/voxgig/sdkgen/issues/401) | `voxgig/sdkgen` | relay paging cannot be followed: no model carries `page.connpath` |
+| [sdkgen#402](https://github.com/voxgig/sdkgen/issues/402) | `voxgig/sdkgen` | the Python SDK depends on `requests` since 4.30.2 |
+| [sdkgen#403](https://github.com/voxgig/sdkgen/issues/403) | `voxgig/sdkgen` | the C SDK has no live HTTP transport and no TLS |
+| [sdkgen#404](https://github.com/voxgig/sdkgen/issues/404) | `voxgig/sdkgen` | two Ruby SDKs loaded together redefine each other's entity classes and `VoxgigStruct` |
+| [sdkgen#405](https://github.com/voxgig/sdkgen/issues/405) | `voxgig/sdkgen` | two C SDKs cannot be linked into one program |
+| [sdkgen#406](https://github.com/voxgig/sdkgen/issues/406) | `voxgig/sdkgen` | a query parameter declared `fields` is generated as `field`, which Joplin ignores; both adapters pass the wire name until it is fixed |
+| [station#23](https://github.com/voxgig/station/issues/23) | `voxgig/station` | station's C port is env-only and does not use sekreto's C port |
 
 ## A correction worth keeping
 
@@ -71,10 +78,10 @@ that an exit code read through a pipeline is not an exit code.
 
 ## Filing
 
-When one is filed, add the issue link to the top of its file rather than
-deleting it. The evidence is worth keeping next to the schema that depends on
-it, and a closed issue with a link is how a future reader learns why a
-workaround in this repository exists.
+A new finding gets a draft here, is filed, and then carries its link at the top
+of the file rather than being deleted. The evidence is worth keeping next to the
+schema that depends on it, and a closed issue with a link is how a future reader
+learns why a workaround in this repository exists.
 
 ## The list
 
