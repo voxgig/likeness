@@ -245,23 +245,28 @@ constrains where the offline mode can be relied on:
 
 | Behaviour | TS | Go | Py | Rb | C |
 |---|---|---|---|---|---|
-| multi-segment response envelope (`body.data.x.y`) | yes | yes | yes | **no** | **no** |
-| `update` whose id matches nothing | **404** | 200, clobbers a record | 200, clobbers the first | 200, clobbers the first | 200, clobbers the first |
-| `update` merge depth | **deep** | shallow | shallow | shallow | shallow |
-| stamps `id` from the seed map key | yes | yes | yes | **no** | yes |
+| multi-segment response envelope (`body.data.x.y`) | yes | yes | yes | to recheck | **no** |
+| `update` whose id matches nothing | **404** | 200, clobbers a record | 200, clobbers the first | **404** | 200, clobbers the first |
+| `update` merge depth | **deep** | shallow | shallow | **deep** | shallow |
+| stamps `id` from the seed map key | yes | yes | yes | yes | yes |
 | required query params also matched | yes | yes | yes | **no** | **no** |
 
+The Rb `update` and `id` rows were rechecked by running joplin-sdk's Ruby
+client at its pin, which sdkgen 4.34.6 generated. That generation's Ruby
+feature also builds a multi-segment envelope, but linear-sdk's pin is an older
+generation, so the envelope row, the one that decides Linear, is to recheck.
+
 **The consequence that changes plans: Linear cannot be tested offline in the
-Ruby or C ports.** Every Linear operation unwraps a multi-segment envelope —
-`body.data.issue`, `body.data.issueCreate.issue` — and those two ports
-synthesise only a single segment. So until `issue/07` is resolved, the Ruby and
-C ports reach Linear through `mock/` instead. That is a declared exception with
-a named cause, not a port quietly growing its own mock.
+C port, and in Ruby that is to recheck.** Every Linear operation unwraps a
+multi-segment envelope — `body.data.issue`, `body.data.issueCreate.issue` — and
+C synthesises only a single segment. So until `issue/07` is resolved, the Ruby
+and C ports reach Linear through `mock/` instead. That is a declared exception
+with a named cause, not a port quietly growing its own mock.
 
 **And treat an `update` against an unseeded id as undefined behaviour** in every
-port. It is a 404 in TypeScript and a silent clobber of an unrelated record in
-the other four, which is the failure a mock exists to prevent. Seed what you
-update.
+port. It is a 404 in TypeScript and Ruby and a silent clobber of an unrelated
+record in the other three, which is the failure a mock exists to prevent. Seed
+what you update.
 
 ### Where the mock server still earns its place
 
