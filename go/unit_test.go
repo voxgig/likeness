@@ -58,7 +58,7 @@ func unitRegistry() map[string]unitFn {
 		},
 
 		"rfc3339": func(t *testing.T, in any) (any, error) {
-			return Rfc3339(mustNum(t, in)), nil
+			return Rfc3339(mustNum(t, in))
 		},
 
 		"crockfordAlphabet": func(t *testing.T, in any) (any, error) { return Crockford, nil },

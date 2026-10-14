@@ -1117,6 +1117,32 @@ primary: unit: {
 
     { id:"identity/rfc3339-epoch" fn:"rfc3339" in:0 out:"1970-01-01T00:00:00Z" }
     {
+      id: "identity/rfc3339-first-four-digit-year"
+      fn: "rfc3339"
+      in: -62167219200000
+      out: "0000-01-01T00:00:00Z"
+    }
+    {
+      id: "identity/rfc3339-last-four-digit-year"
+      fn: "rfc3339"
+      in: 253402300799999
+      out: "9999-12-31T23:59:59Z"
+    }
+    {
+      id: "identity/rfc3339-before-year-zero"
+      # Refused rather than written another way: no year outside 0000-9999 has
+      # an RFC 3339 form.
+      fn: "rfc3339"
+      in: -62167219200001
+      err: "outside the years 0000 to 9999"
+    }
+    {
+      id: "identity/rfc3339-after-year-9999"
+      fn: "rfc3339"
+      in: 253402300800000
+      err: "outside the years 0000 to 9999"
+    }
+    {
       id: "identity/rfc3339-second-precision"
       # Milliseconds are truncated, never rounded: RFC 3339 UTC at second
       # precision is the only timestamp form the envelope carries.

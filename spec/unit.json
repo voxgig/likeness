@@ -827,6 +827,30 @@
           },
           {
             "fn": "rfc3339",
+            "id": "identity/rfc3339-first-four-digit-year",
+            "in": -62167219200000,
+            "out": "0000-01-01T00:00:00Z"
+          },
+          {
+            "fn": "rfc3339",
+            "id": "identity/rfc3339-last-four-digit-year",
+            "in": 253402300799999,
+            "out": "9999-12-31T23:59:59Z"
+          },
+          {
+            "err": "outside the years 0000 to 9999",
+            "fn": "rfc3339",
+            "id": "identity/rfc3339-before-year-zero",
+            "in": -62167219200001
+          },
+          {
+            "err": "outside the years 0000 to 9999",
+            "fn": "rfc3339",
+            "id": "identity/rfc3339-after-year-9999",
+            "in": 253402300800000
+          },
+          {
+            "fn": "rfc3339",
             "id": "identity/rfc3339-second-precision",
             "in": 1758008460999,
             "out": "2025-09-16T07:41:00Z"

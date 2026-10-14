@@ -211,10 +211,11 @@ func Main(argv []string) int {
 		return 3
 	}
 
+	clock, _ := Rfc3339(time.Now().UnixMilli())
 	res := Run(Ctx{
 		Argv:     rest,
 		Env:      env,
-		Clock:    Rfc3339(time.Now().UnixMilli()),
+		Clock:    clock,
 		Station:  config,
 		Accounts: accounts,
 		Path:     probePath(env),
