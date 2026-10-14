@@ -4,11 +4,11 @@ Meta: type(close({
   count: $.Count
   truncated: boolean
   # Instances that answered.
-  sources: [&: $.Ident]
+  sources: [&: $.InstanceRef]
   # Instances that did not. Non-empty is what makes the exit code 2 rather
   # than 0: the answer is printed AND its incompleteness is named, because
   # silently dropping a source gives a confident, smaller, wrong answer.
-  incomplete: [&: $.Ident]
+  incomplete: [&: $.InstanceRef]
   calls: $.Count
   # A declared non-parity field: excluded by name from the byte diff.
   elapsed_ms: $.Millis
