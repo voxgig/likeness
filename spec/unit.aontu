@@ -59,6 +59,15 @@ primary: unit: {
     }
 
     {
+      id: "envelope/integer-beyond-a-double-is-refused"
+      # The canonical port parses numbers as doubles, so every port is held to
+      # the integers a double names exactly.
+      fn: "serialise"
+      in: n: 9007199254740992
+      err: "integer beyond exact double precision"
+    }
+
+    {
       id: "envelope/escape-quote-and-backslash"
       fn: "serialise"
       in: s: "a\"b\\c"
@@ -856,6 +865,34 @@ primary: unit: {
       fn: "connections"
       in: { station:"{\"station\":2}" likeness:"{}" }
       err: "station.json: station_config_invalid"
+    }
+
+    {
+      id: "config/station-not-an-object"
+      fn: "connections"
+      in: { station:"[]" likeness:"{}" }
+      err: "station.json is not a JSON object"
+    }
+
+    {
+      id: "config/station-refused-for-a-shared-secret"
+      # Any refusal of station's own, not only a shape mismatch, is the file's.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"notes-a\":{},\"notes$a\":{}}}}}"
+        likeness: "{}"
+      }
+      err: "station.json: station_secret_collision"
+    }
+
+    {
+      id: "config/likeness-not-an-object"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+        likeness: "1"
+      }
+      err: "likeness.json is not a JSON object"
     }
 
     {

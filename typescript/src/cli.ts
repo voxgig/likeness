@@ -15,8 +15,13 @@ function has (v: unknown): boolean { return undefined !== v && null !== v }
 function text (v: unknown): string { return 'string' === typeof v ? v : renderRaw(v) }
 
 function parseJson (source: string, path: string): any {
-  try { return JSON.parse(source) }
+  let doc: unknown
+  try { doc = JSON.parse(source) }
   catch { throw new ConfigError(path + ' is not valid JSON') }
+  if (null === doc || 'object' !== typeof doc || Array.isArray(doc)) {
+    throw new ConfigError(path + ' is not a JSON object')
+  }
+  return doc
 }
 
 // station.json, parsed here and validated by station against its own shape.
@@ -25,7 +30,9 @@ export function parseStation (source: string, path: string): unknown {
   const doc = parseJson(source, path)
   try { openStation(withChain(doc, [])) }
   catch (err: any) {
-    if ('station_config_invalid' === err?.code) throw new ConfigError(path + ': ' + err.message)
+    if ('string' === typeof err?.code && err.code.startsWith('station_')) {
+      throw new ConfigError(path + ': ' + err.message)
+    }
     throw err
   }
   return doc
@@ -33,7 +40,7 @@ export function parseStation (source: string, path: string): unknown {
 
 // The account each instance ref belongs to, from likeness.json.
 export function parseAccounts (source: string, path: string): Record<string, string> {
-  const instances = parseJson(source, path)?.instances ?? {}
+  const instances = parseJson(source, path).instances ?? {}
   const out: Record<string, string> = {}
   for (const ref of Object.keys(instances).sort(compareCodePoints)) {
     const account = instances[ref]?.account
