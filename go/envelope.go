@@ -76,8 +76,16 @@ func CompareCodePoints(a, b string) int {
 func num(v any) (int64, bool) {
 	switch n := v.(type) {
 	case json.Number:
-		i, err := n.Int64()
-		return i, nil == err
+		if i, err := n.Int64(); nil == err {
+			return i, true
+		}
+		// `1.0` is still an integer, and a port that sees the text must agree
+		// with one that only ever sees the number.
+		f, err := n.Float64()
+		if nil != err || f != math.Trunc(f) || 9007199254740991 < math.Abs(f) {
+			return 0, false
+		}
+		return int64(f), true
 	case float64:
 		if n != math.Trunc(n) {
 			return 0, false
@@ -91,7 +99,24 @@ func num(v any) (int64, bool) {
 	return 0, false
 }
 
-func renderNumber(v any, path string) (string, error) {
+// jsNumber renders a float as ECMAScript Number::toString does: plain digits
+// between 1e-7 and 1e21, an exponent without leading zeros outside that.
+func jsNumber(f float64) string {
+	if 0 == f {
+		return "0"
+	}
+	if abs := math.Abs(f); 1e-7 <= abs && abs < 1e21 {
+		return strconv.FormatFloat(f, 'f', -1, 64)
+	}
+	mant, exp, _ := strings.Cut(strconv.FormatFloat(f, 'e', -1, 64), "e")
+	digits := strings.TrimLeft(exp[1:], "0")
+	if "" == digits {
+		digits = "0"
+	}
+	return mant + "e" + exp[:1] + digits
+}
+
+func renderNumber(v any, path string, loose bool) (string, error) {
 	switch n := v.(type) {
 	case int:
 		return strconv.FormatInt(int64(n), 10), nil
@@ -101,13 +126,19 @@ func renderNumber(v any, path string) (string, error) {
 		if i, err := strconv.ParseInt(n.String(), 10, 64); nil == err {
 			return strconv.FormatInt(i, 10), nil
 		}
-		if _, err := strconv.ParseFloat(n.String(), 64); nil == err {
+		if f, err := strconv.ParseFloat(n.String(), 64); nil == err {
+			if loose {
+				return jsNumber(f), nil
+			}
 			return "", &SerialiseError{"floating point is not representable in the envelope", path}
 		}
 		return "", &SerialiseError{"integer beyond int64", path}
 	case float64:
 		if math.IsNaN(n) || math.IsInf(n, 0) {
 			return "", &SerialiseError{"not a finite number", path}
+		}
+		if loose {
+			return jsNumber(n), nil
 		}
 		if n != math.Trunc(n) {
 			return "", &SerialiseError{"floating point is not representable in the envelope", path}
@@ -129,6 +160,16 @@ func renderNumber(v any, path string) (string, error) {
 // keys sorted but structs in declaration order, and would escape differently.
 // One writer, one set of rules.
 func Render(v any, path string) (string, error) {
+	return renderValue(v, path, false)
+}
+
+// RenderRaw writes a source payload: the same rules with floating point
+// permitted, in the form every port reproduces.
+func RenderRaw(v any) (string, error) {
+	return renderValue(v, "", true)
+}
+
+func renderValue(v any, path string, loose bool) (string, error) {
 	if nil == v {
 		return "null", nil
 	}
@@ -141,14 +182,14 @@ func Render(v any, path string) (string, error) {
 	case string:
 		return EscapeString(t), nil
 	case int, int64, float64, json.Number:
-		return renderNumber(v, path)
+		return renderNumber(v, path, loose)
 	case []any:
 		if 0 == len(t) {
 			return "[]", nil
 		}
 		parts := make([]string, len(t))
 		for i, e := range t {
-			s, err := Render(e, path+"["+strconv.Itoa(i)+"]")
+			s, err := renderValue(e, path+"["+strconv.Itoa(i)+"]", loose)
 			if nil != err {
 				return "", err
 			}
@@ -179,7 +220,7 @@ func Render(v any, path string) (string, error) {
 		}
 		parts := make([]string, len(keys))
 		for i, k := range keys {
-			s, err := Render(t[k], path+"."+k)
+			s, err := renderValue(t[k], path+"."+k, loose)
 			if nil != err {
 				return "", err
 			}

@@ -4,6 +4,7 @@ import type { Note } from '../note.js'
 import type { Calls } from '../calls.js'
 import { LikenessError } from '../errors.js'
 import { pageMax } from '../caps.js'
+import { renderRaw } from '../envelope.js'
 
 // eslint-disable-next-line
 import pkg from '@voxgig-sdk/joplin-sdk'
@@ -14,14 +15,17 @@ export const SUPPLIES: string[] = [
   'source', 'instance', 'space', 'title', 'body', 'created', 'updated',
 ]
 
-type JoplinNote = {
-  id?: string
-  parent_id?: string
-  title?: string
-  body?: string
-  created_time?: number
-  updated_time?: number
-  [k: string]: unknown
+type JoplinNote = Record<string, unknown>
+
+// A non-string value projects as its canonical JSON text.
+function text (v: unknown): string {
+  return 'string' === typeof v ? v : renderRaw(v)
+}
+
+function has (v: unknown): boolean { return undefined !== v && null !== v }
+
+function ms (v: unknown): number {
+  return 'number' === typeof v && Number.isInteger(v) ? v : 0
 }
 
 export type JoplinOpts = {
@@ -41,7 +45,7 @@ function sdkFor (opts: JoplinOpts): any {
 }
 
 export function project (raw: JoplinNote, instance: string, account: string, withRaw: boolean): Note {
-  const id = String(raw.id ?? '')
+  const id = has(raw.id) ? text(raw.id) : ''
   // REFUSED, not fabricated. An empty id derives a valid-LOOKING lid from the
   // empty string, so every such row shares one identity and the note violates
   // the schema's non-empty SourceId invariant. A source that returned a record
@@ -56,20 +60,20 @@ export function project (raw: JoplinNote, instance: string, account: string, wit
     source: SOURCE,
     instance,
     id,
-    title: String(raw.title ?? ''),
+    title: has(raw.title) ? text(raw.title) : '',
     url: 'joplin://x-callback-url/openNote?id=' + id,
-    created: rfc3339(Number(raw.created_time ?? 0)),
-    updated: rfc3339(Number(raw.updated_time ?? 0)),
+    created: rfc3339(ms(raw.created_time)),
+    updated: rfc3339(ms(raw.updated_time)),
   }
-  const parent = raw.parent_id
-  if (undefined !== parent && '' !== parent) note.space = String(parent)
-  const body = raw.body
-  if (undefined !== body) note.body = String(body)
+  if (has(raw.parent_id)) {
+    const space = text(raw.parent_id)
+    if ('' !== space) note.space = space
+  }
+  if (has(raw.body)) note.body = text(raw.body)
   if (withRaw) {
-    // A STRING, never nested structure. The envelope sorts keys recursively and
-    // forbids floating point; a real source payload violates both, and
-    // canonicalising it would stop it being verbatim.
-    note.raw = JSON.stringify(raw)
+    // A STRING, never nested structure: the envelope forbids floating point and
+    // a real payload has it. The client keeps no bytes (sdkgen#407): re-rendered.
+    note.raw = renderRaw(raw)
   }
   return note
 }

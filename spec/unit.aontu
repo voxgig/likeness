@@ -500,6 +500,45 @@ primary: unit: {
     }
   ]
 
+  project: set: [
+    {
+      id: "project/no-id-is-refused"
+      # Every such row would share one identity, so the record is refused.
+      fn: "projectJoplin"
+      in: { instance:"jot" account:"local" raw:title:"no id" }
+      err: "record with no id"
+    }
+
+    {
+      id: "project/null-and-non-string-values"
+      fn: "projectJoplin"
+      in: {
+        instance: "jot"
+        account: "local"
+        raw: {
+          id: "n1"
+          title: null
+          body: 42
+          parent_id: 7
+          created_time: "nope"
+          updated_time: 1773129600000
+        }
+      }
+      out: {
+        lid: "lk_xjb81w96kpdh"
+        source: "joplin"
+        instance: "jot"
+        id: "n1"
+        title: ""
+        body: "42"
+        space: "7"
+        url: "joplin://x-callback-url/openNote?id=n1"
+        created: "1970-01-01T00:00:00Z"
+        updated: "2026-03-10T08:00:00Z"
+      }
+    }
+  ]
+
   identity: set: [
     # Known vectors. A port that gets this subtly wrong produces
     # plausible-looking identifiers that silently fail to match another port's,

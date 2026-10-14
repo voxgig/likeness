@@ -220,6 +220,50 @@
           }
         ]
       },
+      "project": {
+        "set": [
+          {
+            "err": "record with no id",
+            "fn": "projectJoplin",
+            "id": "project/no-id-is-refused",
+            "in": {
+              "account": "local",
+              "instance": "jot",
+              "raw": {
+                "title": "no id"
+              }
+            }
+          },
+          {
+            "fn": "projectJoplin",
+            "id": "project/null-and-non-string-values",
+            "in": {
+              "account": "local",
+              "instance": "jot",
+              "raw": {
+                "body": 42,
+                "created_time": "nope",
+                "id": "n1",
+                "parent_id": 7,
+                "title": null,
+                "updated_time": 1773129600000
+              }
+            },
+            "out": {
+              "body": "42",
+              "created": "1970-01-01T00:00:00Z",
+              "id": "n1",
+              "instance": "jot",
+              "lid": "lk_xjb81w96kpdh",
+              "source": "joplin",
+              "space": "7",
+              "title": "",
+              "updated": "2026-03-10T08:00:00Z",
+              "url": "joplin://x-callback-url/openNote?id=n1"
+            }
+          }
+        ]
+      },
       "selector": {
         "set": [
           {

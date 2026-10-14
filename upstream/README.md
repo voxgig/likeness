@@ -49,6 +49,7 @@ waits on which.
 | [sdkgen#404](https://github.com/voxgig/sdkgen/issues/404) | `voxgig/sdkgen` | two Ruby SDKs loaded together redefine each other's entity classes and `VoxgigStruct` |
 | [sdkgen#405](https://github.com/voxgig/sdkgen/issues/405) | `voxgig/sdkgen` | two C SDKs cannot be linked into one program |
 | [sdkgen#406](https://github.com/voxgig/sdkgen/issues/406) | `voxgig/sdkgen` | a query parameter declared `fields` is generated as `field`, which Joplin ignores; both adapters pass the wire name until it is fixed |
+| [sdkgen#407](https://github.com/voxgig/sdkgen/issues/407) | `voxgig/sdkgen` | the generated client discards the response body text, so `--raw` cannot be verbatim; `raw` is the record re-rendered canonically until it is fixed |
 | [station#23](https://github.com/voxgig/station/issues/23) | `voxgig/station` | station's C port is env-only and does not use sekreto's C port |
 
 ## A correction worth keeping

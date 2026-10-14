@@ -489,6 +489,118 @@ primary: cli: {
     }
 
     {
+      id: "list/odd-values-project-the-same-everywhere"
+      # The awkward fixture: null, non-string and float values, keys out of order, markup and control characters. One rule per field.
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/odd-values.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/odd-raw-is-the-canonical-writer"
+      args: ["list" "--raw" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/odd-raw.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/case-folding-is-ascii-only"
+      # `İ` does not fold to `i`. A port that used its language's lowercasing matched here.
+      args: ["list" "title:istanbul" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/list/odd-no-match.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/case-folding-folds-ascii"
+      args: ["list" "title:STRA" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/odd-strasse.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/no-full-case-folding"
+      args: ["list" "title:STRASSE" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/list/odd-no-match.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
       id: "list/negation-after-a-term"
       # The same question asked in both orders, so both entries share one
       # expectation file: a port that parsed only one of them cannot pass.
@@ -581,6 +693,50 @@ primary: cli: {
             instance: "jot"
             method: "GET"
             path: "/notes/a0e50000000000000000000000000001?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "get/odd-raw-one"
+      args: ["get" "jot:a0e50000000000000000000000000013" "--raw" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/get/odd-raw-one.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes/a0e50000000000000000000000000013?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "get/odd-null-title"
+      args: ["get" "jot:a0e50000000000000000000000000014" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/get/odd-null-title.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes/a0e50000000000000000000000000014?fields=id,parent_id,title,body,created_time,updated_time"
           }
         ]
       }

@@ -68,14 +68,40 @@ function strip (v) {
   return out
 }
 
+// The envelope's own rules, not the host JSON writer: control characters as
+// four lowercase hex digits, never a short escape, and keys sorted by code
+// point rather than UTF-16 unit. A control character in a string was the first
+// corpus value to tell the two apart.
+function escapeString (s) {
+  let out = '"'
+  for (const ch of s) {
+    const cp = ch.codePointAt(0)
+    if ('"' === ch) out += '\\"'
+    else if ('\\' === ch) out += '\\\\'
+    else if (cp < 0x20) out += '\\u' + cp.toString(16).padStart(4, '0')
+    else out += ch
+  }
+  return out + '"'
+}
+
+function compareCodePoints (a, b) {
+  const ai = Array.from(a); const bi = Array.from(b)
+  const n = Math.min(ai.length, bi.length)
+  for (let i = 0; i < n; i++) {
+    const x = ai[i].codePointAt(0); const y = bi[i].codePointAt(0)
+    if (x !== y) return x < y ? -1 : 1
+  }
+  return ai.length === bi.length ? 0 : (ai.length < bi.length ? -1 : 1)
+}
+
 function render (v) {
   if (null === v) return 'null'
   if ('boolean' === typeof v) return v ? 'true' : 'false'
   if ('number' === typeof v) return String(v)
-  if ('string' === typeof v) return JSON.stringify(v)
+  if ('string' === typeof v) return escapeString(v)
   if (Array.isArray(v)) return '[' + v.map(render).join(',') + ']'
-  const keys = Object.keys(v).sort()
-  return '{' + keys.map(k => JSON.stringify(k) + ':' + render(v[k])).join(',') + '}'
+  const keys = Object.keys(v).sort(compareCodePoints)
+  return '{' + keys.map(k => escapeString(k) + ':' + render(v[k])).join(',') + '}'
 }
 
 // An emitted file is `exit N`, the stdout block, then the stderr block. Split
