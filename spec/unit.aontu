@@ -981,6 +981,15 @@ primary: unit: {
     }
 
     {
+      id: "vault/from-home-past-a-doubled-slash"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" file:"~//v.skmv" }
+      ]
+      out: { file:"/home/u/v.skmv" key:"master" shown:"~/v.skmv" }
+    }
+
+    {
       id: "vault/outside-home-is-shown-whole"
       fn: "vaultEntry"
       in: station: profiles: default: secrets: providers: [
@@ -1072,6 +1081,24 @@ primary: unit: {
       fn: "vaultEntry"
       in: station: profiles: default: secrets: providers: []
       err: "secrets.providers must name one store, the vault"
+    }
+
+    {
+      id: "vault/null-chain-is-no-chain"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: null
+      out: {
+        file: "/home/u/.config/likeness/likeness.skmv"
+        key: "master"
+        shown: "~/.config/likeness/likeness.skmv"
+      }
+    }
+
+    {
+      id: "vault/entry-without-a-kind-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [file:"likeness.skmv"]
+      err: "the vault entry in station.json does not name its kind"
     }
 
     {

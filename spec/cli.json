@@ -1410,6 +1410,44 @@
           },
           {
             "args": [
+              "list",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "joplin"
+                },
+                {
+                  "account": "spare",
+                  "instance": "joplin$spare"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/two-instances-answer",
+            "out": {
+              "calls": [
+                {
+                  "instance": "joplin",
+                  "method": "GET",
+                  "path": "/notes"
+                },
+                {
+                  "instance": "joplin$spare",
+                  "method": "GET",
+                  "path": "/notes"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/list/two-instances-answer.json"
+            }
+          },
+          {
+            "args": [
               "list"
             ],
             "ctx": {

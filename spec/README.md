@@ -50,31 +50,34 @@ on every write.
 
 ## What is exercised, and what is not
 
-Two of the ten shapes have no data file yet, and therefore have never been run
-against a value. They are named here rather than left to be discovered:
+Every shape is run against data. The table names the data each one meets:
 
 | Shape | Data | Note |
 |---|---|---|
 | `source.aontu` | `sources.aontu` | checked |
 | `capability.aontu` | `caps.aontu` | checked |
 | `error.aontu` | `errors.aontu` | checked |
+| `replica.aontu` | `replica.aontu` | checked |
 | `project.aontu` | `example/likeness.aontu` + a red case | checked |
-| `base.aontu` | — | exercised through the four above |
-| `note.aontu` | **none** | the projected entity model |
-| `envelope.aontu` | **none** | the output shape every port must match byte for byte |
+| `base.aontu` | — | exercised through every shape that includes it |
+| `note.aontu` | every row of a committed `list` or `get` expectation | checked by `make spec-expect` |
+| `envelope.aontu` | every committed JSON expectation | checked by `make spec-expect` |
 | `command.aontu` | `commands.aontu` + a red case | checked |
 | `corpus.aontu` | `unit.aontu`, `cli.aontu` + red cases | checked |
 
 So `make spec-check` proves that the registries, the command table, both corpora
-and one example project file are internally consistent. It does not yet say
-anything about the note model or the envelope, the two shapes left. Each gets a
-data file as the stage that needs it lands, and until then this table is the
-honest statement of coverage.
+and one example project file are internally consistent, and `make spec-expect`
+proves that every committed output is an envelope and every note in one is a
+note. The expectations are stripped of `port` and `meta.elapsed_ms` before the
+byte comparison, so `spec-expect` puts both back before vetting. Only the note
+type is exercised: no command answers a space, tag, link, attachment or comment
+yet.
 
 ## Check it
 
 ```sh
 make spec-check     # every data file against its shape, and the red cases stay red
+make spec-expect    # every committed expectation against the envelope and note shapes
 make spec-agree     # the capability matrix against the SDKs it claims to reach
 make spec           # both, plus formatting
 ```

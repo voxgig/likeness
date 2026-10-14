@@ -1672,6 +1672,31 @@
           },
           {
             "fn": "vaultEntry",
+            "id": "vault/from-home-past-a-doubled-slash",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "~//v.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/v.skmv",
+              "key": "master",
+              "shown": "~/v.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
             "id": "vault/outside-home-is-shown-whole",
             "in": {
               "station": {
@@ -1859,6 +1884,46 @@
                   "default": {
                     "secrets": {
                       "providers": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/null-chain-is-no-chain",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": null
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/likeness.skmv",
+              "key": "master",
+              "shown": "~/.config/likeness/likeness.skmv"
+            }
+          },
+          {
+            "err": "the vault entry in station.json does not name its kind",
+            "fn": "vaultEntry",
+            "id": "vault/entry-without-a-kind-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "likeness.skmv"
+                        }
+                      ]
                     }
                   }
                 }

@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync } from 'node:fs'
-import { dirname, isAbsolute, resolve } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { createvault, openvault, type MiniVault, type VaultKeyInfo } from '@voxgig/sekreto/plugins/minivault'
 
 import { LikenessError } from './errors.js'
@@ -49,7 +49,7 @@ export function shown (path: string, home: string): string {
 }
 
 function located (file: string, home: string, dir: string): string {
-  if (file.startsWith('~/')) return resolve(home, file.slice(2))
+  if (file.startsWith('~/')) return resolve(join(home, file.slice(2)))
   return isAbsolute(file) ? resolve(file) : resolve(dir, file)
 }
 
@@ -65,11 +65,14 @@ export function vaultEntry (
     chain(profiles.default)
 
   let entry: Record<string, unknown> = { kind: 'minivault' }
-  if (undefined !== providers) {
+  if (undefined !== providers && null !== providers) {
     if (!Array.isArray(providers) || 1 !== providers.length) {
       throw refused('station.json\'s secrets.providers must name one store, the vault')
     }
     const only = providers[0]
+    if (isMap(only) && !Object.hasOwn(only, 'kind')) {
+      throw refused('the vault entry in station.json does not name its kind')
+    }
     const kind = isMap(only) ? only.kind : only
     if (!isMap(only) || 'minivault' !== kind) {
       throw refused('likeness reads secrets from its vault alone, and station.json names the store "' +
