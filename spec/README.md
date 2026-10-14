@@ -24,6 +24,12 @@ spec/
     likeness-broken.aontu   a deliberately invalid one; CI asserts it FAILS
 ```
 
+`make spec-build` compiles the data files to `spec/*.json`. It also writes
+`errors.json` and `caps.json` into `typescript/src/spec/` and `go/spec/`, where
+each port's build embeds them, so an installed port reads no specification file
+from disk and needs no checkout. `make spec-fresh` fails if any copy is stale;
+none of them is edited by hand.
+
 ## What is exercised, and what is not
 
 Four of the ten shapes have no data file yet, and therefore have never been run

@@ -10,7 +10,8 @@ import (
 	"testing"
 )
 
-// Root is the repository root, found the same way the registry is found.
+// Root is the repository root: the directory holding the compiled corpora,
+// which the embedded copies under go/spec/ do not include.
 func Root(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()
@@ -18,7 +19,7 @@ func Root(t *testing.T) string {
 		t.Fatal(err)
 	}
 	for i := 0; i < 8; i++ {
-		if _, err := os.Stat(filepath.Join(dir, "spec", "errors.json")); nil == err {
+		if _, err := os.Stat(filepath.Join(dir, "spec", "cli.json")); nil == err {
 			return dir
 		}
 		up := filepath.Dir(dir)

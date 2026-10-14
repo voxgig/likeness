@@ -36,6 +36,7 @@ surprises you, and before changing the thing you assume produced it.
 | `make spec-check` | a data file that violates its shape — with a path, an expected, an actual, and both source lines |
 | `make spec-check` red cases | a gate that has stopped gating. `spec/example/likeness-broken.aontu` **must fail**; if it passes, the build fails |
 | `make spec-agree` | an empty or misspelled registry root, a capability row that does not match the registry, and a source no port can reach. With `LIKENESS_SDK_ROOT` set, also the registry against the real SDK models |
+| `make spec-fresh` | a compiled JSON file — under `spec/`, or an embedded copy under `typescript/src/spec/` or `go/spec/` — that no longer matches its `.aontu` source |
 | `make spec-fmt` | formatting drift, so a diff is about meaning |
 | `make spec-hash` | a pin per schema file, for the AGENTS.md stanza and for release notes |
 
