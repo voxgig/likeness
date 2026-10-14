@@ -1,36 +1,38 @@
 @"./base.aontu"
-@"./note.aontu"
 
-FlagType: hide("boolean"|"string"|"integer"|"path"|"selector"|"ref")
+# A value is checked against its declared type and never coerced. A selector
+# or ref is checked by its own parser, and keeps that parser's error code.
+ArgType: hide("boolean"|"string"|"name"|"integer"|"path"|"selector"|"ref"|"instance")
 
 Flag: type(close({
-  name: $.Ident
-  type: $.FlagType
+  type: $.ArgType
   short: string
-  default?: string
-  # A flag an agent may never set. The human-decision floors are refusals in
-  # the code, and this marks the same ground in the data so the MCP tool
-  # descriptions and `describe` cannot drift from them.
-  human_only: boolean
+  # The value's placeholder in help: `N` in `--limit N`.
+  value?: string
+  repeat?: boolean
+  min?: integer
+  max?: integer
+}))
+
+Arg: type(close({
+  name: $.Ident
+  type: $.ArgType
+  required: boolean
+  # Only the last positional may repeat; it takes every remaining argument.
+  repeat?: boolean
+  short: string
 }))
 
 Command: type(close({
-  name: $.Ident
   short: string
-
-  op: $.OpKind|false
-
+  # A declared command whose behaviour has not landed reads only the global
+  # flags, then answers unsupported-capability.
+  ready: boolean
   writes: boolean
-
-  # Whether it is exposed as a tool to an agent. Hard delete is absent from the
-  # tool list AND refused on the command line in agent mode, because excluding
-  # a tool does not cover the path where an agent simply types the command.
-  agent: boolean
-
-  arg: [&: close({ name:$.Ident type:$.FlagType required:boolean })]
+  arg: [&: $.Arg]
   flag: { &: $.Flag }
-
-  exits: [&: $.Exit]
+  exits: [&: $.Code]
 }))
 
+global: { &: $.Flag }
 command: { &: $.Command }

@@ -76,17 +76,30 @@ function probePath (env: Record<string, string>): { path: string, port: string, 
   return rows
 }
 
-// `--config PATH` and `--config=PATH` are one flag, taken out before the
-// command's own argv is parsed.
+// `--config PATH` or `--config=PATH`, taken out before the command runs. Only a
+// single well-formed one after the command and before `--` is taken; anything
+// else is left in place for the grammar to refuse.
 export function takeConfigOption (argv: string[]): { rest: string[], value?: string } {
-  const rest: string[] = []
-  let value: string | undefined
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--config') { value = argv[++i]; continue }
-    if (argv[i].startsWith('--config=')) { value = argv[i].slice('--config='.length); continue }
-    rest.push(argv[i])
+  const found: { at: number, width: number, value: string }[] = []
+  let bad = false
+  for (let i = 1; i < argv.length; i++) {
+    const a = argv[i]
+    if ('--' === a) break
+    if ('--config' === a) {
+      const next = argv[i + 1]
+      if (undefined === next || (next.startsWith('-') && '-' !== next)) bad = true
+      else found.push({ at: i, width: 2, value: next })
+      i++
+    }
+    else if (a.startsWith('--config=')) {
+      const value = a.slice('--config='.length)
+      if ('' === value) bad = true
+      else found.push({ at: i, width: 1, value })
+    }
   }
-  return undefined === value ? { rest } : { rest, value }
+  if (bad || 1 !== found.length) return { rest: argv.slice() }
+  const { at, width, value } = found[0]
+  return { rest: [...argv.slice(0, at), ...argv.slice(at + width)], value }
 }
 
 export async function main (argv: string[]): Promise<number> {

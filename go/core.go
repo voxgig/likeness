@@ -1,7 +1,7 @@
 package likeness
 
 import (
-	"regexp"
+	"errors"
 	"sort"
 	"strconv"
 	"strings"
@@ -10,8 +10,6 @@ import (
 	joplin "github.com/voxgig-sdk/joplin-sdk/go"
 	"github.com/voxgig/station/go/station"
 )
-
-var limitRe = regexp.MustCompile(`^[1-9][0-9]{0,8}$`)
 
 // Connection is one declared station instance and the account it belongs to.
 type Connection struct {
@@ -62,57 +60,28 @@ type flags struct {
 	source        []string
 }
 
-func parseFlags(args []string) (flags, []string, error) {
+func flagsOf(p Parsed) flags {
 	f := flags{}
-	rest := []string{}
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch a {
-		case "--json":
-			f.json = true
-		case "--raw":
-			f.raw = true
-		case "--strict":
-			f.strict = true
-		case "--deterministic":
-			f.deterministic = true
-		case "--limit":
-			i++
-			raw := ""
-			if i < len(args) {
-				raw = args[i]
-			}
-			// The declared integer syntax, never a host parser: those take hex,
-			// exponents and decimals, each port's a different set.
-			if !limitRe.MatchString(raw) {
-				return f, rest, &LikenessError{
-					Code:   "invalid-selector",
-					Msg:    "--limit needs a whole number from 1 to 999999999, not \"" + raw + "\"",
-					Remedy: "try `--limit 20`",
-				}
-			}
-			n, _ := strconv.Atoi(raw)
-			f.limit, f.hasLimit = n, true
-		case "--sort":
-			i++
-			if i < len(args) {
-				f.sort = args[i]
-			}
-		case "--instance":
-			i++
-			if i < len(args) {
-				f.instance = append(f.instance, args[i])
-			}
-		case "--source":
-			i++
-			if i < len(args) {
-				f.source = append(f.source, args[i])
-			}
-		default:
-			rest = append(rest, a)
-		}
+	f.json, _ = p.Flags["json"].(bool)
+	f.raw, _ = p.Flags["raw"].(bool)
+	f.strict, _ = p.Flags["strict"].(bool)
+	f.deterministic, _ = p.Flags["deterministic"].(bool)
+	if n, ok := p.Flags["limit"].(int64); ok {
+		f.limit, f.hasLimit = int(n), true
 	}
-	return f, rest, nil
+	f.sort, _ = p.Flags["sort"].(string)
+	for _, v := range asList(p.Flags["instance"]) {
+		f.instance = append(f.instance, v.(string))
+	}
+	for _, v := range asList(p.Flags["source"]) {
+		f.source = append(f.source, v.(string))
+	}
+	return f
+}
+
+func asList(v any) []any {
+	list, _ := v.([]any)
+	return list
 }
 
 type envelope struct {
@@ -408,8 +377,8 @@ func cmdList(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 	clockMs, _ := parseRfc3339(c.Clock)
 
 	var filter *Node
-	if 0 < len(rest) && "" != rest[0] {
-		n, err := ParseSelector(rest[0])
+	if selector := strings.Join(rest, " "); "" != selector {
+		n, err := ParseSelector(selector)
 		if nil != err {
 			return nil, err
 		}
@@ -499,9 +468,6 @@ func cmdList(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 }
 
 func cmdGet(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
-	if 0 == len(rest) {
-		return nil, &LikenessError{"invalid-ref", "get needs a ref", "try `likeness get plan:CORE-412`", nil}
-	}
 	out := []Note{}
 	for _, ref := range rest {
 		idx := strings.Index(ref, ":")
@@ -652,42 +618,25 @@ func cmdWhich(c Ctx) *envelope {
 	return newEnvelope([]string{"which"}, code, rows, meta{count: len(rows)}, nil)
 }
 
-func cmdHelp() *envelope {
-	commands := []any{
-		map[string]any{"command": "list", "takes": "[selector]", "does": "list notes across the configured sources"},
-		map[string]any{"command": "get", "takes": "<ref>...", "does": "fetch one note by <instance>:<id>"},
-		map[string]any{"command": "doctor", "takes": "", "does": "check every configured connection"},
-		map[string]any{"command": "version", "takes": "", "does": "this port and its version"},
-		map[string]any{"command": "which", "takes": "", "does": "every likeness on PATH"},
-		map[string]any{"command": "help", "takes": "", "does": "this"},
+// Help text is rendered from the command table at build time; JSON gets the rows.
+func cmdHelp(args []string) (*envelope, string, error) {
+	loadTable()
+	name := ""
+	if 0 < len(args) {
+		name = args[0]
 	}
-	for _, name := range StubNames() {
-		commands = append(commands, map[string]any{
-			"command": name, "takes": "", "does": stubs[name] + " (not implemented yet)",
-		})
+	text, ok := help.Text[name]
+	if !ok {
+		return nil, "", &LikenessError{Code: "invalid-argument", Msg: "no such command: " + name,
+			Remedy: "run `likeness help` for the command list"}
 	}
-	return newEnvelope([]string{"help"}, "ok", commands, meta{count: len(commands)}, nil)
-}
-
-// stubs exist and say they do not work yet, so that neither this nor packaging
-// is a surprise at the stage that needs it.
-var stubs = map[string]string{
-	"describe": "the machine-readable surface document",
-	"mcp":      "the tool-protocol server",
-	"project":  "project files and composition",
-	"search":   "cross-source search",
-	"caps":     "the capability matrix, printed",
-	"sources":  "connection management",
-}
-
-// StubNames lists them, for the packaging check and for `--help`.
-func StubNames() []string {
-	out := make([]string, 0, len(stubs))
-	for k := range stubs {
-		out = append(out, k)
+	rows := []any{}
+	for _, r := range help.Rows {
+		if "" == name || r.Command == name {
+			rows = append(rows, map[string]any{"command": r.Command, "takes": r.Takes, "does": r.Does})
+		}
 	}
-	sort.Strings(out)
-	return out
+	return newEnvelope([]string{"help"}, "ok", rows, meta{count: len(rows)}, nil), text, nil
 }
 
 // -- the entry point --------------------------------------------------------
@@ -695,32 +644,27 @@ func StubNames() []string {
 // Run executes one whole command and returns everything it produced.
 func Run(c Ctx) Result {
 	started := time.Now()
-	name := ""
-	var args []string
-	if 0 < len(c.Argv) {
-		name, args = c.Argv[0], c.Argv[1:]
-	}
-	sess, cerr := openSession(c)
-	c.sess, c.conns = sess, sess.conns
-	calls := sess.calls
-	f, rest, ferr := parseFlags(args)
-	if nil != cerr {
-		ferr = cerr
-	}
-
+	calls := NewCalls(nil)
+	var f flags
 	var env *envelope
-	if nil != ferr {
-		// A bad flag is reported through the envelope too. `f` carries whatever
-		// was parsed before the failure, which is enough to know whether the
-		// caller asked for JSON.
-		f.json = contains(args, "--json")
-		f.deterministic = contains(args, "--deterministic")
-		env = errEnvelope(name, ferr, calls)
+	text := ""
+
+	// The grammar decides first: a refused argument runs nothing at all.
+	parsed, perr := ParseArgv(c.Argv)
+	if nil != perr {
+		head := ""
+		if 0 < len(c.Argv) {
+			head = c.Argv[0]
+		}
+		f.json = contains(c.Argv, "--json")
+		f.deterministic = contains(c.Argv, "--deterministic")
+		env = errEnvelope(head, perr, calls)
 	} else {
+		f = flagsOf(parsed)
 		var err error
-		env, err = dispatch(c, f, rest, calls, name)
+		env, text, calls, err = dispatch(c, f, parsed)
 		if nil != err {
-			env = errEnvelope(name, err, calls)
+			env = errEnvelope(parsed.Command, err, calls)
 		}
 	}
 
@@ -742,6 +686,9 @@ func Run(c Ctx) Result {
 		// there is no envelope it could print instead that would be true.
 		panic(serr)
 	}
+	if "" != text && !f.json {
+		stdout = text
+	}
 	stderr := ""
 	if !f.json {
 		stderr = narrate(env)
@@ -749,31 +696,41 @@ func Run(c Ctx) Result {
 	return Result{Exit: ExitFor(env.code()), Stdout: stdout, Stderr: stderr, Calls: calls.All()}
 }
 
-func dispatch(c Ctx, f flags, rest []string, calls *Calls, name string) (*envelope, error) {
-	switch {
-	case "" == name:
-		return nil, &LikenessError{"invalid-selector", "no command given",
-			"try `likeness list`, or `likeness help` for the command list", nil}
-	case "--help" == name || "-h" == name || "help" == name:
-		return cmdHelp(), nil
-	case "list" == name:
-		return cmdList(c, f, rest, calls)
-	case "get" == name:
-		return cmdGet(c, f, rest, calls)
-	case "doctor" == name:
-		return cmdDoctor(c, f, calls)
-	case "version" == name:
-		return cmdVersion(), nil
-	case "which" == name:
-		return cmdWhich(c), nil
-	}
-	if what, ok := stubs[name]; ok {
-		return nil, &LikenessError{"unsupported-capability",
-			"`" + name + "` is not implemented yet - " + what,
+func dispatch(c Ctx, f flags, p Parsed) (*envelope, string, *Calls, error) {
+	calls := NewCalls(nil)
+	if cmd, _ := commandDef(p.Command); !cmd.Ready {
+		return nil, "", calls, &LikenessError{"unsupported-capability",
+			"`" + p.Command + "` is not implemented yet - " + cmd.Short,
 			"it arrives in a later stage; run `likeness help` for what works now", nil}
 	}
-	return nil, &LikenessError{"invalid-selector", "no such command: " + name,
-		"run `likeness help` for the command list", nil}
+	switch p.Command {
+	case "help":
+		env, text, err := cmdHelp(p.Args)
+		return env, text, calls, err
+	case "version":
+		return cmdVersion(), "", calls, nil
+	case "which":
+		return cmdWhich(c), "", calls, nil
+	}
+
+	sess, err := openSession(c)
+	calls = sess.calls
+	if nil != err {
+		return nil, "", calls, err
+	}
+	c.sess, c.conns = sess, sess.conns
+	var env *envelope
+	switch p.Command {
+	case "list":
+		env, err = cmdList(c, f, p.Args, calls)
+	case "get":
+		env, err = cmdGet(c, f, p.Args, calls)
+	case "doctor":
+		env, err = cmdDoctor(c, f, calls)
+	default:
+		err = errors.New("declared ready and not dispatched: " + p.Command)
+	}
+	return env, "", calls, err
 }
 
 func errEnvelope(name string, err error, calls *Calls) *envelope {

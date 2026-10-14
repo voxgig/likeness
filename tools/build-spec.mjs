@@ -29,6 +29,8 @@ const SOURCES = [
   // in aontu, checked against spec/def/corpus.aontu, and compiled to the JSON
   // that each port's harness runs. A port reads the JSON; nobody writes it.
   'unit.aontu', 'cli.aontu',
+  // The command surface: every port's parser runs on its compiled form.
+  'commands.aontu',
 ]
 
 // The files a port reads at RUN time are also written into each port, where
@@ -37,11 +39,34 @@ const SOURCES = [
 const EMBED = {
   'errors.aontu': ['typescript/src/spec/errors.json', 'go/spec/errors.json'],
   'caps.aontu': ['typescript/src/spec/caps.json', 'go/spec/caps.json'],
+  'commands.aontu': ['typescript/src/spec/commands.json', 'go/spec/commands.json'],
 }
+
+// Rendered from commands.aontu here, once, and printed by `help` in every port
+// (SPEC 13.1 rule 9), so help text is a corpus entry rather than five drafts.
+const HELP = ['spec/help.json', 'typescript/src/spec/help.json', 'go/spec/help.json']
 
 const check = process.argv.includes('--check')
 let stale = 0
 let wrote = 0
+const compiled = {}
+
+function emit (dst, text, src) {
+  if (check) {
+    const have = existsSync(dst) ? readFileSync(dst, 'utf8') : ''
+    if (have !== text) {
+      console.error(`  STALE   ${dst} does not match ${src}`)
+      stale++
+    }
+    else console.log(`  fresh   ${dst}`)
+  }
+  else {
+    mkdirSync(dirname(dst), { recursive: true })
+    writeFileSync(dst, text)
+    console.log(`  wrote   ${dst}`)
+    wrote++
+  }
+}
 
 for (const name of SOURCES) {
   const src = join('spec', name)
@@ -65,24 +90,103 @@ for (const name of SOURCES) {
   // spacing: sorted keys and exactly one trailing newline, so the committed
   // bytes are stable whatever the compiler does with whitespace.
   const value = JSON.parse(out)
+  compiled[name] = value
   const text = JSON.stringify(sortDeep(value), null, 2) + '\n'
 
-  for (const dst of dsts) {
-    if (check) {
-      const have = existsSync(dst) ? readFileSync(dst, 'utf8') : ''
-      if (have !== text) {
-        console.error(`  STALE   ${dst} does not match ${src}`)
-        stale++
-      }
-      else console.log(`  fresh   ${dst}`)
+  for (const dst of dsts) emit(dst, text, src)
+}
+
+const faults = grammarFaults(compiled['commands.aontu'], compiled['errors.aontu'])
+if (0 < faults.length) {
+  for (const f of faults) console.error(`  INVALID spec/commands.aontu: ${f}`)
+  process.exit(2)
+}
+const help = JSON.stringify(sortDeep(renderHelp(compiled['commands.aontu'])), null, 2) + '\n'
+for (const dst of HELP) emit(dst, help, 'spec/commands.aontu')
+
+// What the shape cannot say: a command may not redeclare a global flag (rule
+// 8), only the last positional repeats, a valued flag names its value, a range
+// is an integer's, and every exit is a registered code.
+function grammarFaults (table, errors) {
+  const out = []
+  for (const [name, cmd] of Object.entries(table.command)) {
+    for (const flag of Object.keys(cmd.flag)) {
+      if (flag in table.global) out.push(`${name} redeclares the global flag --${flag}`)
     }
-    else {
-      mkdirSync(dirname(dst), { recursive: true })
-      writeFileSync(dst, text)
-      console.log(`  wrote   ${dst}`)
-      wrote++
+    cmd.arg.forEach((a, i) => {
+      if (a.repeat && i < cmd.arg.length - 1) out.push(`${name}: only the last positional may repeat`)
+    })
+    for (const [flag, f] of Object.entries({ ...table.global, ...cmd.flag })) {
+      if ('boolean' !== f.type && undefined === f.value) out.push(`--${flag} takes a value and names none`)
+      if ('integer' !== f.type && (undefined !== f.min || undefined !== f.max)) {
+        out.push(`--${flag} has a range but is not an integer`)
+      }
+    }
+    for (const code of cmd.exits) {
+      if (undefined === errors.error[code]) out.push(`${name} exits with "${code}", which is not a registered code`)
     }
   }
+  return out
+}
+
+function flagUsage (name, f) {
+  const text = 'boolean' === f.type ? `--${name}` : `--${name} ${f.value}`
+  return f.repeat ? `${text}...` : text
+}
+
+function argUsage (a) {
+  const text = `<${a.name}>` + (a.repeat ? '...' : '')
+  return a.required ? text : `[${text}]`
+}
+
+function range (f) {
+  if (undefined !== f.min && undefined !== f.max) return `, ${f.min} to ${f.max}`
+  if (undefined !== f.min) return `, at least ${f.min}`
+  if (undefined !== f.max) return `, at most ${f.max}`
+  return ''
+}
+
+function columns (rows) {
+  const width = Math.max(...rows.map(r => r[0].length))
+  return rows.map(([l, r]) => `  ${l.padEnd(width)}  ${r}`.trimEnd()).join('\n')
+}
+
+function renderHelp (table) {
+  const names = Object.keys(table.command).sort()
+  const globals = Object.keys(table.global).sort()
+    .map(n => flagUsage(n, table.global[n])).join(', ')
+  const text = {}
+  const rows = []
+
+  for (const name of names) {
+    const cmd = table.command[name]
+    const flags = Object.keys(cmd.flag).sort()
+    const takes = cmd.arg.map(argUsage).join(' ')
+    const usage = ['likeness', name, takes, ...flags.map(f => `[${flagUsage(f, cmd.flag[f])}]`)]
+      .filter(Boolean).join(' ')
+    const lines = [
+      ...cmd.arg.map(a => [`<${a.name}>` + (a.repeat ? '...' : ''), a.short]),
+      ...flags.map(f => [flagUsage(f, cmd.flag[f]), cmd.flag[f].short + range(cmd.flag[f])]),
+    ]
+    text[name] = [
+      usage, '', cmd.short + (cmd.ready ? '' : '\nnot implemented yet'),
+      ...(0 < lines.length ? ['', columns(lines)] : []),
+      '', `global flags: ${globals}`, '',
+    ].join('\n')
+    rows.push({ command: name, takes, does: cmd.short + (cmd.ready ? '' : ' (not implemented yet)') })
+  }
+
+  const ready = names.filter(n => table.command[n].ready)
+  const pending = names.filter(n => !table.command[n].ready)
+  text[''] = [
+    'likeness <command> [arguments] [flags]', '',
+    columns(ready.map(n => [n, table.command[n].short])), '',
+    `declared, not implemented yet: ${pending.join(', ')}`, '',
+    `global flags: ${globals}`,
+    'run `likeness help <command>` for one command', '',
+  ].join('\n')
+
+  return { text, rows }
 }
 
 function sortDeep (v) {

@@ -1,4 +1,191 @@
 primary: cli: {
+  args: set: [
+    {
+      id: "args/dash-selector-refused-before-the-network"
+      # A positional that begins with `-` is a flag unless it follows `--`.
+      args: ["list" "-title:limit title:e" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/args/dash-selector.json" calls: [] }
+    }
+
+    {
+      id: "args/undeclared-flag-refused-before-the-network"
+      # An undeclared flag was once read as a selector term, hiding rows.
+      args: ["list" "--bogus" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/args/undeclared-flag.json" calls: [] }
+    }
+
+    {
+      id: "args/flag-before-the-command"
+      args: ["--json" "list"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/args/flag-before-the-command.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "args/limit-equals-form"
+      # `--flag=value` and `--flag value` are one form.
+      args: ["list" "--limit=2" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/limit-truncates.json"
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "args/selector-terms-joined"
+      # The selector's terms, given as separate arguments, are joined with spaces.
+      args: ["list" "title:retention" "title:policy" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/args/selector-terms-joined.json"
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "args/surplus-positional"
+      args: ["version" "extra" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/args/surplus-positional.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "args/given-twice"
+      args: ["list" "--limit" "2" "--limit" "3" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/args/given-twice.json" calls: [] }
+    }
+
+    {
+      id: "args/stub-reads-only-its-globals"
+      args: ["search" "anything" "--bogus" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/args/stub-reads-only-its-globals.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "args/help-overview"
+      # Help is rendered from the command table at build time (SPEC 13.1 rule 9).
+      args: ["help"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/args/help-overview.txt" calls: [] }
+    }
+
+    {
+      id: "args/help-one-command"
+      args: ["help" "list"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/args/help-list.txt" calls: [] }
+    }
+
+    {
+      id: "args/help-one-command-json"
+      args: ["help" "get" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/args/help-get.json" calls: [] }
+    }
+
+    {
+      id: "args/help-unknown-command"
+      args: ["help" "nosuch" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/args/help-unknown-command.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "args/short-help-flag"
+      args: ["-h" "list"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/args/help-list.txt" calls: [] }
+    }
+  ]
+
   list: set: [
     {
       id: "list/all"
@@ -510,7 +697,8 @@ primary: cli: {
 
     {
       id: "list/negation-before-a-term"
-      args: ["list" "-title:limit title:e" "--json"]
+      # A selector that begins with `-` follows `--` (SPEC 13.1 rule 4).
+      args: ["list" "--json" "--" "-title:limit title:e"]
       ctx: {
         fixture: "joplin"
         connections: [{ instance:"joplin" account:"local" }]
@@ -897,7 +1085,7 @@ primary: cli: {
       out: {
         exit: 3
         stdout: "spec/expect/meta/no-command.txt"
-        stderr: "error: invalid-selector\n  no command given\n  remedy  try `likeness list`, or `likeness help` for the command list\n"
+        stderr: "error: invalid-argument\n  no command given\n  remedy  try `likeness list`, or `likeness help` for the command list\n"
         calls: []
       }
     }

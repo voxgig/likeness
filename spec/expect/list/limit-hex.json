@@ -1,1 +1,1 @@
-{"cmd":["list"],"code":"invalid-selector","data":null,"error":{"message":"--limit needs a whole number from 1 to 999999999, not \"0x10\"","remedy":"try `--limit 20`"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}
+{"cmd":["list"],"code":"invalid-argument","data":null,"error":{"message":"--limit takes an integer from 1 to 999999999, not \"0x10\"","remedy":"run `likeness help list` for its arguments"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

@@ -35,6 +35,13 @@
       "partial": true,
       "retryable": true
     },
+    "invalid-argument": {
+      "code": "invalid-argument",
+      "exit": 3,
+      "means": "the arguments do not satisfy the command's declared grammar",
+      "partial": false,
+      "retryable": false
+    },
     "invalid-project": {
       "code": "invalid-project",
       "exit": 3,

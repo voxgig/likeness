@@ -1,0 +1,314 @@
+{
+  "command": {
+    "archive": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "archive notes, reversibly",
+      "writes": true
+    },
+    "caps": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "the capability matrix",
+      "writes": false
+    },
+    "describe": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "the whole surface, for agents",
+      "writes": false
+    },
+    "doctor": {
+      "arg": [],
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "no-such-source",
+        "unsupported-capability",
+        "source-unavailable",
+        "auth-failed",
+        "rate-limited"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "check every selected connection",
+      "writes": false
+    },
+    "edit": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "change a note",
+      "writes": true
+    },
+    "get": {
+      "arg": [
+        {
+          "name": "ref",
+          "repeat": true,
+          "required": true,
+          "short": "<instance>:<id>",
+          "type": "ref"
+        }
+      ],
+      "exits": [
+        "ok",
+        "not-found",
+        "invalid-argument",
+        "invalid-ref",
+        "invalid-project",
+        "no-such-source",
+        "unsupported-capability",
+        "source-unavailable",
+        "auth-failed",
+        "rate-limited"
+      ],
+      "flag": {
+        "raw": {
+          "short": "carry the source's own record",
+          "type": "boolean"
+        }
+      },
+      "ready": true,
+      "short": "notes by ref",
+      "writes": false
+    },
+    "help": {
+      "arg": [
+        {
+          "name": "command",
+          "required": false,
+          "short": "the command to describe",
+          "type": "name"
+        }
+      ],
+      "exits": [
+        "ok",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "the command list, or one command's help",
+      "writes": false
+    },
+    "link": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "link two notes",
+      "writes": true
+    },
+    "list": {
+      "arg": [
+        {
+          "name": "selector",
+          "repeat": true,
+          "required": false,
+          "short": "the selector's terms, joined with spaces",
+          "type": "selector"
+        }
+      ],
+      "exits": [
+        "ok",
+        "no-match",
+        "partial",
+        "fanout-halted",
+        "invalid-argument",
+        "invalid-selector",
+        "invalid-project",
+        "no-such-source",
+        "unsupported-capability",
+        "source-unavailable",
+        "auth-failed",
+        "rate-limited"
+      ],
+      "flag": {
+        "limit": {
+          "max": 999999999,
+          "min": 1,
+          "short": "at most N notes",
+          "type": "integer",
+          "value": "N"
+        },
+        "raw": {
+          "short": "carry each source's own record",
+          "type": "boolean"
+        },
+        "sort": {
+          "short": "order the notes by KEY",
+          "type": "name",
+          "value": "KEY"
+        }
+      },
+      "ready": true,
+      "short": "notes matching a selector, across the selected connections",
+      "writes": false
+    },
+    "move": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "move notes to another space",
+      "writes": true
+    },
+    "new": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "create a note",
+      "writes": true
+    },
+    "open": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "open a note in its own application",
+      "writes": false
+    },
+    "rm": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "delete one note, irreversibly",
+      "writes": true
+    },
+    "search": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "cross-source search",
+      "writes": false
+    },
+    "secrets": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "the vault of source tokens",
+      "writes": true
+    },
+    "sources": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "connection management",
+      "writes": true
+    },
+    "tag": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "add or remove tags",
+      "writes": true
+    },
+    "version": {
+      "arg": [],
+      "exits": [
+        "ok",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "this port and its version",
+      "writes": false
+    },
+    "which": {
+      "arg": [],
+      "exits": [
+        "ok",
+        "no-match",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "every likeness on PATH: path, port, version",
+      "writes": false
+    }
+  },
+  "global": {
+    "config": {
+      "short": "read station.json from PATH",
+      "type": "path",
+      "value": "PATH"
+    },
+    "deterministic": {
+      "short": "zero the fields that vary from run to run",
+      "type": "boolean"
+    },
+    "instance": {
+      "repeat": true,
+      "short": "only this connection",
+      "type": "instance",
+      "value": "REF"
+    },
+    "json": {
+      "short": "print the envelope as one line of JSON",
+      "type": "boolean"
+    },
+    "source": {
+      "repeat": true,
+      "short": "only the connections to this API",
+      "type": "name",
+      "value": "API"
+    },
+    "strict": {
+      "short": "stop at the first connection that fails",
+      "type": "boolean"
+    }
+  }
+}

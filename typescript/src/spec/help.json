@@ -1,0 +1,121 @@
+{
+  "rows": [
+    {
+      "command": "archive",
+      "does": "archive notes, reversibly (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "caps",
+      "does": "the capability matrix (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "describe",
+      "does": "the whole surface, for agents (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "doctor",
+      "does": "check every selected connection",
+      "takes": ""
+    },
+    {
+      "command": "edit",
+      "does": "change a note (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "get",
+      "does": "notes by ref",
+      "takes": "<ref>..."
+    },
+    {
+      "command": "help",
+      "does": "the command list, or one command's help",
+      "takes": "[<command>]"
+    },
+    {
+      "command": "link",
+      "does": "link two notes (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "list",
+      "does": "notes matching a selector, across the selected connections",
+      "takes": "[<selector>...]"
+    },
+    {
+      "command": "move",
+      "does": "move notes to another space (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "new",
+      "does": "create a note (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "open",
+      "does": "open a note in its own application (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "rm",
+      "does": "delete one note, irreversibly (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "search",
+      "does": "cross-source search (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "secrets",
+      "does": "the vault of source tokens (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "sources",
+      "does": "connection management (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "tag",
+      "does": "add or remove tags (not implemented yet)",
+      "takes": ""
+    },
+    {
+      "command": "version",
+      "does": "this port and its version",
+      "takes": ""
+    },
+    {
+      "command": "which",
+      "does": "every likeness on PATH: path, port, version",
+      "takes": ""
+    }
+  ],
+  "text": {
+    "": "likeness <command> [arguments] [flags]\n\n  doctor   check every selected connection\n  get      notes by ref\n  help     the command list, or one command's help\n  list     notes matching a selector, across the selected connections\n  version  this port and its version\n  which    every likeness on PATH: path, port, version\n\ndeclared, not implemented yet: archive, caps, describe, edit, link, move, new, open, rm, search, secrets, sources, tag\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\nrun `likeness help <command>` for one command\n",
+    "archive": "likeness archive\n\narchive notes, reversibly\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "caps": "likeness caps\n\nthe capability matrix\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "describe": "likeness describe\n\nthe whole surface, for agents\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "doctor": "likeness doctor\n\ncheck every selected connection\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "edit": "likeness edit\n\nchange a note\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "get": "likeness get <ref>... [--raw]\n\nnotes by ref\n\n  <ref>...  <instance>:<id>\n  --raw     carry the source's own record\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "help": "likeness help [<command>]\n\nthe command list, or one command's help\n\n  <command>  the command to describe\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "link": "likeness link\n\nlink two notes\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "list": "likeness list [<selector>...] [--limit N] [--raw] [--sort KEY]\n\nnotes matching a selector, across the selected connections\n\n  <selector>...  the selector's terms, joined with spaces\n  --limit N      at most N notes, 1 to 999999999\n  --raw          carry each source's own record\n  --sort KEY     order the notes by KEY\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "move": "likeness move\n\nmove notes to another space\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "new": "likeness new\n\ncreate a note\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "open": "likeness open\n\nopen a note in its own application\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "rm": "likeness rm\n\ndelete one note, irreversibly\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "search": "likeness search\n\ncross-source search\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "secrets": "likeness secrets\n\nthe vault of source tokens\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "sources": "likeness sources\n\nconnection management\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "tag": "likeness tag\n\nadd or remove tags\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "version": "likeness version\n\nthis port and its version\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n",
+    "which": "likeness which\n\nevery likeness on PATH: path, port, version\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict\n"
+  }
+}

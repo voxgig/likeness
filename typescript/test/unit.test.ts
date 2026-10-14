@@ -11,6 +11,7 @@ import { foldCase } from '../src/evaluate.js'
 import { project } from '../src/adapter/joplin.js'
 import { takeConfigOption, parseStation, parseAccounts } from '../src/cli.js'
 import { openStation, connectionsOf } from '../src/core.js'
+import { parseArgv } from '../src/args.js'
 import { entries, type UnitEntry } from './harness.js'
 
 type Fn = (input: any) => unknown
@@ -48,6 +49,7 @@ const REGISTRY: Record<string, Fn> = {
   crockfordAlphabet: () => CROCKFORD,
   foldCase: (s) => foldCase(s as string),
   takeConfigOption: (argv) => takeConfigOption(argv as string[]),
+  parseArgv: (argv) => parseArgv(argv as string[]),
   connections: (v) => {
     const { station, likeness } = v as { station: string, likeness: string }
     return connectionsOf(openStation(parseStation(station, 'station.json')),

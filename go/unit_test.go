@@ -71,6 +71,13 @@ func unitRegistry() map[string]unitFn {
 			}
 			return out, nil
 		},
+		"parseArgv": func(t *testing.T, in any) (any, error) {
+			p, err := ParseArgv(strs(in))
+			if nil != err {
+				return nil, err
+			}
+			return map[string]any{"command": p.Command, "flags": p.Flags, "args": strList(p.Args)}, nil
+		},
 		"connections": func(t *testing.T, in any) (any, error) {
 			m := in.(map[string]any)
 			config, err := parseStation(str(m, "station"), "station.json")

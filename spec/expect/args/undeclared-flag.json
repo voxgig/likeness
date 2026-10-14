@@ -1,0 +1,1 @@
+{"cmd":["list"],"code":"invalid-argument","data":null,"error":{"message":"`list` has no flag --bogus","remedy":"run `likeness help list` for its arguments"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

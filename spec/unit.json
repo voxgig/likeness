@@ -1,6 +1,436 @@
 {
   "primary": {
     "unit": {
+      "args": {
+        "set": [
+          {
+            "fn": "parseArgv",
+            "id": "args/flags-anywhere-after-the-command",
+            "in": [
+              "list",
+              "--limit",
+              "2",
+              "--json"
+            ],
+            "out": {
+              "args": [],
+              "command": "list",
+              "flags": {
+                "json": true,
+                "limit": 2
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/equals-form",
+            "in": [
+              "list",
+              "--limit=2"
+            ],
+            "out": {
+              "args": [],
+              "command": "list",
+              "flags": {
+                "limit": 2
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/selector-terms-accumulate",
+            "in": [
+              "list",
+              "title:a",
+              "--json",
+              "tag:b"
+            ],
+            "out": {
+              "args": [
+                "title:a",
+                "tag:b"
+              ],
+              "command": "list",
+              "flags": {
+                "json": true
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/double-dash-ends-flags",
+            "in": [
+              "list",
+              "--json",
+              "--",
+              "-title:x",
+              "--raw"
+            ],
+            "out": {
+              "args": [
+                "-title:x",
+                "--raw"
+              ],
+              "command": "list",
+              "flags": {
+                "json": true
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/negated-boolean",
+            "in": [
+              "list",
+              "--no-raw"
+            ],
+            "out": {
+              "args": [],
+              "command": "list",
+              "flags": {
+                "raw": false
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/repeatable-accumulates-in-order",
+            "in": [
+              "list",
+              "--instance",
+              "joplin$spare",
+              "--instance",
+              "joplin"
+            ],
+            "out": {
+              "args": [],
+              "command": "list",
+              "flags": {
+                "instance": [
+                  "joplin$spare",
+                  "joplin"
+                ]
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/help-flag-first-is-help",
+            "in": [
+              "--help"
+            ],
+            "out": {
+              "args": [],
+              "command": "help",
+              "flags": {}
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/short-help-takes-a-command",
+            "in": [
+              "-h",
+              "list"
+            ],
+            "out": {
+              "args": [
+                "list"
+              ],
+              "command": "help",
+              "flags": {}
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/version-flag-first-is-version",
+            "in": [
+              "--version",
+              "--json"
+            ],
+            "out": {
+              "args": [],
+              "command": "version",
+              "flags": {
+                "json": true
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/a-command-being-built-reads-its-globals",
+            "in": [
+              "search",
+              "anything",
+              "--bogus",
+              "-x",
+              "--json"
+            ],
+            "out": {
+              "args": [],
+              "command": "search",
+              "flags": {
+                "json": true
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/refs-accumulate",
+            "in": [
+              "get",
+              "joplin:a",
+              "joplin:b"
+            ],
+            "out": {
+              "args": [
+                "joplin:a",
+                "joplin:b"
+              ],
+              "command": "get",
+              "flags": {}
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/stdin-dash-is-a-positional",
+            "in": [
+              "list",
+              "-"
+            ],
+            "out": {
+              "args": [
+                "-"
+              ],
+              "command": "list",
+              "flags": {}
+            }
+          },
+          {
+            "err": "no command given",
+            "fn": "parseArgv",
+            "id": "args/no-command",
+            "in": []
+          },
+          {
+            "err": "the command comes first, and --json is a flag",
+            "fn": "parseArgv",
+            "id": "args/flag-before-the-command",
+            "in": [
+              "--json",
+              "list"
+            ]
+          },
+          {
+            "err": "no such command: nosuch",
+            "fn": "parseArgv",
+            "id": "args/unknown-command",
+            "in": [
+              "nosuch"
+            ]
+          },
+          {
+            "err": "`list` has no flag --bogus",
+            "fn": "parseArgv",
+            "id": "args/undeclared-flag",
+            "in": [
+              "list",
+              "--bogus"
+            ]
+          },
+          {
+            "err": "`list` has no flag --constructor",
+            "fn": "parseArgv",
+            "id": "args/prototype-name-is-not-a-flag",
+            "in": [
+              "list",
+              "--constructor"
+            ]
+          },
+          {
+            "err": "`list` has no flag --no-limit",
+            "fn": "parseArgv",
+            "id": "args/negating-a-valued-flag",
+            "in": [
+              "list",
+              "--no-limit"
+            ]
+          },
+          {
+            "err": "-title:x begins with - and is not a flag; a positional that begins with - must follow --",
+            "fn": "parseArgv",
+            "id": "args/dash-positional-must-follow-double-dash",
+            "in": [
+              "list",
+              "-title:x"
+            ]
+          },
+          {
+            "err": "--raw takes no value",
+            "fn": "parseArgv",
+            "id": "args/boolean-takes-no-value",
+            "in": [
+              "list",
+              "--raw=yes"
+            ]
+          },
+          {
+            "err": "--limit needs a value",
+            "fn": "parseArgv",
+            "id": "args/value-missing-at-the-end",
+            "in": [
+              "list",
+              "--limit"
+            ]
+          },
+          {
+            "err": "--limit needs a value",
+            "fn": "parseArgv",
+            "id": "args/value-missing-before-a-flag",
+            "in": [
+              "list",
+              "--limit",
+              "--json"
+            ]
+          },
+          {
+            "err": "--limit takes an integer from 1 to 999999999, not \"2.0\"",
+            "fn": "parseArgv",
+            "id": "args/integer-not-coerced-decimal",
+            "in": [
+              "list",
+              "--limit",
+              "2.0"
+            ]
+          },
+          {
+            "err": "--limit takes an integer from 1 to 999999999, not \"0x2\"",
+            "fn": "parseArgv",
+            "id": "args/integer-not-coerced-hex",
+            "in": [
+              "list",
+              "--limit=0x2"
+            ]
+          },
+          {
+            "err": "--limit takes an integer from 1 to 999999999, not \"0\"",
+            "fn": "parseArgv",
+            "id": "args/integer-below-the-range",
+            "in": [
+              "list",
+              "--limit",
+              "0"
+            ]
+          },
+          {
+            "err": "not \"1000000000\"",
+            "fn": "parseArgv",
+            "id": "args/integer-above-the-range",
+            "in": [
+              "list",
+              "--limit",
+              "1000000000"
+            ]
+          },
+          {
+            "err": "not \"99999999999999999999\"",
+            "fn": "parseArgv",
+            "id": "args/integer-beyond-any-host-number",
+            "in": [
+              "list",
+              "--limit",
+              "99999999999999999999"
+            ]
+          },
+          {
+            "err": "--limit was given twice",
+            "fn": "parseArgv",
+            "id": "args/given-twice",
+            "in": [
+              "list",
+              "--limit",
+              "2",
+              "--limit",
+              "3"
+            ]
+          },
+          {
+            "err": "--json was given twice",
+            "fn": "parseArgv",
+            "id": "args/boolean-given-twice",
+            "in": [
+              "list",
+              "--json",
+              "--no-json"
+            ]
+          },
+          {
+            "err": "--instance takes an instance ref (api or api$tag), not \"Joplin\"",
+            "fn": "parseArgv",
+            "id": "args/instance-is-a-ref",
+            "in": [
+              "list",
+              "--instance",
+              "Joplin"
+            ]
+          },
+          {
+            "err": "--sort takes a name ([a-z][a-z0-9-]*), not \"Title\"",
+            "fn": "parseArgv",
+            "id": "args/name-is-lowercase",
+            "in": [
+              "list",
+              "--sort",
+              "Title"
+            ]
+          },
+          {
+            "err": "--config takes a path, not \"\"",
+            "fn": "parseArgv",
+            "id": "args/empty-path",
+            "in": [
+              "list",
+              "--config="
+            ]
+          },
+          {
+            "err": "`get` needs <ref>",
+            "fn": "parseArgv",
+            "id": "args/required-positional-missing",
+            "in": [
+              "get",
+              "--json"
+            ]
+          },
+          {
+            "err": "`version` does not take the argument \"extra\"",
+            "fn": "parseArgv",
+            "id": "args/surplus-positional",
+            "in": [
+              "version",
+              "extra"
+            ]
+          },
+          {
+            "err": "`help` does not take the argument \"get\"",
+            "fn": "parseArgv",
+            "id": "args/help-takes-one-command",
+            "in": [
+              "help",
+              "list",
+              "get"
+            ]
+          },
+          {
+            "err": "<command> takes a name ([a-z][a-z0-9-]*), not \"LIST\"",
+            "fn": "parseArgv",
+            "id": "args/help-command-is-a-name",
+            "in": [
+              "help",
+              "LIST"
+            ]
+          }
+        ]
+      },
       "config": {
         "set": [
           {
@@ -45,6 +475,88 @@
             "out": {
               "rest": [
                 "list"
+              ]
+            }
+          },
+          {
+            "fn": "takeConfigOption",
+            "id": "config/before-the-command-is-left",
+            "in": [
+              "--config",
+              "/x",
+              "list"
+            ],
+            "out": {
+              "rest": [
+                "--config",
+                "/x",
+                "list"
+              ]
+            }
+          },
+          {
+            "fn": "takeConfigOption",
+            "id": "config/after-double-dash-is-left",
+            "in": [
+              "list",
+              "--",
+              "--config",
+              "/x"
+            ],
+            "out": {
+              "rest": [
+                "list",
+                "--",
+                "--config",
+                "/x"
+              ]
+            }
+          },
+          {
+            "fn": "takeConfigOption",
+            "id": "config/twice-is-left-for-the-grammar",
+            "in": [
+              "list",
+              "--config",
+              "/a",
+              "--config=/b"
+            ],
+            "out": {
+              "rest": [
+                "list",
+                "--config",
+                "/a",
+                "--config=/b"
+              ]
+            }
+          },
+          {
+            "fn": "takeConfigOption",
+            "id": "config/no-value-is-left",
+            "in": [
+              "list",
+              "--config"
+            ],
+            "out": {
+              "rest": [
+                "list",
+                "--config"
+              ]
+            }
+          },
+          {
+            "fn": "takeConfigOption",
+            "id": "config/flag-shaped-value-is-left",
+            "in": [
+              "list",
+              "--config",
+              "--json"
+            ],
+            "out": {
+              "rest": [
+                "list",
+                "--config",
+                "--json"
               ]
             }
           },

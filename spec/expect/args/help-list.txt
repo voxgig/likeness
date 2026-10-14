@@ -1,0 +1,10 @@
+likeness list [<selector>...] [--limit N] [--raw] [--sort KEY]
+
+notes matching a selector, across the selected connections
+
+  <selector>...  the selector's terms, joined with spaces
+  --limit N      at most N notes, 1 to 999999999
+  --raw          carry each source's own record
+  --sort KEY     order the notes by KEY
+
+global flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict

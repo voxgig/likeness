@@ -18,25 +18,38 @@ import (
 
 const configRemedy = "fix the file, or point --config at another"
 
-// takeConfigOption takes `--config PATH` or `--config=PATH` out of argv, one
-// flag either way, before the command's own argv is parsed.
+// takeConfigOption takes `--config PATH` or `--config=PATH` out before the
+// command runs. Only a single well-formed one after the command and before `--`
+// is taken; anything else is left in place for the grammar to refuse.
 func takeConfigOption(argv []string) (rest []string, value string, found bool) {
-	rest = []string{}
-	for i := 0; i < len(argv); i++ {
-		if "--config" == argv[i] {
-			if i+1 < len(argv) {
-				i++
-				value, found = argv[i], true
+	at, width, count, bad := -1, 0, 0, false
+	for i := 1; i < len(argv); i++ {
+		a := argv[i]
+		if "--" == a {
+			break
+		}
+		if "--config" == a {
+			if i+1 >= len(argv) || flagShaped(argv[i+1]) {
+				bad = true
+			} else {
+				at, width, value = i, 2, argv[i+1]
+				count++
 			}
-			continue
+			i++
+		} else if strings.HasPrefix(a, "--config=") {
+			if "" == a[len("--config="):] {
+				bad = true
+			} else {
+				at, width, value = i, 1, a[len("--config="):]
+				count++
+			}
 		}
-		if strings.HasPrefix(argv[i], "--config=") {
-			value, found = argv[i][len("--config="):], true
-			continue
-		}
-		rest = append(rest, argv[i])
 	}
-	return rest, value, found
+	rest = append([]string{}, argv...)
+	if bad || 1 != count {
+		return rest, "", false
+	}
+	return append(append([]string{}, argv[:at]...), argv[at+width:]...), value, true
 }
 
 func probePath(env map[string]string) []map[string]any {

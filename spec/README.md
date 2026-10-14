@@ -19,20 +19,29 @@ spec/
   sources.aontu       DATA. The four SDKs, pinned by revision.
   caps.aontu          DATA. What each source can and cannot do.
   errors.aontu        DATA. Every code likeness can emit.
+  commands.aontu      DATA. The command surface and its argument grammar.
+  unit.aontu          DATA. The unit corpus: pure functions, both ports.
+  cli.aontu           DATA. The transcript corpus: whole commands, both ports.
+  help.json           RENDERED from commands.aontu by `make spec-build`; `help` prints it.
   example/
     likeness.aontu          a valid project file
     likeness-broken.aontu   a deliberately invalid one; CI asserts it FAILS
 ```
 
 `make spec-build` compiles the data files to `spec/*.json`. It also writes
-`errors.json` and `caps.json` into `typescript/src/spec/` and `go/spec/`, where
-each port's build embeds them, so an installed port reads no specification file
-from disk and needs no checkout. `make spec-fresh` fails if any copy is stale;
-none of them is edited by hand.
+`errors.json`, `caps.json`, `commands.json` and `help.json` into
+`typescript/src/spec/` and `go/spec/`, where each port's build embeds them, so an
+installed port reads no specification file from disk and needs no checkout.
+`make spec-fresh` fails if any copy is stale; none of them is edited by hand.
+
+The command table carries rules its shape cannot say, and the build refuses a
+table that breaks them: a command may not redeclare a global flag, only the last
+positional repeats, a valued flag names its value, a range belongs to an integer,
+and every exit is a registered code.
 
 ## What is exercised, and what is not
 
-Four of the ten shapes have no data file yet, and therefore have never been run
+Two of the ten shapes have no data file yet, and therefore have never been run
 against a value. They are named here rather than left to be discovered:
 
 | Shape | Data | Note |
@@ -44,14 +53,14 @@ against a value. They are named here rather than left to be discovered:
 | `base.aontu` | — | exercised through the four above |
 | `note.aontu` | **none** | the projected entity model |
 | `envelope.aontu` | **none** | the output shape every port must match byte for byte |
-| `command.aontu` | **none** | the CLI surface `describe` is generated from |
-| `corpus.aontu` | **none** | both parity corpora |
+| `command.aontu` | `commands.aontu` + a red case | checked |
+| `corpus.aontu` | `unit.aontu`, `cli.aontu` + red cases | checked |
 
-So `make spec-check` currently proves that three registries and one example
-project file are internally consistent. It does not yet say anything about the
-four shapes the project's central claims rest on. Each gets a data file as the
-stage that needs it lands, and until then this table is the honest statement of
-coverage.
+So `make spec-check` proves that the registries, the command table, both corpora
+and one example project file are internally consistent. It does not yet say
+anything about the note model or the envelope, the two shapes left. Each gets a
+data file as the stage that needs it lands, and until then this table is the
+honest statement of coverage.
 
 ## Check it
 

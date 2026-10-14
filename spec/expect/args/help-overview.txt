@@ -1,0 +1,13 @@
+likeness <command> [arguments] [flags]
+
+  doctor   check every selected connection
+  get      notes by ref
+  help     the command list, or one command's help
+  list     notes matching a selector, across the selected connections
+  version  this port and its version
+  which    every likeness on PATH: path, port, version
+
+declared, not implemented yet: archive, caps, describe, edit, link, move, new, open, rm, search, secrets, sources, tag
+
+global flags: --config PATH, --deterministic, --instance REF..., --json, --source API..., --strict
+run `likeness help <command>` for one command

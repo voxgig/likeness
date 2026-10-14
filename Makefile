@@ -19,7 +19,8 @@ VET_PAIRS := \
 	$(DEF)/project.aontu:$(SPEC)/example/likeness.aontu \
 	$(DEF)/replica.aontu:$(SPEC)/replica.aontu \
 	$(DEF)/corpus.aontu:$(SPEC)/unit.aontu \
-	$(DEF)/corpus.aontu:$(SPEC)/cli.aontu
+	$(DEF)/corpus.aontu:$(SPEC)/cli.aontu \
+	$(DEF)/command.aontu:$(SPEC)/commands.aontu
 
 # Files that MUST fail to vet, AND MUST FAIL FOR THE RIGHT REASON. `aontu vet`
 # exits 1 for a contradiction, 2 for a usage error and 3 for an incomplete
@@ -30,7 +31,8 @@ VET_PAIRS := \
 VET_MUSTFAIL := \
 	$(DEF)/project.aontu:$(SPEC)/example/likeness-broken.aontu \
 	$(DEF)/corpus.aontu:$(SPEC)/example/unit-broken.aontu \
-	$(DEF)/corpus.aontu:$(SPEC)/example/cli-broken.aontu
+	$(DEF)/corpus.aontu:$(SPEC)/example/cli-broken.aontu \
+	$(DEF)/command.aontu:$(SPEC)/example/commands-broken.aontu
 
 
 .PHONY: help

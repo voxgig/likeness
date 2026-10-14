@@ -8,6 +8,7 @@ import { sortNotes, type Note } from './note.js'
 import { Calls, type Call } from './calls.js'
 import { exitFor, LikenessError } from './errors.js'
 import * as joplin from './adapter/joplin.js'
+import { parseArgv, commandDef, helpText, helpRows, type Parsed } from './args.js'
 
 export const VERSION = '0.1.0'
 export const PORT = 'ts'
@@ -82,39 +83,18 @@ type Flags = {
   source: string[]
 }
 
-const LIMIT_RE = /^[1-9][0-9]{0,8}$/
-
-function parseFlags (args: string[]): { flags: Flags, rest: string[] } {
-  const flags: Flags = {
-    json: false, raw: false, strict: false, deterministic: false,
-    instance: [], source: [],
+function flagsOf (parsed: Parsed): Flags {
+  const f = parsed.flags
+  return {
+    json: true === f.json,
+    raw: true === f.raw,
+    strict: true === f.strict,
+    deterministic: true === f.deterministic,
+    limit: f.limit as number | undefined,
+    sort: f.sort as string | undefined,
+    instance: (f.instance ?? []) as string[],
+    source: (f.source ?? []) as string[],
   }
-  const rest: string[] = []
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i]
-    if (a === '--json') { flags.json = true; continue }
-    if (a === '--raw') { flags.raw = true; continue }
-    if (a === '--strict') { flags.strict = true; continue }
-    if (a === '--deterministic') { flags.deterministic = true; continue }
-    if (a === '--limit') {
-      // VALIDATED against the declared integer syntax, never coerced: a host
-      // number parser takes hex, exponents and decimals, each port's a
-      // different set, and `Number('nope')` is a NaN no comparison catches.
-      const raw = args[++i]
-      if (undefined === raw || !LIMIT_RE.test(raw)) {
-        throw new LikenessError('invalid-selector',
-          '--limit needs a whole number from 1 to 999999999, not "' + (raw ?? '') + '"',
-          'try `--limit 20`')
-      }
-      flags.limit = Number(raw)
-      continue
-    }
-    if (a === '--sort') { flags.sort = args[++i]; continue }
-    if (a === '--instance') { flags.instance.push(args[++i]); continue }
-    if (a === '--source') { flags.source.push(args[++i]); continue }
-    rest.push(a)
-  }
-  return { flags, rest }
 }
 
 function envelope (
@@ -239,8 +219,9 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], session: Session
   const clockMs = Date.parse(ctx.clock)
 
   let filter = null
-  if (0 < rest.length && '' !== rest[0]) {
-    filter = parseSelector(rest[0])
+  const selector = rest.join(' ')
+  if ('' !== selector) {
+    filter = parseSelector(selector)
     const unsupported = unanswerable(conns, fieldsOf(filter))
     if (0 < unsupported.length) {
       throw new LikenessError('unsupported-capability',
@@ -302,9 +283,6 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], session: Session
 }
 
 async function cmdGet (flags: Flags, rest: string[], session: Session): Promise<Envelope> {
-  if (0 === rest.length) {
-    throw new LikenessError('invalid-ref', 'get needs a ref', 'try `likeness get plan:CORE-412`')
-  }
   const out: Note[] = []
   for (const ref of rest) {
     const idx = ref.indexOf(':')
@@ -397,93 +375,70 @@ function cmdWhich (ctx: Ctx): Envelope {
   return envelope(['which'], code, rows, { count: rows.length })
 }
 
-function cmdHelp (): Envelope {
-  const commands = [
-    { command: 'list', takes: '[selector]', does: 'list notes across the configured sources' },
-    { command: 'get', takes: '<ref>...', does: 'fetch one note by <instance>:<id>' },
-    { command: 'doctor', takes: '', does: 'check every configured connection' },
-    { command: 'version', takes: '', does: 'this port and its version' },
-    { command: 'which', takes: '', does: 'every likeness on PATH' },
-    { command: 'help', takes: '', does: 'this' },
-  ]
-  for (const name of Object.keys(STUBS).sort()) {
-    commands.push({ command: name, takes: '', does: STUBS[name] + ' (not implemented yet)' })
+// Help text is rendered from the command table at build time; JSON gets the rows.
+function cmdHelp (args: string[]): { env: Envelope, text: string } {
+  const name = args[0] ?? ''
+  const text = helpText(name)
+  if (undefined === text) {
+    throw new LikenessError('invalid-argument', 'no such command: ' + name,
+      'run `likeness help` for the command list')
   }
-  return envelope(['help'], 'ok', commands, { count: commands.length })
-}
-
-const STUBS: Record<string, string> = {
-  describe: 'the machine-readable surface document',
-  mcp: 'the tool-protocol server',
-  project: 'project files and composition',
-  search: 'cross-source search',
-  caps: 'the capability matrix, printed',
-  sources: 'connection management',
+  const rows = helpRows().filter(r => '' === name || r.command === name)
+  return { env: envelope(['help'], 'ok', rows, { count: rows.length }), text }
 }
 
 
 export async function run (ctx: Ctx): Promise<Result> {
-  const [name, ...args] = ctx.argv
   const started = Date.now()
 
-  let session: Session
+  // The grammar decides first: a refused argument runs nothing at all.
+  let parsed: Parsed
   try {
-    session = openSession(ctx)
+    parsed = parseArgv(ctx.argv)
   }
   catch (err) {
-    return finish(ctx, name ?? '', err, new Calls(null), started,
-      { json: args.includes('--json'), deterministic: args.includes('--deterministic') })
-  }
-  const calls = session.calls
-
-  // Parsed before the try, so that a bad flag is still reported through the
-  // envelope rather than thrown out of `run`.
-  let flags: Flags
-  let rest: string[]
-  try {
-    ({ flags, rest } = parseFlags(args))
-  }
-  catch (err) {
-    return finish(ctx, name ?? '', err, calls, started,
-      { json: args.includes('--json'), deterministic: args.includes('--deterministic') })
+    return finish(ctx, ctx.argv[0] ?? '', err, new Calls(null), started,
+      { json: ctx.argv.includes('--json'), deterministic: ctx.argv.includes('--deterministic') })
   }
 
-  const render = (env: Envelope): Result => {
+  const name = parsed.command
+  const flags = flagsOf(parsed)
+  let calls = new Calls(null)
+
+  const render = (env: Envelope, text?: string): Result => {
     // Measured here, once, around the whole command. Zeroed under
     // --deterministic so the declared exception cannot defeat the byte diff.
     env.meta.elapsed_ms = flags.deterministic ? 0 : Date.now() - started
     return {
       exit: exitFor(env.code),
-      stdout: flags.json ? serialise(env) : human(env),
+      stdout: flags.json ? serialise(env) : (text ?? human(env)),
       stderr: flags.json ? '' : narrate(env),
       calls: calls.all(),
     }
   }
 
   try {
-    if (undefined === name || '' === name) {
-      throw new LikenessError('invalid-selector', 'no command given',
-        'try `likeness list`, or `likeness help` for the command list')
-    }
-    if (name === '--help' || name === '-h' || name === 'help') return render(cmdHelp())
-    if (name === 'list') return render(await cmdList(ctx, flags, rest, session))
-    if (name === 'get') return render(await cmdGet(flags, rest, session))
-    if (name === 'doctor') return render(await cmdDoctor(flags, session))
-    if (name === 'version') return render(cmdVersion())
-    if (name === 'which') return render(cmdWhich(ctx))
-
-    if (undefined !== STUBS[name]) {
-      // A stub that exists and says it does not work yet, so that neither this
-      // nor packaging is a surprise at the stage that needs it.
+    if (!commandDef(name)?.ready) {
       throw new LikenessError('unsupported-capability',
-        '`' + name + '` is not implemented yet - ' + STUBS[name],
+        '`' + name + '` is not implemented yet - ' + commandDef(name)?.short,
         'it arrives in a later stage; run `likeness help` for what works now')
     }
-    throw new LikenessError('invalid-selector', 'no such command: ' + name,
-      'run `likeness help` for the command list')
+    if ('help' === name) {
+      const { env, text } = cmdHelp(parsed.args)
+      return render(env, text)
+    }
+    if ('version' === name) return render(cmdVersion())
+    if ('which' === name) return render(cmdWhich(ctx))
+
+    const session = openSession(ctx)
+    calls = session.calls
+    if ('list' === name) return render(await cmdList(ctx, flags, parsed.args, session))
+    if ('get' === name) return render(await cmdGet(flags, parsed.args, session))
+    if ('doctor' === name) return render(await cmdDoctor(flags, session))
+    throw new Error('declared ready and not dispatched: ' + name)
   }
   catch (err) {
-    return render(errorEnvelope(name ?? '', err, calls))
+    return render(errorEnvelope(name, err, calls))
   }
 }
 

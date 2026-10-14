@@ -1,0 +1,1 @@
+{"cmd":["help"],"code":"ok","data":[{"command":"get","does":"notes by ref","takes":"<ref>..."}],"meta":{"calls":0,"count":1,"incomplete":[],"sources":[],"truncated":false},"ok":true,"version":"0.1.0"}

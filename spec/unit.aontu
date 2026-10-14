@@ -539,6 +539,255 @@ primary: unit: {
     }
   ]
 
+  args: set: [
+    {
+      id: "args/flags-anywhere-after-the-command"
+      fn: "parseArgv"
+      in: ["list" "--limit" "2" "--json"]
+      out: { command:"list" flags: { limit:2 json:true } args: [] }
+    }
+
+    {
+      id: "args/equals-form"
+      fn: "parseArgv"
+      in: ["list" "--limit=2"]
+      out: { command:"list" flags:limit:2 args: [] }
+    }
+
+    {
+      id: "args/selector-terms-accumulate"
+      fn: "parseArgv"
+      in: ["list" "title:a" "--json" "tag:b"]
+      out: { command:"list" flags:json:true args: ["title:a" "tag:b"] }
+    }
+
+    {
+      id: "args/double-dash-ends-flags"
+      fn: "parseArgv"
+      in: ["list" "--json" "--" "-title:x" "--raw"]
+      out: { command:"list" flags:json:true args: ["-title:x" "--raw"] }
+    }
+
+    {
+      id: "args/negated-boolean"
+      fn: "parseArgv"
+      in: ["list" "--no-raw"]
+      out: { command:"list" flags:raw:false args: [] }
+    }
+
+    {
+      id: "args/repeatable-accumulates-in-order"
+      fn: "parseArgv"
+      in: ["list" "--instance" "joplin$spare" "--instance" "joplin"]
+      out: { command:"list" flags:instance: ["joplin$spare" "joplin"] args: [] }
+    }
+
+    {
+      id: "args/help-flag-first-is-help"
+      fn: "parseArgv"
+      in: ["--help"]
+      out: { command:"help" flags: {} args: [] }
+    }
+
+    {
+      id: "args/short-help-takes-a-command"
+      fn: "parseArgv"
+      in: ["-h" "list"]
+      out: { command:"help" flags: {} args: ["list"] }
+    }
+
+    {
+      id: "args/version-flag-first-is-version"
+      fn: "parseArgv"
+      in: ["--version" "--json"]
+      out: { command:"version" flags:json:true args: [] }
+    }
+
+    {
+      id: "args/a-command-being-built-reads-its-globals"
+      fn: "parseArgv"
+      in: ["search" "anything" "--bogus" "-x" "--json"]
+      out: { command:"search" flags:json:true args: [] }
+    }
+
+    {
+      id: "args/refs-accumulate"
+      fn: "parseArgv"
+      in: ["get" "joplin:a" "joplin:b"]
+      out: { command:"get" flags: {} args: ["joplin:a" "joplin:b"] }
+    }
+
+    {
+      id: "args/stdin-dash-is-a-positional"
+      fn: "parseArgv"
+      in: ["list" "-"]
+      out: { command:"list" flags: {} args: ["-"] }
+    }
+
+    { id:"args/no-command" fn:"parseArgv" in: [] err:"no command given" }
+
+    {
+      id: "args/flag-before-the-command"
+      fn: "parseArgv"
+      in: ["--json" "list"]
+      err: "the command comes first, and --json is a flag"
+    }
+
+    {
+      id: "args/unknown-command"
+      fn: "parseArgv"
+      in: ["nosuch"]
+      err: "no such command: nosuch"
+    }
+
+    {
+      id: "args/undeclared-flag"
+      fn: "parseArgv"
+      in: ["list" "--bogus"]
+      err: "`list` has no flag --bogus"
+    }
+
+    {
+      id: "args/prototype-name-is-not-a-flag"
+      fn: "parseArgv"
+      in: ["list" "--constructor"]
+      err: "`list` has no flag --constructor"
+    }
+
+    {
+      id: "args/negating-a-valued-flag"
+      fn: "parseArgv"
+      in: ["list" "--no-limit"]
+      err: "`list` has no flag --no-limit"
+    }
+
+    {
+      id: "args/dash-positional-must-follow-double-dash"
+      fn: "parseArgv"
+      in: ["list" "-title:x"]
+      err: "-title:x begins with - and is not a flag; a positional that begins with - must follow --"
+    }
+
+    {
+      id: "args/boolean-takes-no-value"
+      fn: "parseArgv"
+      in: ["list" "--raw=yes"]
+      err: "--raw takes no value"
+    }
+
+    {
+      id: "args/value-missing-at-the-end"
+      fn: "parseArgv"
+      in: ["list" "--limit"]
+      err: "--limit needs a value"
+    }
+
+    {
+      id: "args/value-missing-before-a-flag"
+      fn: "parseArgv"
+      in: ["list" "--limit" "--json"]
+      err: "--limit needs a value"
+    }
+
+    {
+      id: "args/integer-not-coerced-decimal"
+      fn: "parseArgv"
+      in: ["list" "--limit" "2.0"]
+      err: "--limit takes an integer from 1 to 999999999, not \"2.0\""
+    }
+
+    {
+      id: "args/integer-not-coerced-hex"
+      fn: "parseArgv"
+      in: ["list" "--limit=0x2"]
+      err: "--limit takes an integer from 1 to 999999999, not \"0x2\""
+    }
+
+    {
+      id: "args/integer-below-the-range"
+      fn: "parseArgv"
+      in: ["list" "--limit" "0"]
+      err: "--limit takes an integer from 1 to 999999999, not \"0\""
+    }
+
+    {
+      id: "args/integer-above-the-range"
+      fn: "parseArgv"
+      in: ["list" "--limit" "1000000000"]
+      err: "not \"1000000000\""
+    }
+
+    {
+      id: "args/integer-beyond-any-host-number"
+      fn: "parseArgv"
+      in: ["list" "--limit" "99999999999999999999"]
+      err: "not \"99999999999999999999\""
+    }
+
+    {
+      id: "args/given-twice"
+      fn: "parseArgv"
+      in: ["list" "--limit" "2" "--limit" "3"]
+      err: "--limit was given twice"
+    }
+
+    {
+      id: "args/boolean-given-twice"
+      fn: "parseArgv"
+      in: ["list" "--json" "--no-json"]
+      err: "--json was given twice"
+    }
+
+    {
+      id: "args/instance-is-a-ref"
+      fn: "parseArgv"
+      in: ["list" "--instance" "Joplin"]
+      err: "--instance takes an instance ref (api or api$tag), not \"Joplin\""
+    }
+
+    {
+      id: "args/name-is-lowercase"
+      fn: "parseArgv"
+      in: ["list" "--sort" "Title"]
+      err: "--sort takes a name ([a-z][a-z0-9-]*), not \"Title\""
+    }
+
+    {
+      id: "args/empty-path"
+      fn: "parseArgv"
+      in: ["list" "--config="]
+      err: "--config takes a path, not \"\""
+    }
+
+    {
+      id: "args/required-positional-missing"
+      fn: "parseArgv"
+      in: ["get" "--json"]
+      err: "`get` needs <ref>"
+    }
+
+    {
+      id: "args/surplus-positional"
+      fn: "parseArgv"
+      in: ["version" "extra"]
+      err: "`version` does not take the argument \"extra\""
+    }
+
+    {
+      id: "args/help-takes-one-command"
+      fn: "parseArgv"
+      in: ["help" "list" "get"]
+      err: "`help` does not take the argument \"get\""
+    }
+
+    {
+      id: "args/help-command-is-a-name"
+      fn: "parseArgv"
+      in: ["help" "LIST"]
+      err: "<command> takes a name ([a-z][a-z0-9-]*), not \"LIST\""
+    }
+  ]
+
   config: set: [
     {
       id: "config/equals-form"
@@ -556,6 +805,41 @@ primary: unit: {
     }
 
     { id:"config/absent" fn:"takeConfigOption" in: ["list"] out:rest: ["list"] }
+
+    {
+      id: "config/before-the-command-is-left"
+      fn: "takeConfigOption"
+      in: ["--config" "/x" "list"]
+      out: rest: ["--config" "/x" "list"]
+    }
+
+    {
+      id: "config/after-double-dash-is-left"
+      fn: "takeConfigOption"
+      in: ["list" "--" "--config" "/x"]
+      out: rest: ["list" "--" "--config" "/x"]
+    }
+
+    {
+      id: "config/twice-is-left-for-the-grammar"
+      fn: "takeConfigOption"
+      in: ["list" "--config" "/a" "--config=/b"]
+      out: rest: ["list" "--config" "/a" "--config=/b"]
+    }
+
+    {
+      id: "config/no-value-is-left"
+      fn: "takeConfigOption"
+      in: ["list" "--config"]
+      out: rest: ["list" "--config"]
+    }
+
+    {
+      id: "config/flag-shaped-value-is-left"
+      fn: "takeConfigOption"
+      in: ["list" "--config" "--json"]
+      out: rest: ["list" "--config" "--json"]
+    }
 
     {
       id: "config/station-not-json"

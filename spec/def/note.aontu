@@ -17,7 +17,7 @@ Note: type(close({
   # adding a source edits the core model, and would make the model file itself
   # fail the rule that forbids source identifiers outside declared data.
   source: $.Ident
-  instance: $.Ident
+  instance: $.InstanceRef
 
   id: $.SourceId
 
@@ -42,7 +42,7 @@ Note: type(close({
 Space: type(close({
   lid: $.Lid
   source: $.Ident
-  instance: $.Ident
+  instance: $.InstanceRef
   id: $.SourceId
   title: string
   parent?: $.SourceId
@@ -53,7 +53,7 @@ Space: type(close({
 Tag: type(close({
   lid: $.Lid
   source: $.Ident
-  instance: $.Ident
+  instance: $.InstanceRef
   id: $.SourceId
   name: string
   count?: $.Count
@@ -66,7 +66,7 @@ Tag: type(close({
 # broken reference the user most needs to see.
 Link: type(close({
   source: $.Ident
-  instance: $.Ident
+  instance: $.InstanceRef
   from: $.SourceId
   to: $.SourceId
   kind: "wikilink"|"embed"|"mention"|"relation"|"url"
@@ -77,7 +77,7 @@ Link: type(close({
 Attachment: type(close({
   lid: $.Lid
   source: $.Ident
-  instance: $.Ident
+  instance: $.InstanceRef
   id: $.SourceId
   note: $.SourceId
   name: string
@@ -89,7 +89,7 @@ Attachment: type(close({
 Comment: type(close({
   lid: $.Lid
   source: $.Ident
-  instance: $.Ident
+  instance: $.InstanceRef
   id: $.SourceId
   note: $.SourceId
   body: string

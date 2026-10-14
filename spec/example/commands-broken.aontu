@@ -1,0 +1,10 @@
+# A flag whose type the grammar does not declare. It must fail to vet: a value
+# is checked against a closed set of types, and `float` is not one of them.
+global: {}
+
+command: list: short: "notes"
+command: list: ready: true
+command: list: writes: false
+command: list: arg: []
+command: list: flag: limit: { type:"float" value:"N" short:"at most N notes" }
+command: list: exits: ["ok"]

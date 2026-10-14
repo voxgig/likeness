@@ -62,6 +62,13 @@ error: {
   invalid-ref: partial: false
   invalid-ref: retryable: false
   invalid-ref: means: "the ref is malformed"
+  invalid-argument: {
+    code: "invalid-argument"
+    exit: 3
+    partial: false
+    retryable: false
+    means: "the arguments do not satisfy the command's declared grammar"
+  }
   invalid-project: code: "invalid-project"
   invalid-project: exit: 3
   invalid-project: partial: false

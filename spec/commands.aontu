@@ -1,0 +1,233 @@
+# The command surface and its argument grammar (SPEC 13.1), declared once.
+# Every port's argv shell is one table-driven parser over the compiled form,
+# and `help` prints text rendered from it at build time.
+
+global: json: { type:"boolean" short:"print the envelope as one line of JSON" }
+global: source: {
+  type: "name"
+  value: "API"
+  repeat: true
+  short: "only the connections to this API"
+}
+global: instance: {
+  type: "instance"
+  value: "REF"
+  repeat: true
+  short: "only this connection"
+}
+global: strict: {
+  type: "boolean"
+  short: "stop at the first connection that fails"
+}
+global: deterministic: {
+  type: "boolean"
+  short: "zero the fields that vary from run to run"
+}
+global: config: { type:"path" value:"PATH" short:"read station.json from PATH" }
+
+command: {
+  list: {
+    short: "notes matching a selector, across the selected connections"
+    ready: true
+    writes: false
+    arg: [
+      {
+        name: "selector"
+        type: "selector"
+        required: false
+        repeat: true
+        short: "the selector's terms, joined with spaces"
+      }
+    ]
+    flag: limit: {
+      type: "integer"
+      min: 1
+      max: 999999999
+      value: "N"
+      short: "at most N notes"
+    }
+    flag: sort: { type:"name" value:"KEY" short:"order the notes by KEY" }
+    flag: raw: { type:"boolean" short:"carry each source's own record" }
+    exits: [
+      "ok"
+      "no-match"
+      "partial"
+      "fanout-halted"
+      "invalid-argument"
+      "invalid-selector"
+      "invalid-project"
+      "no-such-source"
+      "unsupported-capability"
+      "source-unavailable"
+      "auth-failed"
+      "rate-limited"
+    ]
+  }
+
+  get: {
+    short: "notes by ref"
+    ready: true
+    writes: false
+    arg: [
+      {
+        name: "ref"
+        type: "ref"
+        required: true
+        repeat: true
+        short: "<instance>:<id>"
+      }
+    ]
+    flag: raw: { type:"boolean" short:"carry the source's own record" }
+    exits: [
+      "ok"
+      "not-found"
+      "invalid-argument"
+      "invalid-ref"
+      "invalid-project"
+      "no-such-source"
+      "unsupported-capability"
+      "source-unavailable"
+      "auth-failed"
+      "rate-limited"
+    ]
+  }
+
+  doctor: {
+    short: "check every selected connection"
+    ready: true
+    writes: false
+    arg: []
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "no-such-source"
+      "unsupported-capability"
+      "source-unavailable"
+      "auth-failed"
+      "rate-limited"
+    ]
+  }
+
+  which: short: "every likeness on PATH: path, port, version"
+  which: ready: true
+  which: writes: false
+  which: arg: []
+  which: flag: {}
+  which: exits: ["ok" "no-match" "invalid-argument"]
+
+  version: short: "this port and its version"
+  version: ready: true
+  version: writes: false
+  version: arg: []
+  version: flag: {}
+  version: exits: ["ok" "invalid-argument"]
+
+  help: {
+    short: "the command list, or one command's help"
+    ready: true
+    writes: false
+    arg: [
+      {
+        name: "command"
+        type: "name"
+        required: false
+        short: "the command to describe"
+      }
+    ]
+    flag: {}
+    exits: ["ok" "invalid-argument"]
+  }
+
+  describe: short: "the whole surface, for agents"
+  describe: ready: false
+  describe: writes: false
+  describe: arg: []
+  describe: flag: {}
+  describe: exits: ["unsupported-capability" "invalid-argument"]
+
+  caps: short: "the capability matrix"
+  caps: ready: false
+  caps: writes: false
+  caps: arg: []
+  caps: flag: {}
+  caps: exits: ["unsupported-capability" "invalid-argument"]
+
+  sources: short: "connection management"
+  sources: ready: false
+  sources: writes: true
+  sources: arg: []
+  sources: flag: {}
+  sources: exits: ["unsupported-capability" "invalid-argument"]
+
+  secrets: short: "the vault of source tokens"
+  secrets: ready: false
+  secrets: writes: true
+  secrets: arg: []
+  secrets: flag: {}
+  secrets: exits: ["unsupported-capability" "invalid-argument"]
+
+  search: short: "cross-source search"
+  search: ready: false
+  search: writes: false
+  search: arg: []
+  search: flag: {}
+  search: exits: ["unsupported-capability" "invalid-argument"]
+
+  new: short: "create a note"
+  new: ready: false
+  new: writes: true
+  new: arg: []
+  new: flag: {}
+  new: exits: ["unsupported-capability" "invalid-argument"]
+
+  edit: short: "change a note"
+  edit: ready: false
+  edit: writes: true
+  edit: arg: []
+  edit: flag: {}
+  edit: exits: ["unsupported-capability" "invalid-argument"]
+
+  move: short: "move notes to another space"
+  move: ready: false
+  move: writes: true
+  move: arg: []
+  move: flag: {}
+  move: exits: ["unsupported-capability" "invalid-argument"]
+
+  tag: short: "add or remove tags"
+  tag: ready: false
+  tag: writes: true
+  tag: arg: []
+  tag: flag: {}
+  tag: exits: ["unsupported-capability" "invalid-argument"]
+
+  link: short: "link two notes"
+  link: ready: false
+  link: writes: true
+  link: arg: []
+  link: flag: {}
+  link: exits: ["unsupported-capability" "invalid-argument"]
+
+  archive: short: "archive notes, reversibly"
+  archive: ready: false
+  archive: writes: true
+  archive: arg: []
+  archive: flag: {}
+  archive: exits: ["unsupported-capability" "invalid-argument"]
+
+  rm: short: "delete one note, irreversibly"
+  rm: ready: false
+  rm: writes: true
+  rm: arg: []
+  rm: flag: {}
+  rm: exits: ["unsupported-capability" "invalid-argument"]
+
+  open: short: "open a note in its own application"
+  open: ready: false
+  open: writes: false
+  open: arg: []
+  open: flag: {}
+  open: exits: ["unsupported-capability" "invalid-argument"]
+}
