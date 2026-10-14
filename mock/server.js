@@ -223,7 +223,8 @@ if (RUN_DIRECTLY) {
 
   try {
     await app.listen({ port, host })
-    const at = `http://${host}:${port}`
+    // The BOUND port, not the requested one: port 0 asks the OS for a free one.
+    const at = `http://${host}:${app.server.address().port}`
     process.stdout.write(`likeness mock listening on ${at}\n`)
     for (const src of app.likeness.sources) {
       process.stdout.write(`  ${at}${src.prefix.padEnd(10)} ${src.slug}\n`)

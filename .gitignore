@@ -10,7 +10,7 @@ typescript/dist/
 
 # The dependency on the generated SDK is a `file:` path to a clone, so a lock
 # here pins a directory on one machine rather than a revision. `make sdk` and
-# spec/sources.aon are what actually hold the SDKs still.
+# spec/sources.aontu are what actually hold the SDKs still.
 typescript/package-lock.json
 
 # Parity comparison output, rebuilt by `make parity` on every run.

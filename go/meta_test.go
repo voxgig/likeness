@@ -160,10 +160,83 @@ func TestMetaMissingExpectationFileIsReported(t *testing.T) {
 	}
 }
 
+/*
+The bytes are the contract. These feed the stdout check output no port
+produced: the right values in the wrong form. Before this check existed the
+harness parsed stdout and re-rendered it, so every one of these passed.
+*/
+func stdoutFailures(t *testing.T, root string, e map[string]any, actual string) []string {
+	t.Helper()
+	failures := []string{}
+	checkStdout(t, root, str(outOf(e), "stdout"), actual, func(s string) { failures = append(failures, s) })
+	return failures
+}
+
+func TestMetaIndentedStdoutIsReported(t *testing.T) {
+	root := Root(t)
+	e := entryByID(t, root, "list/all")
+	r := Run(buildCtx(t, root, e))
+	var parsed any
+	if err := json.Unmarshal([]byte(r.Stdout), &parsed); nil != err {
+		t.Fatal(err)
+	}
+	indented, err := json.MarshalIndent(parsed, "", "  ")
+	if nil != err {
+		t.Fatal(err)
+	}
+	if f := stdoutFailures(t, root, e, string(indented)+"\n"); !anyStarts(f, "stdout is not in canonical form") {
+		t.Fatalf("not reported: %v", f)
+	}
+}
+
+func TestMetaCRLFStdoutIsReported(t *testing.T) {
+	root := Root(t)
+	e := entryByID(t, root, "list/all")
+	r := Run(buildCtx(t, root, e))
+	crlf := strings.TrimSuffix(r.Stdout, "\n") + "\r\n"
+	if f := stdoutFailures(t, root, e, crlf); !anyStarts(f, "stdout is not in canonical form") {
+		t.Fatalf("not reported: %v", f)
+	}
+}
+
+func TestMetaWrongPortInsideWhichRowIsReported(t *testing.T) {
+	root := Root(t)
+	e := entryByID(t, root, "meta/which")
+	r := Run(buildCtx(t, root, e))
+	parsed := mustDecode(t, r.Stdout)
+	rows, _ := parsed["data"].([]any)
+	if 0 == len(rows) {
+		t.Fatal("which produced no rows")
+	}
+	rows[0].(map[string]any)["port"] = "WRONG"
+	actual, err := Serialise(parsed)
+	if nil != err {
+		t.Fatal(err)
+	}
+	if f := stdoutFailures(t, root, e, actual); !anyStarts(f, "stdout differs") {
+		t.Fatalf("not reported: %v", f)
+	}
+}
+
+func TestMetaVersionReportingAnotherPortIsReported(t *testing.T) {
+	root := Root(t)
+	e := entryByID(t, root, "meta/version")
+	r := Run(buildCtx(t, root, e))
+	parsed := mustDecode(t, r.Stdout)
+	parsed["data"].(map[string]any)["port"] = "WRONG"
+	actual, err := Serialise(parsed)
+	if nil != err {
+		t.Fatal(err)
+	}
+	if f := stdoutFailures(t, root, e, actual); !anyStarts(f, "data.port is") {
+		t.Fatalf("not reported: %v", f)
+	}
+}
+
 func TestMetaNetOptionsReachTheSdk(t *testing.T) {
 	seed := map[string]any{
 		"entity": map[string]any{"note": map[string]any{"x1": map[string]any{"id": "x1"}}},
-		"net":    numbersToInt(mustDecode(t, `{"failTimes":1,"failStatus":401}`)),
+		"net":    mustDecode(t, `{"failTimes":1,"failStatus":401}`),
 	}
 	calls := &Calls{}
 	ok, code, _ := JoplinCheck(SourceOpts{Instance: "x", Account: "a", Seed: seed}, calls)

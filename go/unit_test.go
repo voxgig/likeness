@@ -62,6 +62,42 @@ func unitRegistry() map[string]unitFn {
 		},
 
 		"crockfordAlphabet": func(t *testing.T, in any) (any, error) { return Crockford, nil },
+		"foldCase":          func(t *testing.T, in any) (any, error) { return foldCase(in.(string)), nil },
+		"takeConfigOption": func(t *testing.T, in any) (any, error) {
+			rest, value, found := takeConfigOption(strs(in))
+			out := map[string]any{"rest": strList(rest)}
+			if found {
+				out["value"] = value
+			}
+			return out, nil
+		},
+		"parseStation": func(t *testing.T, in any) (any, error) {
+			conns, err := parseStation(in.(string), "station.json")
+			if nil != err {
+				return nil, err
+			}
+			out := make([]any, 0, len(conns))
+			for _, c := range conns {
+				m := map[string]any{"instance": c.Instance, "source": c.Source, "account": c.Account}
+				if "" != c.APIKey {
+					m["apikey"] = c.APIKey
+				}
+				if "" != c.Base {
+					m["base"] = c.Base
+				}
+				out = append(out, m)
+			}
+			return out, nil
+		},
+		"projectJoplin": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			raw, _ := m["raw"].(map[string]any)
+			n, err := projectNote(raw, str(m, "instance"), str(m, "account"), false)
+			if nil != err {
+				return nil, err
+			}
+			return n.Value(), nil
+		},
 		"partialCodes": func(t *testing.T, in any) (any, error) {
 			codes := PartialCodes()
 			out := make([]any, len(codes))

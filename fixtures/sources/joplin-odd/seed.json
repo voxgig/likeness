@@ -1,0 +1,64 @@
+{
+  "_doc": [
+    "Awkward values, for the projection and --raw rules: keys out of order, a",
+    "title that looks like a date, markup and control characters in text,",
+    "floats, and null or non-string values in every projected field. The ids",
+    "are the map keys; the SDK's test mode stamps each onto its record."
+  ],
+  "entity": {
+    "note": {
+      "a0e50000000000000000000000000011": {
+        "id": "a0e50000000000000000000000000011",
+        "parent_id": "f01d0000000000000000000000000001",
+        "title": "Straße İstanbul",
+        "body": "Ünïcödé body",
+        "created_time": 1773129600000,
+        "updated_time": 1789544460000
+      },
+      "a0e50000000000000000000000000012": {
+        "title": "2026-03-10",
+        "body": "a title that looks like a date",
+        "updated_time": 1789195500000,
+        "created_time": 1773216000000,
+        "parent_id": "f01d0000000000000000000000000001",
+        "id": "a0e50000000000000000000000000012"
+      },
+      "a0e50000000000000000000000000013": {
+        "id": "a0e50000000000000000000000000013",
+        "parent_id": "",
+        "title": "Ampersand & <angle> \"quote\" tab\there",
+        "body": "line one\nline two\u0001end",
+        "created_time": 1773302400000,
+        "updated_time": 1789109100000,
+        "latitude": 53.3498,
+        "longitude": -6.2603,
+        "altitude": 0.000001,
+        "is_todo": 0
+      },
+      "a0e50000000000000000000000000014": {
+        "id": "a0e50000000000000000000000000014",
+        "title": null,
+        "body": null,
+        "parent_id": 7,
+        "created_time": "nope",
+        "updated_time": null
+      },
+      "a0e50000000000000000000000000015": {
+        "id": "a0e50000000000000000000000000015",
+        "title": true,
+        "body": 42,
+        "parent_id": null,
+        "created_time": 1773129600000,
+        "updated_time": 1773129600000.0
+      },
+      "a0e50000000000000000000000000016": {
+        "id": "a0e50000000000000000000000000016",
+        "title": {"nested": true, "a": [1, 2]},
+        "body": "",
+        "parent_id": "f01d0000000000000000000000000002",
+        "created_time": 1773129600001,
+        "updated_time": 1773129600001
+      }
+    }
+  }
+}

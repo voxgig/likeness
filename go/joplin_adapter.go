@@ -1,8 +1,6 @@
 package likeness
 
 import (
-	"encoding/json"
-
 	joplin "github.com/voxgig-sdk/joplin-sdk/go"
 	jcore "github.com/voxgig-sdk/joplin-sdk/go/core"
 )
@@ -50,16 +48,24 @@ func statusOf(err error) int {
 	return r.Status
 }
 
-func sval(m map[string]any, k string) string {
-	switch v := m[k].(type) {
-	case string:
-		return v
-	case nil:
+// textOf renders a non-string value as its canonical JSON text.
+func textOf(v any) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	s, err := RenderRaw(v)
+	if nil != err {
 		return ""
 	}
-	return ""
+	return s
 }
 
+func present(m map[string]any, k string) (any, bool) {
+	v, ok := m[k]
+	return v, ok && nil != v
+}
+
+// A timestamp that is not an integral number is the epoch.
 func msval(m map[string]any, k string) int64 {
 	if n, ok := num(m[k]); ok {
 		return n
@@ -68,7 +74,10 @@ func msval(m map[string]any, k string) int64 {
 }
 
 func projectNote(raw map[string]any, instance, account string, withRaw bool) (Note, error) {
-	id := sval(raw, "id")
+	id := ""
+	if v, ok := present(raw, "id"); ok {
+		id = textOf(v)
+	}
 	// REFUSED, not fabricated. An empty id derives a valid-LOOKING lid from the
 	// empty string, so every such row shares one identity and the note violates
 	// the schema's non-empty SourceId invariant. A source that returned a
@@ -85,23 +94,25 @@ func projectNote(raw map[string]any, instance, account string, withRaw bool) (No
 		Source:   joplinSource,
 		Instance: instance,
 		ID:       id,
-		Title:    sval(raw, "title"),
 		URL:      "joplin://x-callback-url/openNote?id=" + id,
 		Created:  Rfc3339(msval(raw, "created_time")),
 		Updated:  Rfc3339(msval(raw, "updated_time")),
 	}
-	if p := sval(raw, "parent_id"); "" != p {
-		s := p
-		n.Space = &s
+	if v, ok := present(raw, "title"); ok {
+		n.Title = textOf(v)
 	}
-	if _, ok := raw["body"]; ok {
-		s := sval(raw, "body")
+	if v, ok := present(raw, "parent_id"); ok {
+		if s := textOf(v); "" != s {
+			n.Space = &s
+		}
+	}
+	if v, ok := present(raw, "body"); ok {
+		s := textOf(v)
 		n.Body = &s
 	}
 	if withRaw {
-		b, err := json.Marshal(raw)
-		if nil == err {
-			s := string(b)
+		// The client keeps no bytes (sdkgen#407): the record, re-rendered.
+		if s, err := RenderRaw(raw); nil == err {
 			n.Raw = &s
 		}
 	}
@@ -121,10 +132,14 @@ func entData(v any) map[string]any {
 	return map[string]any{}
 }
 
+// Joplin answers id, parent_id and title unless asked. The wire name is
+// `fields`; the client declares `field`, which Joplin ignores (sdkgen#406).
+const joplinFields = "id,parent_id,title,body,created_time,updated_time"
+
 func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) {
 	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes")
-	found, err := client.Note(nil).List(map[string]any{}, nil)
+	calls.Record(o.Instance, "GET", "/notes?fields="+joplinFields)
+	found, err := client.Note(nil).List(map[string]any{"fields": joplinFields}, nil)
 	if nil != err {
 		return nil, false, err
 	}
@@ -143,8 +158,8 @@ func JoplinList(o SourceOpts, calls *Calls, withRaw bool) ([]Note, bool, error) 
 
 func JoplinLoad(o SourceOpts, calls *Calls, id string, withRaw bool) (*Note, error) {
 	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes/"+id)
-	ent, err := client.Note(nil).Load(map[string]any{"id": id}, nil)
+	calls.Record(o.Instance, "GET", "/notes/"+id+"?fields="+joplinFields)
+	ent, err := client.Note(nil).Load(map[string]any{"id": id, "fields": joplinFields}, nil)
 	if nil != err {
 		if 404 == statusOf(err) {
 			return nil, nil
@@ -162,15 +177,12 @@ func JoplinLoad(o SourceOpts, calls *Calls, id string, withRaw bool) (*Note, err
 	return &n, nil
 }
 
-// JoplinCheck reports reachability for `doctor`.
-//
-// It distinguishes the failure modes a user experiences as one - the
-// application is not running, the credential was rejected - because the remedy
-// differs for each.
+// JoplinCheck reports reachability for `doctor`, telling apart the failure
+// modes a user experiences as one, because the remedy differs for each.
 func JoplinCheck(o SourceOpts, calls *Calls) (ok bool, code, detail string) {
 	client := joplinClient(o)
-	calls.Record(o.Instance, "GET", "/notes")
-	_, err := client.Note(nil).List(map[string]any{}, nil)
+	calls.Record(o.Instance, "GET", "/notes?fields="+joplinFields)
+	_, err := client.Note(nil).List(map[string]any{"fields": joplinFields}, nil)
 	if nil == err {
 		return true, "", "ok"
 	}

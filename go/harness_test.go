@@ -10,7 +10,8 @@ import (
 	"testing"
 )
 
-// Root is the repository root, found the same way the registry is found.
+// Root is the repository root: the directory holding the compiled corpora,
+// which the embedded copies under go/spec/ do not include.
 func Root(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()
@@ -18,7 +19,7 @@ func Root(t *testing.T) string {
 		t.Fatal(err)
 	}
 	for i := 0; i < 8; i++ {
-		if _, err := os.Stat(filepath.Join(dir, "spec", "errors.json")); nil == err {
+		if _, err := os.Stat(filepath.Join(dir, "spec", "cli.json")); nil == err {
 			return dir
 		}
 		up := filepath.Dir(dir)
@@ -164,7 +165,7 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 		})
 		own := cloneMap(seed)
 		if net, ok := cm["net"]; ok {
-			own["net"] = numbersToInt(net)
+			own["net"] = net
 		}
 		ctx.Fixture[inst] = own
 	}
@@ -179,34 +180,6 @@ func strs(v any) []string {
 		out = append(out, x)
 	}
 	return out
-}
-
-// numbersToInt rewrites every json.Number in a value as an int, recursively.
-func numbersToInt(v any) any {
-	switch t := v.(type) {
-	case json.Number:
-		if i, err := t.Int64(); nil == err {
-			return int(i)
-		}
-		f, err := t.Float64()
-		if nil != err {
-			return t
-		}
-		return f
-	case map[string]any:
-		out := map[string]any{}
-		for k, e := range t {
-			out[k] = numbersToInt(e)
-		}
-		return out
-	case []any:
-		out := make([]any, len(t))
-		for i, e := range t {
-			out[i] = numbersToInt(e)
-		}
-		return out
-	}
-	return v
 }
 
 func cloneMap(m map[string]any) map[string]any {
@@ -248,10 +221,30 @@ func checkStdout(t *testing.T, root, path, actual string, fail func(string)) {
 		return
 	}
 
+	// Raw bytes first: indented or CRLF output carries the right values in
+	// the wrong bytes, and a value comparison alone let that through.
+	canonical, err := Serialise(parsed)
+	if nil != err {
+		fail("stdout cannot be re-rendered: " + err.Error())
+		return
+	}
+	if actual != canonical {
+		fail(fmt.Sprintf("stdout is not in canonical form (sorted keys, one line, one trailing newline): %q", head(actual, 80)))
+	}
+
 	// Removed from the comparison, so asserted here instead - otherwise a port
 	// could report someone else's name and no check would notice.
 	if p, _ := parsed["port"].(string); Port != p {
 		fail("envelope port is \"" + p + "\", expected \"" + Port + "\"")
+	}
+	if data, ok := parsed["data"].(map[string]any); ok {
+		if p, has := data["port"]; has && Port != p {
+			fail(fmt.Sprintf("data.port is %v, expected %q", p, Port))
+		}
+	}
+	meta, _ := parsed["meta"].(map[string]any)
+	if n, ok := meta["elapsed_ms"].(json.Number); !ok || !isNonNegativeInteger(n) {
+		fail(fmt.Sprintf("meta.elapsed_ms is %v, expected a non-negative integer", meta["elapsed_ms"]))
 	}
 
 	got, err := Serialise(StripParityExceptions(parsed))
@@ -263,6 +256,29 @@ func checkStdout(t *testing.T, root, path, actual string, fail func(string)) {
 		fail("stdout differs from " + path + "\n  want " + strings.TrimRight(want, "\n") +
 			"\n  got  " + strings.TrimRight(got, "\n"))
 	}
+}
+
+func head(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
+}
+
+func isNonNegativeInteger(n json.Number) bool {
+	s := n.String()
+	if "0" == s {
+		return true
+	}
+	if "" == s || s[0] < '1' || '9' < s[0] {
+		return false
+	}
+	for _, c := range s[1:] {
+		if c < '0' || '9' < c {
+			return false
+		}
+	}
+	return true
 }
 
 func wantCalls(e map[string]any) []Call {

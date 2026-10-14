@@ -7,27 +7,37 @@
  * Each port's test suite writes its RAW transcript output under <dir>/<port>/
  * when LIKENESS_PARITY_OUT is set. This compares them.
  *
- * THREE CHECKS, AND THE SECOND TWO ARE THE INTERESTING ONES.
+ * FOUR CHECKS, AND THE LAST THREE ARE THE INTERESTING ONES.
  *
- *   1. Every port produced an answer for every entry. A port that silently
- *      emitted nothing would otherwise pass the other two by having nothing to
- *      disagree with.
+ *   1. Every port produced an answer for every entry OF THE CORPUS - the list
+ *      comes from spec/cli.json, not from whichever port happened to be
+ *      listed first, so a port that emitted eight of thirty-eight entries is
+ *      thirty missing answers and not "two ports agree on 8 entries".
  *
- *   2. With the declared non-parity fields removed BY NAME AND RECURSIVELY,
- *      the bytes are IDENTICAL. That is the parity claim.
+ *   2. Every port's stdout is the CANONICAL rendering of what it carries:
+ *      sorted keys, one line, exactly one trailing newline. Indented JSON or
+ *      a CRLF ending carries the right values in the wrong bytes, and the
+ *      contract is bytes.
  *
- *   3. With nothing removed, the bytes DIFFER, and each port's envelope names
+ *   3. With the declared non-parity fields removed BY PATH - the envelope's
+ *      own `port`, `meta.elapsed_ms`, and the `port` that `version` repeats
+ *      inside an object-valued `data`; nothing deeper, so a `port` inside a
+ *      `which` row is compared like any other value - the bytes are
+ *      IDENTICAL. That is the parity claim.
+ *
+ *   4. With nothing removed, the bytes DIFFER, and each port's envelope names
  *      itself. Every envelope carries its own `port`, so five raw outputs can
  *      never be identical - and a run where they were would mean one port was
- *      reporting another's name, which check 2 alone would applaud.
+ *      reporting another's name, which check 3 alone would applaud.
  *
  * Both ports also check themselves against the committed expectations in their
  * own suites. This is not a duplicate of that: it compares the ports to EACH
  * OTHER, so it still holds if an expectation file is wrong.
  */
 
-import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs'
-import { join, relative, sep } from 'node:path'
+import { readFileSync, statSync, existsSync, readdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const dir = process.argv[2]
 const selftest = process.argv.includes('--selftest')
@@ -38,29 +48,60 @@ if (undefined === dir || !existsSync(dir)) {
   process.exit(2)
 }
 
-const PARITY_EXCEPTIONS = ['port', 'elapsed_ms']
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 function strip (v) {
-  if (Array.isArray(v)) return v.map(strip)
-  if (null !== v && 'object' === typeof v) {
-    const out = {}
-    for (const k of Object.keys(v)) {
-      if (PARITY_EXCEPTIONS.includes(k)) continue
-      out[k] = strip(v[k])
+  if (null === v || 'object' !== typeof v || Array.isArray(v)) return v
+  const out = {}
+  for (const k of Object.keys(v)) {
+    const e = v[k]
+    if ('port' === k) continue
+    if (('meta' === k || 'data' === k) && null !== e && 'object' === typeof e && !Array.isArray(e)) {
+      const drop = 'meta' === k ? 'elapsed_ms' : 'port'
+      const inner = {}
+      for (const ik of Object.keys(e)) if (drop !== ik) inner[ik] = e[ik]
+      out[k] = inner
+      continue
     }
-    return out
+    out[k] = e
   }
-  return v
+  return out
+}
+
+// The envelope's own rules, not the host JSON writer: control characters as
+// four lowercase hex digits, never a short escape, and keys sorted by code
+// point rather than UTF-16 unit. A control character in a string was the first
+// corpus value to tell the two apart.
+function escapeString (s) {
+  let out = '"'
+  for (const ch of s) {
+    const cp = ch.codePointAt(0)
+    if ('"' === ch) out += '\\"'
+    else if ('\\' === ch) out += '\\\\'
+    else if (cp < 0x20) out += '\\u' + cp.toString(16).padStart(4, '0')
+    else out += ch
+  }
+  return out + '"'
+}
+
+function compareCodePoints (a, b) {
+  const ai = Array.from(a); const bi = Array.from(b)
+  const n = Math.min(ai.length, bi.length)
+  for (let i = 0; i < n; i++) {
+    const x = ai[i].codePointAt(0); const y = bi[i].codePointAt(0)
+    if (x !== y) return x < y ? -1 : 1
+  }
+  return ai.length === bi.length ? 0 : (ai.length < bi.length ? -1 : 1)
 }
 
 function render (v) {
   if (null === v) return 'null'
   if ('boolean' === typeof v) return v ? 'true' : 'false'
   if ('number' === typeof v) return String(v)
-  if ('string' === typeof v) return JSON.stringify(v)
+  if ('string' === typeof v) return escapeString(v)
   if (Array.isArray(v)) return '[' + v.map(render).join(',') + ']'
-  const keys = Object.keys(v).sort()
-  return '{' + keys.map(k => JSON.stringify(k) + ':' + render(v[k])).join(',') + '}'
+  const keys = Object.keys(v).sort(compareCodePoints)
+  return '{' + keys.map(k => escapeString(k) + ':' + render(v[k])).join(',') + '}'
 }
 
 // An emitted file is `exit N`, the stdout block, then the stderr block. Split
@@ -76,27 +117,28 @@ function parse (text) {
   }
 }
 
-// stdout with the declared exceptions removed, for check 2. Human output has
-// no envelope and so is compared verbatim.
+// stdout with the declared exceptions removed, for check 3, plus whether the
+// raw bytes were canonical, for check 2. Human output has no envelope and so
+// is compared verbatim and is canonical by definition.
 function comparable (stdout) {
   const t = stdout.trimEnd()
-  if (!t.startsWith('{')) return stdout
-  try { return render(strip(JSON.parse(t))) + '\n' }
-  catch { return stdout }
+  if (!t.startsWith('{')) return { text: stdout, canonical: true }
+  let parsed
+  try { parsed = JSON.parse(t) }
+  catch { return { text: stdout, canonical: false } }
+  return {
+    text: render(strip(parsed)) + '\n',
+    canonical: stdout === render(parsed) + '\n',
+  }
 }
 
-function entriesUnder (base) {
-  const out = []
-  const walk = (d) => {
-    for (const name of readdirSync(d).sort()) {
-      const p = join(d, name)
-      if (statSync(p).isDirectory()) { walk(p); continue }
-      if (!name.endsWith('.out')) continue
-      out.push(relative(base, p).split(sep).join('/').replace(/\.out$/, ''))
-    }
-  }
-  walk(base)
-  return out
+// The entries every port must answer: the corpus, not a port's output.
+function corpusIds () {
+  const doc = JSON.parse(readFileSync(join(ROOT, 'spec', 'cli.json'), 'utf8'))
+  const groups = doc.primary.cli
+  const ids = []
+  for (const g of Object.keys(groups).sort()) for (const e of groups[g].set) ids.push(e.id)
+  return ids
 }
 
 const ports = readdirSync(dir).filter(p => statSync(join(dir, p)).isDirectory()).sort()
@@ -105,9 +147,10 @@ if (ports.length < 2) {
   process.exit(2)
 }
 
-const ids = entriesUnder(join(dir, ports[0]))
+const ids = corpusIds()
 const reference = ports[0]
 let bad = 0
+let noncanon = 0
 
 console.log(`  comparing ${ports.join(', ')} over ${ids.length} entries`)
 
@@ -131,12 +174,25 @@ for (const id of ids) {
     // Introduce a single-port difference and require it to be reported. A
     // comparison nobody has seen go red might be comparing nothing at all.
     got[ports[1]].stdout = got[ports[1]].stdout.replace(/"count":(\d+)/, '"count":999')
+    // And the right values in the wrong bytes, which check 2 exists to catch.
+    if (id === ids[0] && got[ports[1]].stdout.trimEnd().startsWith('{')) {
+      got[ports[1]].stdout = JSON.stringify(JSON.parse(got[ports[1]].stdout), null, 2) + '\n'
+    }
+  }
+
+  // Check 2: canonical bytes, every port.
+  for (const p of ports) {
+    if (!comparable(got[p].stdout).canonical) {
+      console.error(`  NONCANON ${id}: ${p} stdout is not in canonical form`)
+      bad++
+      noncanon++
+    }
   }
 
   for (const p of ports.slice(1)) {
-    // Check 2: the parity claim.
-    const a = comparable(got[reference].stdout)
-    const b = comparable(got[p].stdout)
+    // Check 3: the parity claim.
+    const a = comparable(got[reference].stdout).text
+    const b = comparable(got[p].stdout).text
     if (a !== b) {
       console.error(`  DIFFERS  ${id}: ${reference} and ${p} disagree on stdout`)
       console.error(`           ${reference}: ${a.trimEnd().slice(0, 160)}`)
@@ -153,8 +209,9 @@ for (const id of ids) {
     }
   }
 
-  // Check 3: the canonical name check. Only for entries whose stdout is an
-  // envelope - human output carries no `port` and is expected to be identical.
+  // Check 4: each envelope names its own port, and the raw bytes differ. Only
+  // for entries whose stdout is an envelope - human output carries no `port`
+  // and is expected to be identical.
   const t = got[reference].stdout.trimEnd()
   if (t.startsWith('{')) {
     for (const p of ports) {
@@ -182,7 +239,13 @@ if (selftest) {
       ' The comparison is not comparing anything.')
     process.exit(1)
   }
-  console.log(`\nparity --selftest: ok - the deliberate difference was reported (${bad} finding(s))`)
+  if (0 === noncanon) {
+    console.error('\nparity --selftest: deliberately indented stdout was NOT reported as non-canonical.' +
+      ' The byte check is not checking bytes.')
+    process.exit(1)
+  }
+  console.log(`\nparity --selftest: ok - the deliberate differences were reported (${bad} finding(s),` +
+    ` ${noncanon} non-canonical)`)
   process.exit(0)
 }
 

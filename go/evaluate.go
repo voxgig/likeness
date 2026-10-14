@@ -8,6 +8,19 @@ import (
 
 const dayMs = int64(86400000)
 
+// ASCII only, A-Z to a-z: the one folding every port applies identically.
+// Other scripts match exactly. Byte-wise is safe: a multi-byte sequence never
+// contains an ASCII letter.
+func foldCase(s string) string {
+	b := []byte(s)
+	for i, c := range b {
+		if 'A' <= c && c <= 'Z' {
+			b[i] = c + 32
+		}
+	}
+	return string(b)
+}
+
 func durationMs(v *Value) int64 {
 	switch v.Unit {
 	case "d":
@@ -119,11 +132,11 @@ func Evaluate(node *Node, note Note, clockMs int64) bool {
 		// is a case-insensitive substring over title and body, and the
 		// capability matrix says so rather than implying a relevance score
 		// nobody computed.
-		q := strings.ToLower(node.V)
-		if strings.Contains(strings.ToLower(note.Title), q) {
+		q := foldCase(node.V)
+		if strings.Contains(foldCase(note.Title), q) {
 			return true
 		}
-		return nil != note.Body && strings.Contains(strings.ToLower(*note.Body), q)
+		return nil != note.Body && strings.Contains(foldCase(*note.Body), q)
 	}
 
 	have, present := fieldValue(note, node.Field)
@@ -157,19 +170,19 @@ func Evaluate(node *Node, note Note, clockMs int64) bool {
 		}
 	}
 
-	text := strings.ToLower(asText(want))
+	text := foldCase(asText(want))
 	eq := func(h any) bool {
 		if !present || nil == h {
 			return false
 		}
 		s, ok := h.(string)
-		return ok && strings.ToLower(s) == text
+		return ok && foldCase(s) == text
 	}
 
 	if list, ok := have.([]string); present && ok {
 		hit := false
 		for _, x := range list {
-			if strings.ToLower(x) == text {
+			if foldCase(x) == text {
 				hit = true
 				break
 			}
@@ -192,7 +205,7 @@ func Evaluate(node *Node, note Note, clockMs int64) bool {
 			return false
 		}
 		s, ok := have.(string)
-		return ok && strings.Contains(strings.ToLower(s), text)
+		return ok && strings.Contains(foldCase(s), text)
 	}
 	return eq(have)
 }

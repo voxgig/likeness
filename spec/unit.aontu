@@ -189,10 +189,68 @@ primary: unit: {
     }
 
     {
+      id: "selector/dash-after-a-term-negates"
+      # A `-` that follows whitespace opens a new atom, wherever it stands.
+      fn: "parseSelector"
+      in: "title:a -title:b"
+      out: {
+        t: "and"
+        kids: [
+          { t:"cmp" field:"title" op:":" value: { k:"word" v:"a" } }
+          {
+            t: "not"
+            kid: { t:"cmp" field:"title" op:":" value: { k:"word" v:"b" } }
+          }
+        ]
+      }
+    }
+
+    {
+      id: "selector/dash-before-a-term-negates"
+      fn: "parseSelector"
+      in: "-title:b title:a"
+      out: {
+        t: "and"
+        kids: [
+          {
+            t: "not"
+            kid: { t:"cmp" field:"title" op:":" value: { k:"word" v:"b" } }
+          }
+          { t:"cmp" field:"title" op:":" value: { k:"word" v:"a" } }
+        ]
+      }
+    }
+
+    {
+      id: "selector/dash-after-a-word-negates"
+      fn: "parseSelector"
+      in: "retention -draft"
+      out: {
+        t: "and"
+        kids: [
+          { t:"text" v:"retention" }
+          { t:"not" kid: { t:"text" v:"draft" } }
+        ]
+      }
+    }
+
+    {
       id: "selector/duration"
       fn: "parseSelector"
       in: "updated>14d"
       out: { t:"cmp" field:"updated" op:">" value: { k:"dur" n:14 unit:"d" } }
+    }
+
+    {
+      id: "selector/duration-eight-digits-is-the-most"
+      fn: "parseSelector"
+      in: "updated>99999999d"
+      out: {
+        t: "cmp"
+        field: "updated"
+        op: ">"
+        value: { k:"dur" n:99999999 unit:"d" }
+      }
     }
 
     {
@@ -400,9 +458,130 @@ primary: unit: {
       in: "title:日本語 bogus:x"
       out: { offset:16 token:"bogus" }
     }
+
+    {
+      id: "selector-err/duration-overflow"
+      fn: "parseSelectorError"
+      in: "updated>99999999999999999999d"
+      out: { offset:8 token:"99999999999999999999d" }
+    }
+
+    {
+      id: "selector-err/duration-nine-digits"
+      fn: "parseSelectorError"
+      in: "updated>123456789d"
+      out: { offset:8 token:"123456789d" }
+    }
+
+    {
+      id: "selector-err/ordering-on-a-text-field"
+      # `>` and friends compare dates, which only created and updated hold.
+      fn: "parseSelectorError"
+      in: "title>2026-01-01"
+      out: { offset:5 token:">" }
+    }
+
+    {
+      id: "selector-err/ordering-on-body-with-a-duration"
+      fn: "parseSelectorError"
+      in: "body<3d"
+      out: { offset:4 token:"<" }
+    }
   ]
 
   # ---------------------------------------------------------------- identity
+  text: set: [
+    {
+      id: "text/case-folding-is-ascii-only"
+      # A-Z fold to a-z and nothing else does, so every port agrees on it.
+      fn: "foldCase"
+      in: "İSTANBUL Straße ΟΔΟΣ ÀÉ ABC xyz"
+      out: "İstanbul straße ΟΔΟΣ ÀÉ abc xyz"
+    }
+  ]
+
+  project: set: [
+    {
+      id: "project/no-id-is-refused"
+      # Every such row would share one identity, so the record is refused.
+      fn: "projectJoplin"
+      in: { instance:"jot" account:"local" raw:title:"no id" }
+      err: "record with no id"
+    }
+
+    {
+      id: "project/null-and-non-string-values"
+      fn: "projectJoplin"
+      in: {
+        instance: "jot"
+        account: "local"
+        raw: {
+          id: "n1"
+          title: null
+          body: 42
+          parent_id: 7
+          created_time: "nope"
+          updated_time: 1773129600000
+        }
+      }
+      out: {
+        lid: "lk_xjb81w96kpdh"
+        source: "joplin"
+        instance: "jot"
+        id: "n1"
+        title: ""
+        body: "42"
+        space: "7"
+        url: "joplin://x-callback-url/openNote?id=n1"
+        created: "1970-01-01T00:00:00Z"
+        updated: "2026-03-10T08:00:00Z"
+      }
+    }
+  ]
+
+  config: set: [
+    {
+      id: "config/equals-form"
+      # `--config=PATH` and `--config PATH` are one flag; a port read only the second.
+      fn: "takeConfigOption"
+      in: ["list" "--config=/x/station.json" "--json"]
+      out: { rest: ["list" "--json"] value:"/x/station.json" }
+    }
+
+    {
+      id: "config/space-form"
+      fn: "takeConfigOption"
+      in: ["list" "--config" "/y" "--json"]
+      out: { rest: ["list" "--json"] value:"/y" }
+    }
+
+    { id:"config/absent" fn:"takeConfigOption" in: ["list"] out:rest: ["list"] }
+
+    {
+      id: "config/station-not-json"
+      fn: "parseStation"
+      in: "{not json"
+      err: "is not valid JSON"
+    }
+
+    {
+      id: "config/station-connections-in-name-order"
+      fn: "parseStation"
+      in: "{\"sdk\":{\"zed\":{\"api\":\"joplin\",\"account\":\"z\"},\"abe\":{\"api\":\"joplin\",\"org\":\"a\",\"base\":\"http://x\"}}}"
+      out: [
+        { instance:"abe" source:"joplin" account:"a" base:"http://x" }
+        { instance:"zed" source:"joplin" account:"z" }
+      ]
+    }
+
+    {
+      id: "config/station-without-account"
+      fn: "parseStation"
+      in: "{\"sdk\":{\"jot\":{\"api\":\"joplin\"}}}"
+      err: "has no `account` or `org`"
+    }
+  ]
+
   identity: set: [
     # Known vectors. A port that gets this subtly wrong produces
     # plausible-looking identifiers that silently fail to match another port's,

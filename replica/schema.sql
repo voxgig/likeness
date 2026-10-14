@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS meta (
   value TEXT NOT NULL
 );
 
--- The projected note. Column names match the entity shape in spec/def/note.aon
+-- The projected note. Column names match the entity shape in spec/def/note.aontu
 -- so the mapping is nominal rather than a translation table.
 CREATE TABLE IF NOT EXISTS note (
   lid       TEXT PRIMARY KEY,

@@ -105,15 +105,39 @@ function checkStdout (e: CliEntry, actual: string, fail: (s: string) => void): v
     return
   }
 
+  // Raw bytes first: indented or CRLF output carries the right values in the
+  // wrong bytes, and a value comparison alone let that through.
+  const canonical = serialise(parsed)
+  if (actual !== canonical) {
+    fail('stdout is not in canonical form (sorted keys, one line, one trailing newline): ' +
+      JSON.stringify(actual.slice(0, 80)))
+  }
+
   // Removed from the comparison, so asserted here instead - otherwise a port
   // could report someone else's name and no check would notice.
   if (PORT !== parsed.port) {
     fail('envelope port is "' + parsed.port + '", expected "' + PORT + '"')
   }
+  if (null !== parsed.data && 'object' === typeof parsed.data && !Array.isArray(parsed.data) &&
+      'port' in parsed.data && PORT !== parsed.data.port) {
+    fail('data.port is "' + parsed.data.port + '", expected "' + PORT + '"')
+  }
+  const elapsed = parsed.meta?.elapsed_ms
+  if (!Number.isInteger(elapsed) || elapsed < 0) {
+    fail('meta.elapsed_ms is ' + JSON.stringify(elapsed) + ', expected a non-negative integer')
+  }
 
   const got = serialise(stripParityExceptions(parsed))
   if (got !== want) fail('stdout differs from ' + e.out.stdout + '\n  want ' + want.trimEnd() +
     '\n  got  ' + got.trimEnd())
+}
+
+// The stdout checks alone, over bytes the caller supplies. For the meta-tests,
+// which must be able to hand the harness output no port produced.
+export function stdoutFailures (e: CliEntry, actual: string): string[] {
+  const out: string[] = []
+  checkStdout(e, actual, (s) => { out.push(s) })
+  return out
 }
 
 function sameCalls (want: Call[], got: Call[]): boolean {

@@ -40,7 +40,7 @@ export function compareCodePoints (a: string, b: string): number {
   return ai.length < bi.length ? -1 : 1
 }
 
-function renderNumber (v: number | bigint, path: string): string {
+function renderNumber (v: number | bigint, path: string, loose: boolean): string {
   if ('bigint' === typeof v) {
     if (v > INT64_MAX || v < INT64_MIN) {
       throw new SerialiseError('integer out of int64 range', path)
@@ -50,6 +50,7 @@ function renderNumber (v: number | bigint, path: string): string {
   if (!Number.isFinite(v)) {
     throw new SerialiseError('non-finite number', path)
   }
+  if (loose) return String(v)
   if (!Number.isInteger(v)) {
     throw new SerialiseError('floating point is not representable in the envelope', path)
   }
@@ -64,7 +65,7 @@ function renderNumber (v: number | bigint, path: string): string {
  * order, which is a different order in every port, and that difference would
  * reach stdout the moment a command printed a row without `--json`.
  */
-export function render (v: unknown, path: string = ''): string {
+export function render (v: unknown, path: string = '', loose: boolean = false): string {
   if (null === v) return 'null'
   if (undefined === v) {
     // Absent is absent: a caller must delete the key rather than set it to
@@ -72,12 +73,12 @@ export function render (v: unknown, path: string = ''): string {
     throw new SerialiseError('undefined is not a value - omit the key instead', path)
   }
   if ('boolean' === typeof v) return v ? 'true' : 'false'
-  if ('number' === typeof v || 'bigint' === typeof v) return renderNumber(v, path)
+  if ('number' === typeof v || 'bigint' === typeof v) return renderNumber(v, path, loose)
   if ('string' === typeof v) return escapeString(v)
 
   if (Array.isArray(v)) {
     if (0 === v.length) return '[]'
-    const parts = v.map((e, i) => render(e, path + '[' + i + ']'))
+    const parts = v.map((e, i) => render(e, path + '[' + i + ']', loose))
     return '[' + parts.join(',') + ']'
   }
 
@@ -85,11 +86,17 @@ export function render (v: unknown, path: string = ''): string {
     const keys = Object.keys(v).sort(compareCodePoints)
     if (0 === keys.length) return '{}'
     const parts = keys.map(k =>
-      escapeString(k) + ':' + render(v[k], path + '.' + k))
+      escapeString(k) + ':' + render(v[k], path + '.' + k, loose))
     return '{' + parts.join(',') + '}'
   }
 
   throw new SerialiseError('value of unsupported type ' + typeof v, path)
+}
+
+// A source payload: the same writer with floating point permitted, numbers in
+// ECMAScript `Number::toString` form, which every port reproduces.
+export function renderRaw (v: unknown): string {
+  return render(v, '', true)
 }
 
 /* The whole point of the module: a value in, the envelope's bytes out,
@@ -127,20 +134,24 @@ export type Envelope = {
   version: string
 }
 
-export const PARITY_EXCEPTIONS = ['port', 'elapsed_ms']
+export const PARITY_EXCEPTIONS = ['port', 'meta.elapsed_ms', 'data.port']
 
-/* Remove the declared exceptions, wherever they appear. Used by the corpus
- * runner and by `make parity`; exported so that the two cannot drift.
- */
+// By PATH, never by name: stripping every key called `port` hid what `which`
+// reported. Shared by the corpus runner and `make parity` so they cannot drift.
 export function stripParityExceptions (v: unknown): unknown {
-  if (Array.isArray(v)) return v.map(stripParityExceptions)
-  if (isPlainObject(v)) {
-    const out: Record<string, unknown> = {}
-    for (const k of Object.keys(v)) {
-      if (PARITY_EXCEPTIONS.includes(k)) continue
-      out[k] = stripParityExceptions(v[k])
+  if (!isPlainObject(v)) return v
+  const out: Record<string, unknown> = {}
+  for (const k of Object.keys(v)) {
+    const e = v[k]
+    if ('port' === k) continue
+    if (('meta' === k || 'data' === k) && isPlainObject(e)) {
+      const drop = 'meta' === k ? 'elapsed_ms' : 'port'
+      const inner: Record<string, unknown> = {}
+      for (const ik of Object.keys(e)) if (drop !== ik) inner[ik] = e[ik]
+      out[k] = inner
+      continue
     }
-    return out
+    out[k] = e
   }
-  return v
+  return out
 }

@@ -14,6 +14,7 @@ cd mock
 npm install
 npm start                          # http://127.0.0.1:7777
 LIKENESS_MOCK_PORT=8123 npm start  # somewhere else
+LIKENESS_MOCK_PORT=0 npm start     # any free port; the bound one is printed
 LIKENESS_MOCK_LOG=1 npm run dev    # with Fastify request logging
 ```
 
@@ -159,7 +160,8 @@ Assert on *relative* ordering of timestamps, not on absolute values.
 
 Quirks the mock deliberately tolerates: the path param is duplicated into the
 query (`GET /notes/n1?id=n1`); `$action` leaks as `%24action`; both `field` and
-`fields` are honoured. Every response carries a parseable JSON body — **including
+`fields` are honoured, and with neither present a list or a load answers Joplin's
+own default of `id`, `parent_id` and `title` only. Every response carries a parseable JSON body — **including
 DELETE and every error** — because `ResultBodyUtility` calls `response.json()`
 whenever a body stream is present, and an empty body turns a clean
 `request_status` error into a raw `SyntaxError`. Success is always `200`, never

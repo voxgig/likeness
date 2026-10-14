@@ -12,7 +12,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/all.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -30,7 +36,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/free-text.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -46,7 +58,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/relative-duration.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -62,7 +80,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/limit-truncates.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -82,7 +106,13 @@ primary: cli: {
         # on. The source WAS asked, so the call list is not empty.
         exit: 1
         stdout: "spec/expect/list/no-match.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -100,7 +130,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/human.txt"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -118,7 +154,13 @@ primary: cli: {
       out: {
         exit: 1
         stdout: "spec/expect/list/human-no-match.txt"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -194,6 +236,93 @@ primary: cli: {
       out: { exit:3 stdout:"spec/expect/list/invalid-limit.json" calls: [] }
     }
 
+    # `--limit` is an integer in the declared grammar: digits only, within its
+    # bounds. A host number parser accepts hex, exponents and decimals, and
+    # each port accepted a different set.
+    {
+      id: "list/limit-hex-refused"
+      args: ["list" "--limit" "0x10" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/list/limit-hex.json" calls: [] }
+    }
+
+    {
+      id: "list/limit-exponent-refused"
+      args: ["list" "--limit" "1e3" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/list/limit-exponent.json" calls: [] }
+    }
+
+    {
+      id: "list/limit-decimal-refused"
+      args: ["list" "--limit" "2.0" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/list/limit-decimal.json" calls: [] }
+    }
+
+    {
+      id: "list/limit-overflow-refused"
+      args: ["list" "--limit" "99999999999999999999" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/list/limit-overflow.json" calls: [] }
+    }
+
+    {
+      id: "list/limit-ten-digits-refused"
+      args: ["list" "--limit" "1000000000" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/list/limit-ten-digits.json" calls: [] }
+    }
+
+    {
+      id: "list/duration-overflow-refused-before-the-network"
+      args: ["list" "updated>99999999999999999999d" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/list/duration-overflow.json" calls: [] }
+    }
+
+    {
+      id: "list/ordering-on-title-refused-before-the-network"
+      args: ["list" "title>2026-01-01" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/list/ordering-on-title.json" calls: [] }
+    }
+
     {
       id: "list/no-adapter-refused-before-the-network"
       args: ["list" "--json"]
@@ -222,8 +351,16 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/list/all-sources-down.json"
         calls: [
-          { instance:"jot" method:"GET" path:"/notes" }
-          { instance:"spare" method:"GET" path:"/notes" }
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+          {
+            instance: "spare"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
         ]
       }
     }
@@ -248,7 +385,13 @@ primary: cli: {
       out: {
         exit: 4
         stdout: "spec/expect/list/strict-halts-first.json"
-        calls: [{ instance:"down" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "down"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -268,8 +411,16 @@ primary: cli: {
         exit: 2
         stdout: "spec/expect/list/partial.json"
         calls: [
-          { instance:"jot" method:"GET" path:"/notes" }
-          { instance:"spare" method:"GET" path:"/notes" }
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+          {
+            instance: "spare"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
         ]
       }
     }
@@ -293,8 +444,16 @@ primary: cli: {
         stdout: "spec/expect/list/partial-human.txt"
         stderr: "spare unavailable - results are incomplete\n"
         calls: [
-          { instance:"jot" method:"GET" path:"/notes" }
-          { instance:"spare" method:"GET" path:"/notes" }
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+          {
+            instance: "spare"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
         ]
       }
     }
@@ -315,8 +474,174 @@ primary: cli: {
         exit: 4
         stdout: "spec/expect/list/strict-halts.json"
         calls: [
-          { instance:"jot" method:"GET" path:"/notes" }
-          { instance:"spare" method:"GET" path:"/notes" }
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+          {
+            instance: "spare"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/odd-values-project-the-same-everywhere"
+      # The awkward fixture: null, non-string and float values, keys out of order, markup and control characters. One rule per field.
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/odd-values.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/odd-raw-is-the-canonical-writer"
+      args: ["list" "--raw" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/odd-raw.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/case-folding-is-ascii-only"
+      # `İ` does not fold to `i`. A port that used its language's lowercasing matched here.
+      args: ["list" "title:istanbul" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/list/odd-no-match.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/case-folding-folds-ascii"
+      args: ["list" "title:STRA" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/odd-strasse.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/no-full-case-folding"
+      args: ["list" "title:STRASSE" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/list/odd-no-match.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/negation-after-a-term"
+      # The same question asked in both orders, so both entries share one
+      # expectation file: a port that parsed only one of them cannot pass.
+      args: ["list" "title:e -title:limit" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/negation.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "list/negation-before-a-term"
+      args: ["list" "-title:limit title:e" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/list/negation.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
         ]
       }
     }
@@ -338,7 +663,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/list/instance-filter.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
   ]
@@ -361,7 +692,51 @@ primary: cli: {
           {
             instance: "jot"
             method: "GET"
-            path: "/notes/a0e50000000000000000000000000001"
+            path: "/notes/a0e50000000000000000000000000001?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "get/odd-raw-one"
+      args: ["get" "jot:a0e50000000000000000000000000013" "--raw" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/get/odd-raw-one.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes/a0e50000000000000000000000000013?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "get/odd-null-title"
+      args: ["get" "jot:a0e50000000000000000000000000014" "--json"]
+      ctx: {
+        fixture: "joplin-odd"
+        connections: [{ instance:"jot" source:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/get/odd-null-title.json"
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes/a0e50000000000000000000000000014?fields=id,parent_id,title,body,created_time,updated_time"
           }
         ]
       }
@@ -381,7 +756,13 @@ primary: cli: {
       out: {
         exit: 1
         stdout: "spec/expect/get/not-found.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes/nosuchnote" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes/nosuchnote?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -450,7 +831,13 @@ primary: cli: {
       out: {
         exit: 0
         stdout: "spec/expect/doctor/ok.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -468,7 +855,13 @@ primary: cli: {
       out: {
         exit: 3
         stdout: "spec/expect/doctor/unreachable.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -491,7 +884,13 @@ primary: cli: {
       out: {
         exit: 3
         stdout: "spec/expect/doctor/auth-rejected.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -512,7 +911,13 @@ primary: cli: {
       out: {
         exit: 4
         stdout: "spec/expect/doctor/no-adapter.json"
-        calls: [{ instance:"jot" method:"GET" path:"/notes" }]
+        calls: [
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+        ]
       }
     }
 
@@ -537,8 +942,16 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/doctor/mixed-failures.json"
         calls: [
-          { instance:"jot" method:"GET" path:"/notes" }
-          { instance:"spare" method:"GET" path:"/notes" }
+          {
+            instance: "jot"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
+          {
+            instance: "spare"
+            method: "GET"
+            path: "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+          }
         ]
       }
     }

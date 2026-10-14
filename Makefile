@@ -5,7 +5,7 @@
 # built. `make spec-check` should be the first thing a change runs and the
 # first thing CI runs.
 
-AONTU ?= npx --yes aontu@0.67.0
+AONTU ?= npx --yes aontu@0.76.0
 SPEC  := spec
 DEF   := $(SPEC)/def
 
@@ -13,13 +13,13 @@ DEF   := $(SPEC)/def
 # without adding it here is the one gap this Makefile cannot catch, so
 # `spec-list` prints both lists for comparison.
 VET_PAIRS := \
-	$(DEF)/source.aon:$(SPEC)/sources.aon \
-	$(DEF)/capability.aon:$(SPEC)/caps.aon \
-	$(DEF)/error.aon:$(SPEC)/errors.aon \
-	$(DEF)/project.aon:$(SPEC)/example/likeness.aon \
-	$(DEF)/replica.aon:$(SPEC)/replica.aon \
-	$(DEF)/corpus.aon:$(SPEC)/unit.aon \
-	$(DEF)/corpus.aon:$(SPEC)/cli.aon
+	$(DEF)/source.aontu:$(SPEC)/sources.aontu \
+	$(DEF)/capability.aontu:$(SPEC)/caps.aontu \
+	$(DEF)/error.aontu:$(SPEC)/errors.aontu \
+	$(DEF)/project.aontu:$(SPEC)/example/likeness.aontu \
+	$(DEF)/replica.aontu:$(SPEC)/replica.aontu \
+	$(DEF)/corpus.aontu:$(SPEC)/unit.aontu \
+	$(DEF)/corpus.aontu:$(SPEC)/cli.aontu
 
 # Files that MUST fail to vet, AND MUST FAIL FOR THE RIGHT REASON. `aontu vet`
 # exits 1 for a contradiction, 2 for a usage error and 3 for an incomplete
@@ -28,17 +28,17 @@ VET_PAIRS := \
 # which is the exact failure this target exists to prevent. Exit 1, or it is a
 # build failure.
 VET_MUSTFAIL := \
-	$(DEF)/project.aon:$(SPEC)/example/likeness-broken.aon \
-	$(DEF)/corpus.aon:$(SPEC)/example/unit-broken.aon \
-	$(DEF)/corpus.aon:$(SPEC)/example/cli-broken.aon
+	$(DEF)/project.aontu:$(SPEC)/example/likeness-broken.aontu \
+	$(DEF)/corpus.aontu:$(SPEC)/example/unit-broken.aontu \
+	$(DEF)/corpus.aontu:$(SPEC)/example/cli-broken.aontu
 
 
 .PHONY: help
 help:
 	@echo 'likeness make targets:'
 	@echo '  spec-check    every data file satisfies its shape, and the red tests go red'
-	@echo '  spec-agree    the registry is present, and capability rows match it'
-	@echo '                (set LIKENESS_SDK_ROOT to also check against real SDKs)'
+	@echo '  spec-agree    the registry is present, capability rows match it, and the'
+	@echo '                registry matches the cloned SDK models (needs `make sdk`)'
 	@echo '  spec-build    compile the data files to the JSON every port reads'
 	@echo '  spec-fresh    fail if a committed JSON file is stale'
 	@echo '  spec-json     export the shapes as JSON Schema'
@@ -53,6 +53,7 @@ help:
 	@echo '  check         spec, every port, and the parity comparison'
 	@echo '  expect        REGENERATE the committed expectations - read the diff'
 	@echo '  mock          run the local source mock server'
+	@echo '  mock-deps     install the mock server dependencies the wire tests need'
 
 
 .PHONY: spec
@@ -69,7 +70,7 @@ spec-build:
 	@AONTU="$(AONTU)" node tools/build-spec.mjs
 
 
-# Drift between a .aon file and the JSON committed beside it fails a build here
+# Drift between a .aontu file and the JSON committed beside it fails a build here
 # rather than being discovered a month later, when a port disagrees with the
 # spec it claims to implement.
 .PHONY: spec-fresh
@@ -93,12 +94,12 @@ sdk-check:
 # sdk-check first: a port built against a drifted clone produces a corpus
 # result about an SDK nobody else has.
 .PHONY: test-ts
-test-ts: sdk-check
+test-ts: sdk-check mock-deps
 	@cd typescript && npm run build && npm test
 
 
 .PHONY: test-go
-test-go: sdk-check
+test-go: sdk-check mock-deps
 	@cd go && gofmt -l . | (! grep .) && go vet ./... && go test ./...
 
 
@@ -114,7 +115,7 @@ test-go: sdk-check
 PARITY_DIR := build/parity
 
 .PHONY: parity
-parity: sdk-check
+parity: sdk-check mock-deps
 	@rm -rf $(PARITY_DIR) && mkdir -p $(PARITY_DIR)
 	@cd typescript && npm run build >/dev/null && \
 	  LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" npm test >/dev/null
@@ -164,9 +165,11 @@ spec-check:
 	exit $$fail
 
 
+# sdk-check first: the cross-check reads the cloned models, and a clone off
+# its pin would check the registry against an SDK nobody else has.
 .PHONY: spec-agree
-spec-agree:
-	@AONTU="$(AONTU)" node tools/check-registry.mjs
+spec-agree: sdk-check
+	@AONTU="$(AONTU)" node tools/check-registry.mjs --selftest
 
 
 .PHONY: spec-json
@@ -179,28 +182,35 @@ spec-json:
 	@echo '  admits anything, and every type() definition appears as a REQUIRED' >&2
 	@echo '  top-level property, so no likeness document satisfies the export.' >&2
 	@echo '  `aontu vet` is the authority. This is for readers, not validators.' >&2
-	@$(AONTU) jsonschema $(DEF)/likeness.aon
+	@$(AONTU) jsonschema $(DEF)/likeness.aontu
 
 
 .PHONY: spec-fmt
 spec-fmt:
-	@$(AONTU) fmt --check $(DEF)/*.aon $(SPEC)/*.aon $(SPEC)/example/*.aon && echo '  fmt ok'
+	@$(AONTU) fmt --check $(DEF)/*.aontu $(SPEC)/*.aontu $(SPEC)/example/*.aontu && echo '  fmt ok'
 
 
 .PHONY: spec-hash
 spec-hash:
-	@for f in $(DEF)/*.aon $(SPEC)/*.aon; do printf '  %-32s ' "$$(basename $$f)"; $(AONTU) hash "$$f"; done
+	@for f in $(DEF)/*.aontu $(SPEC)/*.aontu; do printf '  %-32s ' "$$(basename $$f)"; $(AONTU) hash "$$f"; done
 
 
 .PHONY: spec-list
 spec-list:
-	@echo 'data files present:'; ls $(SPEC)/*.aon $(SPEC)/example/*.aon
+	@echo 'data files present:'; ls $(SPEC)/*.aontu $(SPEC)/example/*.aontu
 	@echo 'data files vetted:'; for p in $(VET_PAIRS) $(VET_MUSTFAIL); do echo "  $${p#*:}"; done
 
 
 .PHONY: mock
 mock:
 	@cd mock && npm start
+
+
+# Each port's wire tests drive its real transport against mock/, so the mock's
+# own dependencies must be installed. `npm ci` honours its lockfile.
+.PHONY: mock-deps
+mock-deps:
+	@test -d mock/node_modules || (cd mock && npm ci --no-audit --no-fund >/dev/null)
 
 
 .PHONY: comments comments-test hooks

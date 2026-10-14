@@ -1,5 +1,7 @@
+**Filed:** [voxgig-sdk/joplin-sdk#3](https://github.com/voxgig-sdk/joplin-sdk/issues/3), [notion-sdk#4](https://github.com/voxgig-sdk/notion-sdk/issues/4)
+
 **Repository:** `voxgig-sdk/joplin-sdk` — and correspondingly `obsidian-sdk`, `notion-sdk`, `linear-sdk`
-**Observed at:** the revisions recorded in [`spec/sources.aon`](../../spec/sources.aon)
+**Observed at:** the revisions recorded in [`spec/sources.aontu`](../../spec/sources.aontu)
 **Fix belongs in:** each SDK repository's `.sdk/def/`
 
 ---

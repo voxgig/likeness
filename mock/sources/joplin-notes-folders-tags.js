@@ -38,6 +38,9 @@
  *
  *  4. `field` vs `fields`. The API parameter is `fields`; the model and the
  *     generated types say `field`. BOTH are honoured, neither is rejected.
+ *     With neither present a list or a load answers Joplin's own default of
+ *     `id`, `parent_id` and `title` only - which is what a consumer that
+ *     forgot to ask for `body` or the timestamps sees against real Joplin.
  *
  *  5. UPDATE SENDS NO QUERY STRING and carries id in the BODY. Targeting is
  *     therefore done from the PATH param, never from `?id=`.
@@ -376,9 +379,13 @@ function pickFields (q) {
   return 0 === list.length ? null : list
 }
 
+// Joplin's own default: a list or a load answers id, parent_id and title
+// unless `fields` asks for more.
+const DEFAULT_FIELDS = ['id', 'parent_id', 'title']
+
 function project (item, fields, spec) {
-  if (null == fields) return item
-  const valid = fields.filter(f => f in spec)
+  const want = null == fields ? DEFAULT_FIELDS : fields
+  const valid = want.filter(f => f in spec)
   if (0 === valid.length) return item
   // `id` is always included so callers can still correlate records - the
   // three sub-resource routes are forced to send a dummy `field` by the SDK.

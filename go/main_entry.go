@@ -2,28 +2,39 @@ package likeness
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 )
 
-func stripOption(argv []string, name string) []string {
-	out := []string{}
+const configRemedy = "fix the file, or point --config at another"
+
+// takeConfigOption takes `--config PATH` or `--config=PATH` out of argv, one
+// flag either way, before the command's own argv is parsed.
+func takeConfigOption(argv []string) (rest []string, value string, found bool) {
+	rest = []string{}
 	for i := 0; i < len(argv); i++ {
-		if argv[i] == name {
-			i++
+		if "--config" == argv[i] {
+			if i+1 < len(argv) {
+				i++
+				value, found = argv[i], true
+			}
 			continue
 		}
-		if strings.HasPrefix(argv[i], name+"=") {
+		if strings.HasPrefix(argv[i], "--config=") {
+			value, found = argv[i][len("--config="):], true
 			continue
 		}
-		out = append(out, argv[i])
+		rest = append(rest, argv[i])
 	}
-	return out
+	return rest, value, found
 }
 
 func probePath(env map[string]string) []map[string]any {
@@ -67,6 +78,47 @@ func probePath(env map[string]string) []map[string]any {
 	return rows
 }
 
+func optText(m map[string]any, k string) string {
+	if v, ok := present(m, k); ok {
+		return textOf(v)
+	}
+	return ""
+}
+
+// parseStation reads the connections a station file declares, in instance
+// order. Pure, so the unit corpus holds both ports to it.
+func parseStation(text, path string) ([]Connection, error) {
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(text), &doc); nil != err {
+		return nil, fmt.Errorf("%s is not valid JSON", path)
+	}
+	sdk, _ := doc["sdk"].(map[string]any)
+	names := make([]string, 0, len(sdk))
+	for k := range sdk {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+
+	out := make([]Connection, 0, len(names))
+	for _, name := range names {
+		e, _ := sdk[name].(map[string]any)
+		account := optText(e, "account")
+		if "" == account {
+			account = optText(e, "org")
+		}
+		if "" == account {
+			return nil, fmt.Errorf(
+				"connection %q has no `account` or `org`, and identity may not be "+
+					"derived from the instance name - see %s", name, path)
+		}
+		out = append(out, Connection{
+			Instance: name, Source: optText(e, "api"), Account: account,
+			APIKey: optText(e, "apikey"), Base: optText(e, "base"),
+		})
+	}
+	return out, nil
+}
+
 func loadConnections(configPath string) ([]Connection, error) {
 	path := configPath
 	if "" == path {
@@ -80,52 +132,16 @@ func loadConnections(configPath string) ([]Connection, error) {
 	if nil != err {
 		return nil, nil
 	}
-	var doc struct {
-		Sdk map[string]struct {
-			API     string `json:"api"`
-			Account string `json:"account"`
-			Org     string `json:"org"`
-			APIKey  string `json:"apikey"`
-			Base    string `json:"base"`
-		} `json:"sdk"`
-	}
-	if err := json.Unmarshal(raw, &doc); nil != err {
-		return nil, err
-	}
-	names := make([]string, 0, len(doc.Sdk))
-	for k := range doc.Sdk {
-		names = append(names, k)
-	}
-	sort.Strings(names)
-
-	out := make([]Connection, 0, len(names))
-	for _, name := range names {
-		e := doc.Sdk[name]
-		account := e.Account
-		if "" == account {
-			account = e.Org
-		}
-		if "" == account {
-			return nil, fmt.Errorf(
-				"connection %q has no `account` or `org`, and identity may not be "+
-					"derived from the instance name - see %s", name, path)
-		}
-		out = append(out, Connection{
-			Instance: name, Source: e.API, Account: account,
-			APIKey: e.APIKey, Base: e.Base,
-		})
-	}
-	return out, nil
+	return parseStation(string(raw), path)
 }
 
 // Main is the whole process: build the context, run, write, return the status.
 func Main(argv []string) int {
-	configPath := ""
-	for i, a := range argv {
-		if "--config" == a && i+1 < len(argv) {
-			configPath = argv[i+1]
-		}
-	}
+	// With SIGPIPE ignored a write to a departed reader reports EPIPE instead
+	// of killing the process, and the port exits quietly with 0.
+	signal.Ignore(syscall.SIGPIPE)
+
+	rest, configPath, _ := takeConfigOption(argv)
 
 	env := map[string]string{}
 	for _, kv := range os.Environ() {
@@ -139,12 +155,12 @@ func Main(argv []string) int {
 
 	conns, cerr := loadConnections(configPath)
 	if nil != cerr {
-		fmt.Fprint(os.Stderr, "error: invalid-project\n  "+cerr.Error()+"\n")
+		fmt.Fprint(os.Stderr, "error: invalid-project\n  "+cerr.Error()+"\n  remedy  "+configRemedy+"\n")
 		return 3
 	}
 
 	res := Run(Ctx{
-		Argv:        stripOption(argv, "--config"),
+		Argv:        rest,
 		Env:         env,
 		Clock:       Rfc3339(time.Now().UnixMilli()),
 		Connections: conns,
@@ -152,7 +168,9 @@ func Main(argv []string) int {
 	})
 
 	if "" != res.Stdout {
-		fmt.Fprint(os.Stdout, res.Stdout)
+		if _, err := fmt.Fprint(os.Stdout, res.Stdout); nil != err && errors.Is(err, syscall.EPIPE) {
+			return 0
+		}
 	}
 	if "" != res.Stderr {
 		fmt.Fprint(os.Stderr, res.Stderr)

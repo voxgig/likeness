@@ -13,7 +13,9 @@ const Port = "go"
 
 const Version = "0.1.0"
 
-var ParityExceptions = []string{"port", "elapsed_ms"}
+// The declared non-parity fields, as PATHS: StripParityExceptions removes
+// exactly these and nothing deeper.
+var ParityExceptions = []string{"port", "meta.elapsed_ms", "data.port"}
 
 type SerialiseError struct {
 	Msg  string
@@ -74,8 +76,16 @@ func CompareCodePoints(a, b string) int {
 func num(v any) (int64, bool) {
 	switch n := v.(type) {
 	case json.Number:
-		i, err := n.Int64()
-		return i, nil == err
+		if i, err := n.Int64(); nil == err {
+			return i, true
+		}
+		// `1.0` is still an integer, and a port that sees the text must agree
+		// with one that only ever sees the number.
+		f, err := n.Float64()
+		if nil != err || f != math.Trunc(f) || 9007199254740991 < math.Abs(f) {
+			return 0, false
+		}
+		return int64(f), true
 	case float64:
 		if n != math.Trunc(n) {
 			return 0, false
@@ -89,7 +99,24 @@ func num(v any) (int64, bool) {
 	return 0, false
 }
 
-func renderNumber(v any, path string) (string, error) {
+// jsNumber renders a float as ECMAScript Number::toString does: plain digits
+// between 1e-7 and 1e21, an exponent without leading zeros outside that.
+func jsNumber(f float64) string {
+	if 0 == f {
+		return "0"
+	}
+	if abs := math.Abs(f); 1e-7 <= abs && abs < 1e21 {
+		return strconv.FormatFloat(f, 'f', -1, 64)
+	}
+	mant, exp, _ := strings.Cut(strconv.FormatFloat(f, 'e', -1, 64), "e")
+	digits := strings.TrimLeft(exp[1:], "0")
+	if "" == digits {
+		digits = "0"
+	}
+	return mant + "e" + exp[:1] + digits
+}
+
+func renderNumber(v any, path string, loose bool) (string, error) {
 	switch n := v.(type) {
 	case int:
 		return strconv.FormatInt(int64(n), 10), nil
@@ -99,13 +126,19 @@ func renderNumber(v any, path string) (string, error) {
 		if i, err := strconv.ParseInt(n.String(), 10, 64); nil == err {
 			return strconv.FormatInt(i, 10), nil
 		}
-		if _, err := strconv.ParseFloat(n.String(), 64); nil == err {
+		if f, err := strconv.ParseFloat(n.String(), 64); nil == err {
+			if loose {
+				return jsNumber(f), nil
+			}
 			return "", &SerialiseError{"floating point is not representable in the envelope", path}
 		}
 		return "", &SerialiseError{"integer beyond int64", path}
 	case float64:
 		if math.IsNaN(n) || math.IsInf(n, 0) {
 			return "", &SerialiseError{"not a finite number", path}
+		}
+		if loose {
+			return jsNumber(n), nil
 		}
 		if n != math.Trunc(n) {
 			return "", &SerialiseError{"floating point is not representable in the envelope", path}
@@ -127,6 +160,16 @@ func renderNumber(v any, path string) (string, error) {
 // keys sorted but structs in declaration order, and would escape differently.
 // One writer, one set of rules.
 func Render(v any, path string) (string, error) {
+	return renderValue(v, path, false)
+}
+
+// RenderRaw writes a source payload: the same rules with floating point
+// permitted, in the form every port reproduces.
+func RenderRaw(v any) (string, error) {
+	return renderValue(v, "", true)
+}
+
+func renderValue(v any, path string, loose bool) (string, error) {
 	if nil == v {
 		return "null", nil
 	}
@@ -139,14 +182,14 @@ func Render(v any, path string) (string, error) {
 	case string:
 		return EscapeString(t), nil
 	case int, int64, float64, json.Number:
-		return renderNumber(v, path)
+		return renderNumber(v, path, loose)
 	case []any:
 		if 0 == len(t) {
 			return "[]", nil
 		}
 		parts := make([]string, len(t))
 		for i, e := range t {
-			s, err := Render(e, path+"["+strconv.Itoa(i)+"]")
+			s, err := renderValue(e, path+"["+strconv.Itoa(i)+"]", loose)
 			if nil != err {
 				return "", err
 			}
@@ -177,7 +220,7 @@ func Render(v any, path string) (string, error) {
 		}
 		parts := make([]string, len(keys))
 		for i, k := range keys {
-			s, err := Render(t[k], path+"."+k)
+			s, err := renderValue(t[k], path+"."+k, loose)
 			if nil != err {
 				return "", err
 			}
@@ -198,33 +241,36 @@ func Serialise(v any) (string, error) {
 	return s + "\n", nil
 }
 
-// StripParityExceptions removes the declared exceptions wherever they appear.
-// Used by the corpus runner; exported so the runner and any parity tooling
-// cannot drift apart.
+// StripParityExceptions removes the declared exceptions BY PATH, never by
+// name: the envelope's own `port`, `meta.elapsed_ms`, and the `port` that
+// `version` repeats inside an object-valued `data`. A `port` inside a `which`
+// row is compared like any other value. Used by the corpus runner; exported so
+// the runner and any parity tooling cannot drift apart.
 func StripParityExceptions(v any) any {
-	switch t := v.(type) {
-	case []any:
-		out := make([]any, len(t))
-		for i, e := range t {
-			out[i] = StripParityExceptions(e)
+	m, ok := v.(map[string]any)
+	if !ok {
+		return v
+	}
+	out := map[string]any{}
+	for k, e := range m {
+		if "port" == k {
+			continue
 		}
-		return out
-	case map[string]any:
-		out := map[string]any{}
-		for k, e := range t {
-			skip := false
-			for _, x := range ParityExceptions {
-				if k == x {
-					skip = true
-					break
+		if inner, ok := e.(map[string]any); ok && ("meta" == k || "data" == k) {
+			drop := "port"
+			if "meta" == k {
+				drop = "elapsed_ms"
+			}
+			kept := map[string]any{}
+			for ik, ie := range inner {
+				if drop != ik {
+					kept[ik] = ie
 				}
 			}
-			if skip {
-				continue
-			}
-			out[k] = StripParityExceptions(e)
+			out[k] = kept
+			continue
 		}
-		return out
+		out[k] = e
 	}
-	return v
+	return out
 }

@@ -1,6 +1,6 @@
 # An example project file: what `likeness project init` produces, filled in.
 #
-# Validated in CI against ../def/project.aon, so the example in the
+# Validated in CI against ../def/project.aontu, so the example in the
 # documentation cannot drift from the shape the tool enforces.
 
 project: {

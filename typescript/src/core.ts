@@ -48,6 +48,8 @@ type Flags = {
   source: string[]
 }
 
+const LIMIT_RE = /^[1-9][0-9]{0,8}$/
+
 function parseFlags (args: string[]): { flags: Flags, rest: string[] } {
   const flags: Flags = {
     json: false, raw: false, strict: false, deterministic: false,
@@ -61,18 +63,16 @@ function parseFlags (args: string[]): { flags: Flags, rest: string[] } {
     if (a === '--strict') { flags.strict = true; continue }
     if (a === '--deterministic') { flags.deterministic = true; continue }
     if (a === '--limit') {
-      // VALIDATED, not coerced. `Number('nope')` is NaN, and every comparison
-      // against NaN is false, so a mistyped limit silently disabled limiting
-      // altogether; `--limit -1` sliced off the last row and `--limit 0`
-      // turned a non-empty match set into `no-match`.
+      // VALIDATED against the declared integer syntax, never coerced: a host
+      // number parser takes hex, exponents and decimals, each port's a
+      // different set, and `Number('nope')` is a NaN no comparison catches.
       const raw = args[++i]
-      const n = Number(raw)
-      if (undefined === raw || '' === raw || !Number.isInteger(n) || n < 1) {
+      if (undefined === raw || !LIMIT_RE.test(raw)) {
         throw new LikenessError('invalid-selector',
-          '--limit needs a whole number of at least 1, not "' + (raw ?? '') + '"',
+          '--limit needs a whole number from 1 to 999999999, not "' + (raw ?? '') + '"',
           'try `--limit 20`')
       }
-      flags.limit = n
+      flags.limit = Number(raw)
       continue
     }
     if (a === '--sort') { flags.sort = args[++i]; continue }

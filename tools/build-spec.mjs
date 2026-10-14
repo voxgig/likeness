@@ -4,7 +4,7 @@
  *   node tools/build-spec.mjs          # write spec/*.json
  *   node tools/build-spec.mjs --check  # fail if the committed JSON is stale
  *
- * NEVER HAND-EDIT THE JSON. It is build output; the .aon file is the source,
+ * NEVER HAND-EDIT THE JSON. It is build output; the .aontu file is the source,
  * and `make spec-fresh` runs the --check mode so drift fails a build rather
  * than being discovered a month later when a port disagrees with the spec it
  * claims to implement.
@@ -15,8 +15,8 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 const AONTU_RAW = (process.env.AONTU || 'aontu').trim()
 const AONTU = AONTU_RAW.split(/\s+/)
@@ -24,12 +24,20 @@ const AONTU = AONTU_RAW.split(/\s+/)
 // Data files only: a shape file under spec/def/ is a truth rather than a
 // value, so it has nothing to compile.
 const SOURCES = [
-  'errors.aon', 'caps.aon', 'sources.aon', 'replica.aon',
+  'errors.aontu', 'caps.aontu', 'sources.aontu', 'replica.aontu',
   // The two corpora. They are ground truth like everything else here: written
-  // in aontu, checked against spec/def/corpus.aon, and compiled to the JSON
+  // in aontu, checked against spec/def/corpus.aontu, and compiled to the JSON
   // that each port's harness runs. A port reads the JSON; nobody writes it.
-  'unit.aon', 'cli.aon',
+  'unit.aontu', 'cli.aontu',
 ]
+
+// The files a port reads at RUN time are also written into each port, where
+// its build embeds them: an installed binary then needs no checkout, and
+// `--check` holds the copies to the same bytes as spec/.
+const EMBED = {
+  'errors.aontu': ['typescript/src/spec/errors.json', 'go/spec/errors.json'],
+  'caps.aontu': ['typescript/src/spec/caps.json', 'go/spec/caps.json'],
+}
 
 const check = process.argv.includes('--check')
 let stale = 0
@@ -37,7 +45,7 @@ let wrote = 0
 
 for (const name of SOURCES) {
   const src = join('spec', name)
-  const dst = join('spec', name.replace(/\.aon$/, '.json'))
+  const dsts = [join('spec', name.replace(/\.aontu$/, '.json')), ...(EMBED[name] ?? [])]
   if (!existsSync(src)) {
     console.error(`  MISSING ${src}`)
     process.exit(2)
@@ -59,18 +67,21 @@ for (const name of SOURCES) {
   const value = JSON.parse(out)
   const text = JSON.stringify(sortDeep(value), null, 2) + '\n'
 
-  if (check) {
-    const have = existsSync(dst) ? readFileSync(dst, 'utf8') : ''
-    if (have !== text) {
-      console.error(`  STALE   ${dst} does not match ${src}`)
-      stale++
+  for (const dst of dsts) {
+    if (check) {
+      const have = existsSync(dst) ? readFileSync(dst, 'utf8') : ''
+      if (have !== text) {
+        console.error(`  STALE   ${dst} does not match ${src}`)
+        stale++
+      }
+      else console.log(`  fresh   ${dst}`)
     }
-    else console.log(`  fresh   ${dst}`)
-  }
-  else {
-    writeFileSync(dst, text)
-    console.log(`  wrote   ${dst}`)
-    wrote++
+    else {
+      mkdirSync(dirname(dst), { recursive: true })
+      writeFileSync(dst, text)
+      console.log(`  wrote   ${dst}`)
+      wrote++
+    }
   }
 }
 

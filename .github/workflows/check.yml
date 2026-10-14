@@ -32,7 +32,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '22'
+          node-version: '24'
 
       - uses: actions/setup-go@7b8cf10d4e4a01d4992d18a89f4d7dc5a3e6d6f4 # v4.3.0
         with:
@@ -40,7 +40,7 @@ jobs:
 
       # The generated SDKs are not published to any language registry yet, so
       # there is no lockfile that can hold them. `make sdk` clones each at the
-      # revision spec/sources.aon pins, and `sdk-check` - which every port
+      # revision spec/sources.aontu pins, and `sdk-check` - which every port
       # target depends on - fails the build if a clone drifts off its pin.
       - name: Clone the generated SDKs at their pinned revisions
         run: make sdk

@@ -26,7 +26,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 0,
@@ -59,7 +59,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 3,
@@ -93,7 +93,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 3,
@@ -128,7 +128,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 4,
@@ -170,12 +170,12 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 },
                 {
                   "instance": "spare",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 3,
@@ -210,11 +210,74 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes/a0e50000000000000000000000000001"
+                  "path": "/notes/a0e50000000000000000000000000001?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 0,
               "stdout": "spec/expect/get/one.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "jot:a0e50000000000000000000000000013",
+              "--raw",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin-odd",
+              "seed": 1
+            },
+            "id": "get/odd-raw-one",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes/a0e50000000000000000000000000013?fields=id,parent_id,title,body,created_time,updated_time"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/get/odd-raw-one.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "jot:a0e50000000000000000000000000014",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin-odd",
+              "seed": 1
+            },
+            "id": "get/odd-null-title",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes/a0e50000000000000000000000000014?fields=id,parent_id,title,body,created_time,updated_time"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/get/odd-null-title.json"
             }
           },
           {
@@ -241,7 +304,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes/nosuchnote"
+                  "path": "/notes/nosuchnote?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 1,
@@ -374,7 +437,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 0,
@@ -405,7 +468,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 0,
@@ -436,7 +499,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 0,
@@ -468,7 +531,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 0,
@@ -499,7 +562,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 1,
@@ -528,7 +591,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 0,
@@ -558,7 +621,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 1,
@@ -696,6 +759,186 @@
           {
             "args": [
               "list",
+              "--limit",
+              "0x10",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/limit-hex-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/limit-hex.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--limit",
+              "1e3",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/limit-exponent-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/limit-exponent.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--limit",
+              "2.0",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/limit-decimal-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/limit-decimal.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--limit",
+              "99999999999999999999",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/limit-overflow-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/limit-overflow.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--limit",
+              "1000000000",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/limit-ten-digits-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/limit-ten-digits.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "updated>99999999999999999999d",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/duration-overflow-refused-before-the-network",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/duration-overflow.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "title>2026-01-01",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/ordering-on-title-refused-before-the-network",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/ordering-on-title.json"
+            }
+          },
+          {
+            "args": [
+              "list",
               "--json"
             ],
             "ctx": {
@@ -751,12 +994,12 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 },
                 {
                   "instance": "spare",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 3,
@@ -795,7 +1038,7 @@
                 {
                   "instance": "down",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 4,
@@ -833,12 +1076,12 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 },
                 {
                   "instance": "spare",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 2,
@@ -875,12 +1118,12 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 },
                 {
                   "instance": "spare",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 2,
@@ -920,16 +1163,232 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 },
                 {
                   "instance": "spare",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 4,
               "stdout": "spec/expect/list/strict-halts.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin-odd",
+              "seed": 1
+            },
+            "id": "list/odd-values-project-the-same-everywhere",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/list/odd-values.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--raw",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin-odd",
+              "seed": 1
+            },
+            "id": "list/odd-raw-is-the-canonical-writer",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/list/odd-raw.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "title:istanbul",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin-odd",
+              "seed": 1
+            },
+            "id": "list/case-folding-is-ascii-only",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+                }
+              ],
+              "exit": 1,
+              "stdout": "spec/expect/list/odd-no-match.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "title:STRA",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin-odd",
+              "seed": 1
+            },
+            "id": "list/case-folding-folds-ascii",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/list/odd-strasse.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "title:STRASSE",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin-odd",
+              "seed": 1
+            },
+            "id": "list/no-full-case-folding",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+                }
+              ],
+              "exit": 1,
+              "stdout": "spec/expect/list/odd-no-match.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "title:e -title:limit",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/negation-after-a-term",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/list/negation.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "-title:limit title:e",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/negation-before-a-term",
+            "out": {
+              "calls": [
+                {
+                  "instance": "jot",
+                  "method": "GET",
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/list/negation.json"
             }
           },
           {
@@ -965,7 +1424,7 @@
                 {
                   "instance": "jot",
                   "method": "GET",
-                  "path": "/notes"
+                  "path": "/notes?fields=id,parent_id,title,body,created_time,updated_time"
                 }
               ],
               "exit": 0,

@@ -1,7 +1,7 @@
 
-import { readFileSync, existsSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+// Embedded at build time: the copy under src/spec/ is written by
+// `make spec-build`, so an installed port needs no checkout.
+import errorsDoc from './spec/errors.json' with { type: 'json' }
 
 export type ErrorDef = {
   code: string
@@ -11,29 +11,8 @@ export type ErrorDef = {
   retryable: boolean
 }
 
-function specDir (): string {
-  let dir = dirname(fileURLToPath(import.meta.url))
-  for (let i = 0; i < 8; i++) {
-    if (existsSync(join(dir, 'spec', 'errors.json'))) return join(dir, 'spec')
-    const up = dirname(dir)
-    if (up === dir) break
-    dir = up
-  }
-  throw new Error(
-    'spec/errors.json not found above ' + dirname(fileURLToPath(import.meta.url)) +
-    ' - run `make spec-build` from the repository root')
-}
-
-const SPEC = specDir()
-
-let registry: Record<string, ErrorDef> | null = null
-
 export function errors (): Record<string, ErrorDef> {
-  if (null === registry) {
-    const raw = readFileSync(join(SPEC, 'errors.json'), 'utf8')
-    registry = JSON.parse(raw).error as Record<string, ErrorDef>
-  }
-  return registry
+  return errorsDoc.error as Record<string, ErrorDef>
 }
 
 export function exitFor (code: string): number {

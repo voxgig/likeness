@@ -4,6 +4,17 @@ import type { Note } from './note.js'
 
 const DAY = 86400000
 
+// ASCII only, A-Z to a-z: the one folding every port applies identically.
+// Other scripts match exactly.
+export function foldCase (s: string): string {
+  let out = ''
+  for (const ch of s) {
+    const c = ch.charCodeAt(0)
+    out += (65 <= c && c <= 90) ? String.fromCharCode(c + 32) : ch
+  }
+  return out
+}
+
 function durationMs (v: Extract<Value, { k: 'dur' }>): number {
   switch (v.unit) {
     case 'd': return v.n * DAY
@@ -54,9 +65,9 @@ export function evaluate (node: Node, note: Note, clockMs: number): boolean {
       // A bareword with no field is full text. With no source-side search it is
       // a case-insensitive substring over title and body, and the capability
       // matrix says so rather than implying a relevance score nobody computed.
-      const q = node.v.toLowerCase()
-      return note.title.toLowerCase().includes(q) ||
-        (undefined !== note.body && note.body.toLowerCase().includes(q))
+      const q = foldCase(node.v)
+      return foldCase(note.title).includes(q) ||
+        (undefined !== note.body && foldCase(note.body).includes(q))
     }
     case 'cmp': {
       const have = fieldValue(note, node.field)
@@ -78,15 +89,15 @@ export function evaluate (node: Node, note: Note, clockMs: number): boolean {
       const text = asText(want)
       const eq = (h: unknown) => {
         if (undefined === h || null === h) return false
-        return String(h).toLowerCase() === text.toLowerCase()
+        return foldCase(String(h)) === foldCase(text)
       }
       const contains = (h: unknown) => {
         if (undefined === h || null === h) return false
-        return String(h).toLowerCase().includes(text.toLowerCase())
+        return foldCase(String(h)).includes(foldCase(text))
       }
 
       if (Array.isArray(have)) {
-        const hit = have.some(x => String(x).toLowerCase() === text.toLowerCase())
+        const hit = have.some(x => foldCase(String(x)) === foldCase(text))
         return node.op === '!=' ? !hit : hit
       }
       if (node.op === '=') return eq(have)

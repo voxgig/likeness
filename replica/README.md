@@ -52,7 +52,7 @@ including column filters such as `body:legal`.
 
 ## What it costs: three ports need a dependency
 
-This is the honest headline, and it is why `spec/replica.aon` records it per
+This is the honest headline, and it is why `spec/replica.aontu` records it per
 port as data rather than as a footnote. Measured, not assumed:
 
 | Port | SQLite | Dependency |
@@ -78,7 +78,7 @@ leaning assumed.
 ## The rules that keep it a cache
 
 likeness is not a notes application and owns nothing (§5). Four rules, declared
-in `spec/def/replica.aon` so that a port breaking one fails a check rather than
+in `spec/def/replica.aontu` so that a port breaking one fails a check rather than
 a code review:
 
 - **Write-through.** A write goes to the source first and reaches the replica
@@ -109,7 +109,7 @@ surface. The `servers` entry says so out loud.
 ## State
 
 Designed, not built. The schema applies and its search is verified; the SDK has
-not been generated, which is why `spec/replica.aon` carries a zero revision. The
+not been generated, which is why `spec/replica.aontu` carries a zero revision. The
 shape, the rules and the per-port cost are settled first on purpose — the cost
 is the part most likely to change the decision, and it should be visible before
 any code depends on it.

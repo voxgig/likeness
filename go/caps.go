@@ -1,11 +1,13 @@
 package likeness
 
 import (
+	_ "embed"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"sync"
 )
+
+//go:embed spec/caps.json
+var capsJSON []byte
 
 // SourceLimit is the `limit` block of one source's capability row.
 type SourceLimit struct {
@@ -31,20 +33,10 @@ var (
 // Caps returns the matrix, loading it once.
 func Caps() (map[string]SourceCaps, error) {
 	capsOnce.Do(func() {
-		dir, err := specDir()
-		if nil != err {
-			capsErr = err
-			return
-		}
-		raw, err := os.ReadFile(filepath.Join(dir, "caps.json"))
-		if nil != err {
-			capsErr = err
-			return
-		}
 		var doc struct {
 			Capability map[string]SourceCaps `json:"capability"`
 		}
-		if err := json.Unmarshal(raw, &doc); nil != err {
+		if err := json.Unmarshal(capsJSON, &doc); nil != err {
 			capsErr = err
 			return
 		}

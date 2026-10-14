@@ -4,9 +4,10 @@ import type { Note } from '../note.js'
 import type { Calls } from '../calls.js'
 import { LikenessError } from '../errors.js'
 import { pageMax } from '../caps.js'
+import { renderRaw } from '../envelope.js'
 
 // eslint-disable-next-line
-import pkg from '@voxgig-sdk/joplin'
+import pkg from '@voxgig-sdk/joplin-sdk'
 
 const SOURCE = 'joplin'
 
@@ -14,14 +15,17 @@ export const SUPPLIES: string[] = [
   'source', 'instance', 'space', 'title', 'body', 'created', 'updated',
 ]
 
-type JoplinNote = {
-  id?: string
-  parent_id?: string
-  title?: string
-  body?: string
-  created_time?: number
-  updated_time?: number
-  [k: string]: unknown
+type JoplinNote = Record<string, unknown>
+
+// A non-string value projects as its canonical JSON text.
+function text (v: unknown): string {
+  return 'string' === typeof v ? v : renderRaw(v)
+}
+
+function has (v: unknown): boolean { return undefined !== v && null !== v }
+
+function ms (v: unknown): number {
+  return 'number' === typeof v && Number.isInteger(v) ? v : 0
 }
 
 export type JoplinOpts = {
@@ -41,7 +45,7 @@ function sdkFor (opts: JoplinOpts): any {
 }
 
 export function project (raw: JoplinNote, instance: string, account: string, withRaw: boolean): Note {
-  const id = String(raw.id ?? '')
+  const id = has(raw.id) ? text(raw.id) : ''
   // REFUSED, not fabricated. An empty id derives a valid-LOOKING lid from the
   // empty string, so every such row shares one identity and the note violates
   // the schema's non-empty SourceId invariant. A source that returned a record
@@ -56,20 +60,20 @@ export function project (raw: JoplinNote, instance: string, account: string, wit
     source: SOURCE,
     instance,
     id,
-    title: String(raw.title ?? ''),
+    title: has(raw.title) ? text(raw.title) : '',
     url: 'joplin://x-callback-url/openNote?id=' + id,
-    created: rfc3339(Number(raw.created_time ?? 0)),
-    updated: rfc3339(Number(raw.updated_time ?? 0)),
+    created: rfc3339(ms(raw.created_time)),
+    updated: rfc3339(ms(raw.updated_time)),
   }
-  const parent = raw.parent_id
-  if (undefined !== parent && '' !== parent) note.space = String(parent)
-  const body = raw.body
-  if (undefined !== body) note.body = String(body)
+  if (has(raw.parent_id)) {
+    const space = text(raw.parent_id)
+    if ('' !== space) note.space = space
+  }
+  if (has(raw.body)) note.body = text(raw.body)
   if (withRaw) {
-    // A STRING, never nested structure. The envelope sorts keys recursively and
-    // forbids floating point; a real source payload violates both, and
-    // canonicalising it would stop it being verbatim.
-    note.raw = JSON.stringify(raw)
+    // A STRING, never nested structure: the envelope forbids floating point and
+    // a real payload has it. The client keeps no bytes (sdkgen#407): re-rendered.
+    note.raw = renderRaw(raw)
   }
   return note
 }
@@ -78,11 +82,15 @@ function data (ent: any): JoplinNote {
   return 'function' === typeof ent?.data ? ent.data() : ent
 }
 
+// Joplin answers id, parent_id and title unless asked. The wire name is
+// `fields`; the client declares `field`, which Joplin ignores (sdkgen#406).
+export const FIELDS = 'id,parent_id,title,body,created_time,updated_time'
+
 export async function listNotes (opts: JoplinOpts, calls: Calls, withRaw: boolean):
 Promise<{ notes: Note[], more: boolean }> {
   const client = sdkFor(opts)
-  calls.record(opts.instance, 'GET', '/notes')
-  const found = await client.Note().list({})
+  calls.record(opts.instance, 'GET', '/notes?fields=' + FIELDS)
+  const found = await client.Note().list({ fields: FIELDS })
   const rows: JoplinNote[] = (found ?? []).map(data)
   const limit = pageMax(SOURCE)
   return {
@@ -93,9 +101,9 @@ Promise<{ notes: Note[], more: boolean }> {
 
 export async function loadNote (opts: JoplinOpts, calls: Calls, id: string, withRaw: boolean): Promise<Note | null> {
   const client = sdkFor(opts)
-  calls.record(opts.instance, 'GET', '/notes/' + id)
+  calls.record(opts.instance, 'GET', '/notes/' + id + '?fields=' + FIELDS)
   try {
-    const ent = await client.Note().load({ id })
+    const ent = await client.Note().load({ id, fields: FIELDS })
     const row = data(ent)
     if (null === row || undefined === row || undefined === row.id) return null
     return project(row, opts.instance, opts.account, withRaw)
@@ -108,9 +116,9 @@ export async function loadNote (opts: JoplinOpts, calls: Calls, id: string, with
 
 export async function check (opts: JoplinOpts, calls: Calls): Promise<{ ok: boolean, code?: string, detail: string }> {
   const client = sdkFor(opts)
-  calls.record(opts.instance, 'GET', '/notes')
+  calls.record(opts.instance, 'GET', '/notes?fields=' + FIELDS)
   try {
-    await client.Note().list({})
+    await client.Note().list({ fields: FIELDS })
     return { ok: true, detail: 'ok' }
   }
   catch (err: any) {
@@ -118,9 +126,8 @@ export async function check (opts: JoplinOpts, calls: Calls): Promise<{ ok: bool
       return { ok: false, code: 'auth-failed', detail: 'the token was rejected' }
     }
     // 429 is a DIFFERENT condition with a different remedy, and the registry
-    // has a code for it that is marked retryable. Folding it into
-    // "the application did not answer" tells someone whose requests are being
-    // throttled to go and start a program that is already running.
+    // has a retryable code for it. Folding it into "did not answer" tells
+    // someone being throttled to start a program that is already running.
     if (429 === err?.status) {
       return { ok: false, code: 'rate-limited', detail: 'the source is rate limiting this client' }
     }

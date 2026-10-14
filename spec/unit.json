@@ -1,6 +1,85 @@
 {
   "primary": {
     "unit": {
+      "config": {
+        "set": [
+          {
+            "fn": "takeConfigOption",
+            "id": "config/equals-form",
+            "in": [
+              "list",
+              "--config=/x/station.json",
+              "--json"
+            ],
+            "out": {
+              "rest": [
+                "list",
+                "--json"
+              ],
+              "value": "/x/station.json"
+            }
+          },
+          {
+            "fn": "takeConfigOption",
+            "id": "config/space-form",
+            "in": [
+              "list",
+              "--config",
+              "/y",
+              "--json"
+            ],
+            "out": {
+              "rest": [
+                "list",
+                "--json"
+              ],
+              "value": "/y"
+            }
+          },
+          {
+            "fn": "takeConfigOption",
+            "id": "config/absent",
+            "in": [
+              "list"
+            ],
+            "out": {
+              "rest": [
+                "list"
+              ]
+            }
+          },
+          {
+            "err": "is not valid JSON",
+            "fn": "parseStation",
+            "id": "config/station-not-json",
+            "in": "{not json"
+          },
+          {
+            "fn": "parseStation",
+            "id": "config/station-connections-in-name-order",
+            "in": "{\"sdk\":{\"zed\":{\"api\":\"joplin\",\"account\":\"z\"},\"abe\":{\"api\":\"joplin\",\"org\":\"a\",\"base\":\"http://x\"}}}",
+            "out": [
+              {
+                "account": "a",
+                "base": "http://x",
+                "instance": "abe",
+                "source": "joplin"
+              },
+              {
+                "account": "z",
+                "instance": "zed",
+                "source": "joplin"
+              }
+            ]
+          },
+          {
+            "err": "has no `account` or `org`",
+            "fn": "parseStation",
+            "id": "config/station-without-account",
+            "in": "{\"sdk\":{\"jot\":{\"api\":\"joplin\"}}}"
+          }
+        ]
+      },
       "envelope": {
         "set": [
           {
@@ -220,6 +299,50 @@
           }
         ]
       },
+      "project": {
+        "set": [
+          {
+            "err": "record with no id",
+            "fn": "projectJoplin",
+            "id": "project/no-id-is-refused",
+            "in": {
+              "account": "local",
+              "instance": "jot",
+              "raw": {
+                "title": "no id"
+              }
+            }
+          },
+          {
+            "fn": "projectJoplin",
+            "id": "project/null-and-non-string-values",
+            "in": {
+              "account": "local",
+              "instance": "jot",
+              "raw": {
+                "body": 42,
+                "created_time": "nope",
+                "id": "n1",
+                "parent_id": 7,
+                "title": null,
+                "updated_time": 1773129600000
+              }
+            },
+            "out": {
+              "body": "42",
+              "created": "1970-01-01T00:00:00Z",
+              "id": "n1",
+              "instance": "jot",
+              "lid": "lk_xjb81w96kpdh",
+              "source": "joplin",
+              "space": "7",
+              "title": "",
+              "updated": "2026-03-10T08:00:00Z",
+              "url": "joplin://x-callback-url/openNote?id=n1"
+            }
+          }
+        ]
+      },
       "selector": {
         "set": [
           {
@@ -398,6 +521,89 @@
           },
           {
             "fn": "parseSelector",
+            "id": "selector/dash-after-a-term-negates",
+            "in": "title:a -title:b",
+            "out": {
+              "kids": [
+                {
+                  "field": "title",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "a"
+                  }
+                },
+                {
+                  "kid": {
+                    "field": "title",
+                    "op": ":",
+                    "t": "cmp",
+                    "value": {
+                      "k": "word",
+                      "v": "b"
+                    }
+                  },
+                  "t": "not"
+                }
+              ],
+              "t": "and"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/dash-before-a-term-negates",
+            "in": "-title:b title:a",
+            "out": {
+              "kids": [
+                {
+                  "kid": {
+                    "field": "title",
+                    "op": ":",
+                    "t": "cmp",
+                    "value": {
+                      "k": "word",
+                      "v": "b"
+                    }
+                  },
+                  "t": "not"
+                },
+                {
+                  "field": "title",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "a"
+                  }
+                }
+              ],
+              "t": "and"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/dash-after-a-word-negates",
+            "in": "retention -draft",
+            "out": {
+              "kids": [
+                {
+                  "t": "text",
+                  "v": "retention"
+                },
+                {
+                  "kid": {
+                    "t": "text",
+                    "v": "draft"
+                  },
+                  "t": "not"
+                }
+              ],
+              "t": "and"
+            }
+          },
+          {
+            "fn": "parseSelector",
             "id": "selector/duration",
             "in": "updated>14d",
             "out": {
@@ -407,6 +613,21 @@
               "value": {
                 "k": "dur",
                 "n": 14,
+                "unit": "d"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/duration-eight-digits-is-the-most",
+            "in": "updated>99999999d",
+            "out": {
+              "field": "updated",
+              "op": ">",
+              "t": "cmp",
+              "value": {
+                "k": "dur",
+                "n": 99999999,
                 "unit": "d"
               }
             }
@@ -712,6 +933,52 @@
               "offset": 16,
               "token": "bogus"
             }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/duration-overflow",
+            "in": "updated>99999999999999999999d",
+            "out": {
+              "offset": 8,
+              "token": "99999999999999999999d"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/duration-nine-digits",
+            "in": "updated>123456789d",
+            "out": {
+              "offset": 8,
+              "token": "123456789d"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/ordering-on-a-text-field",
+            "in": "title>2026-01-01",
+            "out": {
+              "offset": 5,
+              "token": ">"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/ordering-on-body-with-a-duration",
+            "in": "body<3d",
+            "out": {
+              "offset": 4,
+              "token": "<"
+            }
+          }
+        ]
+      },
+      "text": {
+        "set": [
+          {
+            "fn": "foldCase",
+            "id": "text/case-folding-is-ascii-only",
+            "in": "İSTANBUL Straße ΟΔΟΣ ÀÉ ABC xyz",
+            "out": "İstanbul straße ΟΔΟΣ ÀÉ abc xyz"
           }
         ]
       }

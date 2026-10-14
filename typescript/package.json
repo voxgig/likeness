@@ -13,11 +13,11 @@
     "clean": "rm -rf dist node_modules package-lock.json"
   },
   "dependencies": {
-    "@voxgig-sdk/joplin": "file:../../voxgig-sdk/joplin-sdk/ts"
+    "@voxgig-sdk/joplin-sdk": "file:../../voxgig-sdk/joplin-sdk/ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.9.3"
   },
-  "engines": { "node": ">=22" }
+  "engines": { "node": ">=24" }
 }

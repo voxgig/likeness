@@ -4,7 +4,7 @@ import assert from 'node:assert'
 import http from 'node:http'
 import https from 'node:https'
 
-import pkg from '@voxgig-sdk/joplin'
+import pkg from '@voxgig-sdk/joplin-sdk'
 
 const SDK: any = (pkg as any).JoplinSDK ?? (pkg as any).default ?? pkg
 
