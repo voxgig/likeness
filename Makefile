@@ -51,6 +51,8 @@ help:
 	@echo '  sdk-check     fail if a clone is missing or off its pin'
 	@echo '  test-ts       build and run the TypeScript port against both corpora'
 	@echo '  test-go       build and run the Go port against both corpora'
+	@echo '  py-deps       clone the checkouts the Python port imports, build python/.venv'
+	@echo '  test-py       run the Python port against both corpora'
 	@echo '  parity        the ports produce the same bytes, and each names itself'
 	@echo '  check         spec, every port, and the parity comparison'
 	@echo '  expect        REGENERATE the committed expectations - read the diff'
@@ -64,7 +66,7 @@ spec: spec-fmt spec-check spec-fresh spec-agree
 
 # Everything. What CI runs, and what a change should run before it is pushed.
 .PHONY: check
-check: comments spec test-ts test-go parity
+check: comments spec test-ts test-go test-py parity
 
 
 .PHONY: spec-build
@@ -103,6 +105,20 @@ test-ts: sdk-check mock-deps ts-deps
 .PHONY: test-go
 test-go: sdk-check mock-deps
 	@cd go && gofmt -l . | (! grep .) && go vet ./... && go test ./...
+
+
+# station, sekreto and plugin publish no Python package, so the port imports
+# pinned checkouts through its own venv. The pins are python/deps.json and
+# python/requirements.txt and are never restated here; the venv is rebuilt
+# only when one of them, or PYTHON, changes.
+.PHONY: py-deps
+py-deps:
+	@node tools/py-deps.mjs
+
+
+.PHONY: test-py
+test-py: sdk-check mock-deps py-deps
+	@cd python && .venv/bin/python -m unittest discover -s tests -t .
 
 
 # The cross-port byte comparison. Each port's suite writes its RAW transcript

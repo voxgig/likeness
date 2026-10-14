@@ -20,8 +20,8 @@ spec/
   caps.aontu          DATA. What each source can and cannot do.
   errors.aontu        DATA. Every code likeness can emit.
   commands.aontu      DATA. The command surface and its argument grammar.
-  unit.aontu          DATA. The unit corpus: pure functions, both ports.
-  cli.aontu           DATA. The transcript corpus: whole commands, both ports.
+  unit.aontu          DATA. The unit corpus: pure functions, every port.
+  cli.aontu           DATA. The transcript corpus: whole commands, every port.
   help.json           RENDERED from commands.aontu by `make spec-build`; `help` prints it.
   example/
     likeness.aontu          a valid project file
@@ -30,7 +30,8 @@ spec/
 
 `make spec-build` compiles the data files to `spec/*.json`. It also writes
 `errors.json`, `caps.json`, `commands.json` and `help.json` into
-`typescript/src/spec/` and `go/spec/`, where each port's build embeds them, so an
+`typescript/src/spec/`, `go/spec/` and `python/likeness/spec/`, where each port's
+build embeds them (the Python package carries them as package data), so an
 installed port reads no specification file from disk and needs no checkout.
 `make spec-fresh` fails if any copy is stale; none of them is edited by hand.
 

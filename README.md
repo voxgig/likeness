@@ -18,24 +18,26 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 59 entries, run by both ports |
-| `spec/cli.aontu` — the transcript corpus | 38 whole commands, run by both ports |
+| `spec/unit.aontu` — the pure-function corpus | 120 entries, run by every port |
+| `spec/cli.aontu` — the transcript corpus | 67 whole commands, run by every port |
 | `typescript/` — the canonical port | `list`, `get`, `doctor`, `version`, `which`; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
+| `python/` — the third port | the same again, through station's Python library |
 | The parity comparison | `make parity`: the ports agree, each names itself, and the comparison is proved to go red |
 | `mock/` — a Fastify server emulating all four sources on one port | working, smoke-tested |
 | `replica/` — a local SQLite copy reached through a generated SDK | designed; schema and search verified, SDK not generated |
-| Python, Ruby and C | not started |
+| Ruby and C | not started |
 
 In the staging plan's terms (SPEC §20) this is **Stage 0 and Stage 1** complete — the ground
-truth and the two-port walking skeleton. Stage 2 is the primary loop: all four sources, Python
-and Ruby, and writes.
+truth and the walking skeleton, now in three ports. Stage 2 is the primary loop: all four
+sources, Ruby, and writes.
 
 ## Start here
 
 ```sh
 make sdk         # clone the generated SDKs at their pinned revisions
-make check       # the schema, both ports, both corpora and the parity comparison
+make py-deps     # the Python port's pinned checkouts and python/.venv
+make check       # the schema, every port, both corpora and the parity comparison
 make mock        # run the source mock server on 127.0.0.1:7777
 ```
 
@@ -43,16 +45,17 @@ make mock        # run the source mock server on 127.0.0.1:7777
 
 ### Running a command
 
-Both ports are libraries with a thin argv shell, so a whole command is a pure
+Every port is a library with a thin argv shell, so a whole command is a pure
 function of its inputs and the transcript corpus can run it in-process. From a
 built tree:
 
 ```sh
 node typescript/bin/likeness.js list 'updated>7d' --json
 cd go && go run ./cmd/likeness list 'updated>7d' --json
+python/.venv/bin/likeness-py list 'updated>7d' --json
 ```
 
-Both read `~/.config/likeness/station.json` (or `--config PATH`), which is a
+Each reads `~/.config/likeness/station.json` (or `--config PATH`), which is a
 [voxgig/station](https://github.com/voxgig/station) configuration in station's
 own grammar. Each instance is a ref under `sdk`: `joplin` for the first Joplin
 profile, `joplin$work` for a second. The account each instance belongs to, which
@@ -67,12 +70,12 @@ note identity derives from, is in `likeness.json` beside it:
 ```
 
 Station resolves each instance's key through its secret providers, from
-`JOPLIN_APIKEY` (`JOPLIN_WORK_APIKEY` for `joplin$work`) by default. Both ports
-bind every client through station, and the calls a command reports are
+`JOPLIN_APIKEY` (`JOPLIN_WORK_APIKEY` for `joplin$work`) by default. Every port
+binds every client through station, and the calls a command reports are
 station's own request events. Live Joplin through station needs
 [voxgig/station#25](https://github.com/voxgig/station/issues/25): station places
 a key in headers only, and Joplin takes its key as the `token` query parameter,
-so both ports are refused today with the same `auth-failed`.
+so every port is refused today with the same `auth-failed`.
 
 With no instances configured they answer `no-match` and exit 1, which is the
 answer "none" rather than an error.

@@ -36,7 +36,7 @@ surprises you, and before changing the thing you assume produced it.
 | `make spec-check` | a data file that violates its shape — with a path, an expected, an actual, and both source lines |
 | `make spec-check` red cases | a gate that has stopped gating. `spec/example/likeness-broken.aontu` **must fail**; if it passes, the build fails |
 | `make spec-agree` | an empty or misspelled registry root, a capability row that does not match the registry, a source no port can reach, and a registry entity or operation the cloned SDK model does not declare. It needs the clones `make sdk` creates, and its self-test falsifies a capability to prove it goes red |
-| `make spec-fresh` | a compiled JSON file — under `spec/`, or an embedded copy under `typescript/src/spec/` or `go/spec/` — that no longer matches its `.aontu` source |
+| `make spec-fresh` | a compiled JSON file — under `spec/`, or an embedded copy under `typescript/src/spec/`, `go/spec/` or `python/likeness/spec/` — that no longer matches its `.aontu` source |
 | `make spec-fmt` | formatting drift, so a diff is about meaning |
 | `make spec-hash` | a pin per schema file, for the AGENTS.md stanza and for release notes |
 
@@ -154,6 +154,20 @@ Station's Go module cannot be required outside a go workspace yet
 ([voxgig/station#27](https://github.com/voxgig/station/issues/27)), so
 `go/go.mod` maps its unresolvable versions to real revisions with `replace`
 lines; move them with the station pin.
+
+Station's Python library, and the sekreto and plugin libraries under it, are on
+no package index, and station reads its configuration shape from its own
+checkout at run time, so a pip install from git cannot stand in for one.
+`python/deps.json` pins each by commit sha; `make py-deps` clones them into
+`python/.deps`, holds them at the pin and clean as `make sdk-check` holds the
+SDK clones, and builds `python/.venv` over them and the SDK clones. Move
+station's pin with the others.
+
+**The one third-party run-time dependency any port takes** is the Python SDK's
+live transport, `requests`, which the SDK imports on its first live call
+([sdkgen#402](https://github.com/voxgig/sdkgen/issues/402)). It is a declared
+exception in `python/requirements.txt`, no port module imports it — a test
+holds that — and it goes when the SDK's transport is the standard library's.
 
 `spec/sources.aontu` is the registry: which SDK, at which revision, with the exact
 dependency line per language.
