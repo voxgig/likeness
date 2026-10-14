@@ -37,8 +37,8 @@ VET_MUSTFAIL := \
 help:
 	@echo 'likeness make targets:'
 	@echo '  spec-check    every data file satisfies its shape, and the red tests go red'
-	@echo '  spec-agree    the registry is present, and capability rows match it'
-	@echo '                (set LIKENESS_SDK_ROOT to also check against real SDKs)'
+	@echo '  spec-agree    the registry is present, capability rows match it, and the'
+	@echo '                registry matches the cloned SDK models (needs `make sdk`)'
 	@echo '  spec-build    compile the data files to the JSON every port reads'
 	@echo '  spec-fresh    fail if a committed JSON file is stale'
 	@echo '  spec-json     export the shapes as JSON Schema'
@@ -165,9 +165,11 @@ spec-check:
 	exit $$fail
 
 
+# sdk-check first: the cross-check reads the cloned models, and a clone off
+# its pin would check the registry against an SDK nobody else has.
 .PHONY: spec-agree
-spec-agree:
-	@AONTU="$(AONTU)" node tools/check-registry.mjs
+spec-agree: sdk-check
+	@AONTU="$(AONTU)" node tools/check-registry.mjs --selftest
 
 
 .PHONY: spec-json
