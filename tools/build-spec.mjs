@@ -37,14 +37,14 @@ const SOURCES = [
 // its build embeds them: an installed binary then needs no checkout, and
 // `--check` holds the copies to the same bytes as spec/.
 const EMBED = {
-  'errors.aontu': ['typescript/src/spec/errors.json', 'go/spec/errors.json'],
-  'caps.aontu': ['typescript/src/spec/caps.json', 'go/spec/caps.json'],
-  'commands.aontu': ['typescript/src/spec/commands.json', 'go/spec/commands.json'],
+  'errors.aontu': ['typescript/src/spec/errors.json', 'go/spec/errors.json', 'ruby/lib/likeness/spec/errors.json'],
+  'caps.aontu': ['typescript/src/spec/caps.json', 'go/spec/caps.json', 'ruby/lib/likeness/spec/caps.json'],
+  'commands.aontu': ['typescript/src/spec/commands.json', 'go/spec/commands.json', 'ruby/lib/likeness/spec/commands.json'],
 }
 
 // Rendered from commands.aontu here, once, and printed by `help` in every port
 // (SPEC 13.1 rule 9), so help text is a corpus entry rather than five drafts.
-const HELP = ['spec/help.json', 'typescript/src/spec/help.json', 'go/spec/help.json']
+const HELP = ['spec/help.json', 'typescript/src/spec/help.json', 'go/spec/help.json', 'ruby/lib/likeness/spec/help.json']
 
 const check = process.argv.includes('--check')
 let stale = 0

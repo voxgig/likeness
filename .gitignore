@@ -15,3 +15,6 @@ typescript/package-lock.json
 
 # Parity comparison output, rebuilt by `make parity` on every run.
 build/
+
+# The Ruby port's dependencies, linked by `make rb-deps` to pinned checkouts.
+ruby/vendor/
