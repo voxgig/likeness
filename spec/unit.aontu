@@ -242,6 +242,18 @@ primary: unit: {
     }
 
     {
+      id: "selector/duration-eight-digits-is-the-most"
+      fn: "parseSelector"
+      in: "updated>99999999d"
+      out: {
+        t: "cmp"
+        field: "updated"
+        op: ">"
+        value: { k:"dur" n:99999999 unit:"d" }
+      }
+    }
+
+    {
       id: "selector/duration-months-are-two-letters"
       fn: "parseSelector"
       in: "created<3mo"
@@ -446,9 +458,48 @@ primary: unit: {
       in: "title:日本語 bogus:x"
       out: { offset:16 token:"bogus" }
     }
+
+    {
+      id: "selector-err/duration-overflow"
+      fn: "parseSelectorError"
+      in: "updated>99999999999999999999d"
+      out: { offset:8 token:"99999999999999999999d" }
+    }
+
+    {
+      id: "selector-err/duration-nine-digits"
+      fn: "parseSelectorError"
+      in: "updated>123456789d"
+      out: { offset:8 token:"123456789d" }
+    }
+
+    {
+      id: "selector-err/ordering-on-a-text-field"
+      # `>` and friends compare dates, which only created and updated hold.
+      fn: "parseSelectorError"
+      in: "title>2026-01-01"
+      out: { offset:5 token:">" }
+    }
+
+    {
+      id: "selector-err/ordering-on-body-with-a-duration"
+      fn: "parseSelectorError"
+      in: "body<3d"
+      out: { offset:4 token:"<" }
+    }
   ]
 
   # ---------------------------------------------------------------- identity
+  text: set: [
+    {
+      id: "text/case-folding-is-ascii-only"
+      # A-Z fold to a-z and nothing else does, so every port agrees on it.
+      fn: "foldCase"
+      in: "İSTANBUL Straße ΟΔΟΣ ÀÉ ABC xyz"
+      out: "İstanbul straße ΟΔΟΣ ÀÉ abc xyz"
+    }
+  ]
+
   identity: set: [
     # Known vectors. A port that gets this subtly wrong produces
     # plausible-looking identifiers that silently fail to match another port's,

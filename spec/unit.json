@@ -496,6 +496,21 @@
           },
           {
             "fn": "parseSelector",
+            "id": "selector/duration-eight-digits-is-the-most",
+            "in": "updated>99999999d",
+            "out": {
+              "field": "updated",
+              "op": ">",
+              "t": "cmp",
+              "value": {
+                "k": "dur",
+                "n": 99999999,
+                "unit": "d"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
             "id": "selector/duration-months-are-two-letters",
             "in": "created<3mo",
             "out": {
@@ -795,6 +810,52 @@
               "offset": 16,
               "token": "bogus"
             }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/duration-overflow",
+            "in": "updated>99999999999999999999d",
+            "out": {
+              "offset": 8,
+              "token": "99999999999999999999d"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/duration-nine-digits",
+            "in": "updated>123456789d",
+            "out": {
+              "offset": 8,
+              "token": "123456789d"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/ordering-on-a-text-field",
+            "in": "title>2026-01-01",
+            "out": {
+              "offset": 5,
+              "token": ">"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/ordering-on-body-with-a-duration",
+            "in": "body<3d",
+            "out": {
+              "offset": 4,
+              "token": "<"
+            }
+          }
+        ]
+      },
+      "text": {
+        "set": [
+          {
+            "fn": "foldCase",
+            "id": "text/case-folding-is-ascii-only",
+            "in": "İSTANBUL Straße ΟΔΟΣ ÀÉ ABC xyz",
+            "out": "İstanbul straße ΟΔΟΣ ÀÉ abc xyz"
           }
         ]
       }

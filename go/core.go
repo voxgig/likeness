@@ -1,11 +1,14 @@
 package likeness
 
 import (
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
+
+var limitRe = regexp.MustCompile(`^[1-9][0-9]{0,8}$`)
 
 // Connection is one configured source, as the station file describes it.
 type Connection struct {
@@ -73,14 +76,16 @@ func parseFlags(args []string) (flags, []string, error) {
 			if i < len(args) {
 				raw = args[i]
 			}
-			n, err := strconv.Atoi(raw)
-			if nil != err || n < 1 {
+			// The declared integer syntax, never a host parser: those take hex,
+			// exponents and decimals, each port's a different set.
+			if !limitRe.MatchString(raw) {
 				return f, rest, &LikenessError{
 					Code:   "invalid-selector",
-					Msg:    "--limit needs a whole number of at least 1, not \"" + raw + "\"",
+					Msg:    "--limit needs a whole number from 1 to 999999999, not \"" + raw + "\"",
 					Remedy: "try `--limit 20`",
 				}
 			}
+			n, _ := strconv.Atoi(raw)
 			f.limit, f.hasLimit = n, true
 		case "--sort":
 			i++

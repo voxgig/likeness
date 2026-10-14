@@ -194,6 +194,8 @@ export function classify (tok: Tok): Value {
   }
   const m = DUR_RE.exec(t)
   if (null !== m) {
+    // The cap keeps every port's arithmetic exact, in years as in days.
+    if (8 < m[1].length) throw new SelectorError('duration is out of range', tok.offset, t)
     return { k: 'dur', n: Number(m[1]), unit: m[2] as 'd' | 'w' | 'mo' | 'y' }
   }
   return { k: 'word', v: t }
@@ -280,6 +282,9 @@ class Parser {
       this.next()
       if (!(FIELDS as readonly string[]).includes(t.text)) {
         this.fail('unknown field "' + t.text + '"', t)
+      }
+      if (ORDERING_OPS.includes(op.text) && 'created' !== t.text && 'updated' !== t.text) {
+        this.fail('"' + op.text + '" compares dates, which only created and updated hold', op)
       }
       const vtok = this.next()
       if (undefined === vtok) this.fail('"' + t.text + op.text + '" has no value')

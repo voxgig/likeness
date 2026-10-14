@@ -62,6 +62,7 @@ func unitRegistry() map[string]unitFn {
 		},
 
 		"crockfordAlphabet": func(t *testing.T, in any) (any, error) { return Crockford, nil },
+		"foldCase":          func(t *testing.T, in any) (any, error) { return foldCase(in.(string)), nil },
 		"partialCodes": func(t *testing.T, in any) (any, error) {
 			codes := PartialCodes()
 			out := make([]any, len(codes))

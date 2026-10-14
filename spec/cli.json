@@ -696,6 +696,186 @@
           {
             "args": [
               "list",
+              "--limit",
+              "0x10",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/limit-hex-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/limit-hex.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--limit",
+              "1e3",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/limit-exponent-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/limit-exponent.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--limit",
+              "2.0",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/limit-decimal-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/limit-decimal.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--limit",
+              "99999999999999999999",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/limit-overflow-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/limit-overflow.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--limit",
+              "1000000000",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/limit-ten-digits-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/limit-ten-digits.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "updated>99999999999999999999d",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/duration-overflow-refused-before-the-network",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/duration-overflow.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "title>2026-01-01",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "jot",
+                  "source": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/ordering-on-title-refused-before-the-network",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/ordering-on-title.json"
+            }
+          },
+          {
+            "args": [
+              "list",
               "--json"
             ],
             "ctx": {

@@ -273,6 +273,10 @@ func classify(t tok) (*Value, error) {
 		return &Value{K: "date", V: s}, nil
 	}
 	if m := durRe.FindStringSubmatch(s); nil != m {
+		// The cap keeps every port's arithmetic exact, in years as in days.
+		if 8 < len(m[1]) {
+			return nil, &SelectorError{"duration is out of range", t.offset, s}
+		}
 		n, _ := strconv.Atoi(m[1])
 		return &Value{K: "dur", N: n, Unit: m[2]}, nil
 	}
@@ -424,6 +428,11 @@ func (p *parser) parseAtom() (*Node, error) {
 		}
 		if !known {
 			return nil, p.fail("unknown field \""+t.text+"\"", t)
+		}
+		for _, o := range OrderingOps {
+			if o == op.text && "created" != t.text && "updated" != t.text {
+				return nil, p.fail("\""+op.text+"\" compares dates, which only created and updated hold", op)
+			}
 		}
 		vtok := p.next()
 		if nil == vtok {
