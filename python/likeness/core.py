@@ -375,6 +375,10 @@ def _cmd_get(flags: Flags, rest: list[str], session: Session) -> dict[str, Any]:
         if '' == id:
             raise LikenessError('invalid-ref', 'not a ref: ' + ref + ' (no id after the colon)',
                                 'a ref is <instance>:<id>, a lid, #n or @alias')
+        # A dot segment substituted into a route would name another resource.
+        if id in ('.', '..'):
+            raise LikenessError('invalid-ref', 'not a ref: ' + ref + ' (an id is never . or ..)',
+                                'a ref is <instance>:<id>, a lid, #n or @alias')
         c = next((x for x in session.conns if x.instance == instance), None)
         if c is None:
             raise LikenessError('no-such-source', 'no connection named "' + instance + '"',
