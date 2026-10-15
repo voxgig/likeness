@@ -314,7 +314,9 @@ func cloneMap(m map[string]any) map[string]any {
 	return out
 }
 
-func checkStdout(t *testing.T, root, path, actual string, fail func(string)) {
+// checkStdout compares stdout with the expectation at path, as predict
+// rewrites it where one is given.
+func checkStdout(t *testing.T, root, path, actual string, predict func(string) string, fail func(string)) {
 	t.Helper()
 	// A MISSING EXPECTATION IS A FAILURE, NOT AN EMPTY COMPARISON. Reported
 	// rather than fatal, so that a meta-test can drive this path and see it
@@ -325,6 +327,9 @@ func checkStdout(t *testing.T, root, path, actual string, fail func(string)) {
 		return
 	}
 	want := string(raw)
+	if nil != predict {
+		want = predict(want)
+	}
 
 	if !strings.HasSuffix(path, ".json") {
 		if actual != want {
@@ -426,6 +431,12 @@ func sameCalls(want, got []Call) bool {
 
 func Check(t *testing.T, root string, e map[string]any) []string {
 	t.Helper()
+	return checkWith(t, root, e, nil)
+}
+
+// checkWith is Check with the expected stdout as predict rewrites it.
+func checkWith(t *testing.T, root string, e map[string]any, predict func(string) string) []string {
+	t.Helper()
 	failures := []string{}
 	fail := func(s string) { failures = append(failures, s) }
 
@@ -437,7 +448,7 @@ func Check(t *testing.T, root string, e map[string]any) []string {
 		fail(fmt.Sprintf("exit %d, expected %d", r.Exit, want))
 	}
 
-	checkStdout(t, root, str(out, "stdout"), r.Stdout, fail)
+	checkStdout(t, root, str(out, "stdout"), r.Stdout, predict, fail)
 
 	wantErr := ""
 	if s, ok := out["stderr"].(string); ok {

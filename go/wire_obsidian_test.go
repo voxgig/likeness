@@ -12,7 +12,6 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -25,6 +24,10 @@ import (
 // The plugin's credential, as the mock reads it from its seed.
 const vaultToken = "obsidian-local-rest-api-key-0001"
 const vaultAccount = "wirevault000001"
+
+// The notes the mock's vault holds.
+var vaultNotes = []string{"mydocument.md", "projects/nested/deep-note.md", "somedirectory/meeting-notes.md",
+	"somedirectory/roadmap.md", "welcome.md"}
 
 func certificateRejected(err error) bool {
 	var le *LikenessError
@@ -55,48 +58,71 @@ func TestWireObsidian(t *testing.T) {
 		return l, conn, obsidianAdapter{}.connect(l.st, conn, config, nil)
 	}
 
-	t.Run("a pinned connection walks the vault, reading each note as note JSON with the vault's token", func(t *testing.T) {
+	t.Run("a pinned connection reads each note as note JSON with the vault's token", func(t *testing.T) {
 		secure.clear(t)
 		l, conn, h := bound(t, pinned(cert), vaultToken)
-		notes, more, err := obsidianAdapter{}.listNotes(h, conn, false)
-		if nil != err {
-			t.Fatal(err)
-		}
-		if more {
-			t.Fatal("a vault of five notes reported more")
-		}
 		ids := []string{}
-		for _, n := range notes {
+		for _, path := range vaultNotes {
+			n, err := obsidianAdapter{}.loadNote(h, conn, path, false)
+			if nil != err || nil == n {
+				t.Fatalf("%s: %+v %v", path, n, err)
+			}
 			ids = append(ids, n.ID)
 		}
-		sort.Strings(ids)
-		want := []string{"mydocument.md", "projects/nested/deep-note.md", "somedirectory/meeting-notes.md",
-			"somedirectory/roadmap.md", "welcome.md"}
-		if !reflect.DeepEqual(want, ids) {
-			t.Fatalf("notes %q, expected %q", ids, want)
+		if !reflect.DeepEqual(vaultNotes, ids) {
+			t.Fatalf("notes %q, expected %q", ids, vaultNotes)
 		}
 		seen := secure.rows(t, "obsidian")
-		reads := 0
+		if len(seen) != len(vaultNotes) {
+			t.Fatalf("%d requests for %d notes", len(seen), len(vaultNotes))
+		}
 		for _, r := range seen {
-			if strings.HasSuffix(r.URL, ".md") {
-				reads++
-				if noteJSON != r.Headers["accept"] {
-					t.Errorf("%s was read with accept %q", r.URL, r.Headers["accept"])
-				}
-			}
-			if "ok" != r.Auth {
-				t.Errorf("%s carried a credential the plugin refused", r.URL)
+			if noteJSON != r.Headers["accept"] || "ok" != r.Auth {
+				t.Errorf("%s was read with accept %q and a credential the plugin found %s", r.URL, r.Headers["accept"], r.Auth)
 			}
 		}
-		if reads != len(notes) {
-			t.Fatalf("%d notes from %d reads", len(notes), reads)
+		// What station observed is what the mock received, in order, but for
+		// how station writes the path.
+		asked, sent := l.asked(), received(seen)
+		if reflect.DeepEqual(asked, sent) {
+			t.Fatal("voxgig/station#50 is fixed: station observed the paths as sent, so compare them as they are")
 		}
-		// What station observed is what the mock received, in order.
-		if a, b := l.asked(), received(seen); !reflect.DeepEqual(a, b) {
-			t.Fatalf("station observed %q, the mock received %q", a, b)
+		decoded := []string{}
+		for _, r := range seen {
+			decoded = append(decoded, r.Method+" "+decodedPaths.path(r.URL))
+		}
+		if !reflect.DeepEqual(asked, decoded) {
+			t.Fatalf("station observed %q, the mock received %q", asked, sent)
 		}
 		if l.leaks(t, vaultToken) {
 			t.Fatal("the token reached an event")
+		}
+	})
+
+	t.Run("the walk refuses a root listing the SDK hands over without its names", func(t *testing.T) {
+		secure.clear(t)
+		_, conn, h := bound(t, pinned(cert), vaultToken)
+		listed, err := h.(*vaultHandle).sdk.Vault(nil).List(nil, nil)
+		if nil != err {
+			t.Fatal(err)
+		}
+		data := []any{}
+		for _, e := range listed.([]any) {
+			data = append(data, dataOf(e))
+		}
+		nameless := map[string]any{}
+		if !reflect.DeepEqual([]any{nameless, nameless, nameless, nameless}, data) {
+			t.Fatalf("voxgig/sdkgen#419 is fixed: the SDK hands the root listing over as %v, "+
+				"so assert the walk as the canonical port's suite does", data)
+		}
+		_, _, err = obsidianAdapter{}.listNotes(h, conn, false)
+		var le *LikenessError
+		if !errors.As(err, &le) || "source-unavailable" != le.Code ||
+			"obsidian returned a vault listing with an entry that names no path below it" != le.Msg {
+			t.Fatalf("list: %v", err)
+		}
+		if got := received(secure.rows(t, "obsidian")); !reflect.DeepEqual([]string{"GET /obsidian/vault/", "GET /obsidian/vault/"}, got) {
+			t.Fatalf("the mock received %q", got)
 		}
 	})
 

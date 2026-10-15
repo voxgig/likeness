@@ -36,6 +36,11 @@
  * Every port also checks itself against the committed expectations in its own
  * suite. This is not a duplicate of that: it compares the ports to EACH OTHER,
  * so it still holds if an expectation file is wrong.
+ *
+ * An answer tools/parity-waiting.json declares, by port and entry, with the
+ * upstream issue its port waits on, is set aside from check 3's stdout
+ * comparison and from nothing else. One that agrees again fails, until its
+ * declaration is taken out, so the file cannot outlive what it excuses.
  */
 
 import { readFileSync, statSync, existsSync, readdirSync } from 'node:fs'
@@ -158,6 +163,23 @@ let bad = 0
 let noncanon = 0
 let missing = 0
 
+// Answers set aside because their port waits on an upstream fix.
+const declared = JSON.parse(readFileSync(join(ROOT, 'tools', 'parity-waiting.json'), 'utf8')).waiting
+for (const w of declared) {
+  if (!ids.includes(w.entry)) {
+    console.error(`  WAITING  ${w.port} is declared waiting on ${w.entry}, which is not in the corpus`)
+    bad++
+  }
+  if (!/[\w.-]+\/[\w.-]+#[0-9]+/.test(String(w.reason))) {
+    console.error(`  WAITING  ${w.port} is declared waiting on ${w.entry} for a reason that names no issue`)
+    bad++
+  }
+}
+const waited = []
+const stale = []
+const differs = []
+const planted = {}
+
 for (const p of readdirSync(dir).filter(p => statSync(join(dir, p)).isDirectory()).sort()) {
   if (!ports.includes(p)) {
     // Output from a port nobody named would otherwise be compared by no one.
@@ -187,13 +209,29 @@ for (const id of ids) {
   }
   if (!complete) continue
 
+  const waits = new Map(declared.filter(w => id === w.entry && ports.includes(w.port)).map(w => [w.port, w.reason]))
+
   if (selftest) {
+    const before = got[ports[1]].stdout
     // Introduce a single-port difference and require it to be reported. A
     // comparison nobody has seen go red might be comparing nothing at all.
     got[ports[1]].stdout = got[ports[1]].stdout.replace(/"count":(\d+)/, '"count":999')
     // And the right values in the wrong bytes, which check 2 exists to catch.
     if (id === ids[0] && got[ports[1]].stdout.trimEnd().startsWith('{')) {
       got[ports[1]].stdout = JSON.stringify(JSON.parse(got[ports[1]].stdout), null, 2) + '\n'
+    }
+    // A declared difference must be set aside, and a declared one that has
+    // gone must be reported stale.
+    const free = !waits.has(ports[0]) && !waits.has(ports[1])
+    const altered = before !== got[ports[1]].stdout
+    if (free && undefined === planted.excused && altered && id !== ids[0]) {
+      planted.excused = id
+      waits.set(ports[1], 'selftest: a declared difference')
+    }
+    else if (free && undefined === planted.stale && !altered &&
+      comparable(got[ports[0]].stdout).text === comparable(got[ports[1]].stdout).text) {
+      planted.stale = id
+      waits.set(ports[1], 'selftest: a declared difference that has gone')
     }
   }
 
@@ -206,21 +244,40 @@ for (const id of ids) {
     }
   }
 
-  for (const p of ports.slice(1)) {
+  // The answers are judged against the first port that is not waiting.
+  const base = ports.find(p => !waits.has(p))
+  if (undefined === base) {
+    console.error(`  WAITING  ${id}: every port named is declared waiting, so none is judged`)
+    bad++
+  }
+  for (const p of ports) {
+    if (undefined === base || base === p) continue
     // Check 3: the parity claim.
-    const a = comparable(got[reference].stdout).text
+    const a = comparable(got[base].stdout).text
     const b = comparable(got[p].stdout).text
-    if (a !== b) {
-      console.error(`  DIFFERS  ${id}: ${reference} and ${p} disagree on stdout`)
-      console.error(`           ${reference}: ${a.trimEnd().slice(0, 160)}`)
+    if (waits.has(p)) {
+      if (a === b) {
+        console.error(`  STALE    ${id}: ${p} agrees with ${base} again; take it out of tools/parity-waiting.json`)
+        stale.push(id)
+        bad++
+      }
+      else {
+        console.log(`  WAITING  ${id}: ${p} stdout set aside - ${waits.get(p)}`)
+        waited.push(id)
+      }
+    }
+    else if (a !== b) {
+      console.error(`  DIFFERS  ${id}: ${base} and ${p} disagree on stdout`)
+      console.error(`           ${base}: ${a.trimEnd().slice(0, 160)}`)
       console.error(`           ${p}: ${b.trimEnd().slice(0, 160)}`)
+      differs.push(id)
       bad++
     }
-    if (got[reference].exit !== got[p].exit) {
-      console.error(`  DIFFERS  ${id}: exit ${got[reference].exit} vs ${got[p].exit}`)
+    if (got[base].exit !== got[p].exit) {
+      console.error(`  DIFFERS  ${id}: exit ${got[base].exit} vs ${got[p].exit}`)
       bad++
     }
-    if (got[reference].stderr !== got[p].stderr) {
+    if (got[base].stderr !== got[p].stderr) {
       console.error(`  DIFFERS  ${id}: stderr differs`)
       bad++
     }
@@ -266,8 +323,18 @@ if (selftest) {
       ' The comparison is not counting answers.')
     process.exit(1)
   }
+  if (undefined === planted.excused || !waited.includes(planted.excused) || differs.includes(planted.excused)) {
+    console.error('\nparity --selftest: a difference declared waiting was NOT set aside.' +
+      ' The waiting declarations are not read.')
+    process.exit(1)
+  }
+  if (undefined === planted.stale || !stale.includes(planted.stale)) {
+    console.error('\nparity --selftest: a waiting answer that agrees again was NOT reported stale.' +
+      ' A declaration could outlive what it excuses.')
+    process.exit(1)
+  }
   console.log(`\nparity --selftest: ok - the deliberate differences were reported (${bad} finding(s),` +
-    ` ${noncanon} non-canonical, ${missing} missing)`)
+    ` ${noncanon} non-canonical, ${missing} missing, ${stale.length} stale), and a declared one set aside`)
   process.exit(0)
 }
 
@@ -276,4 +343,4 @@ if (0 < bad) {
   process.exit(1)
 }
 console.log(`\nparity: ok - ${ports.length} ports agree on ${ids.length} entries,` +
-  ' and each names itself')
+  ` but for ${waited.length} answer(s) declared waiting, and each names itself`)
