@@ -74,17 +74,26 @@ def _join(*parts: str) -> str:
     return '/' + p.lstrip('/') if p.startswith('//') else p
 
 
-def _read(path: str) -> str:
-    with open(path, encoding='utf-8', errors='replace') as handle:
-        return handle.read()
+def _read(path: str) -> str | None:
+    """None when the file is not there. One that is there and cannot be read
+    as a file, such as a directory, is refused rather than taken for absent."""
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding='utf-8', errors='replace') as handle:
+            return handle.read()
+    except OSError:
+        raise ConfigError(path + ' cannot be read') from None
 
 
 def load_config(path: str, profile: str) -> tuple[Any, dict[str, str]]:
-    if not os.path.exists(path):
+    source = _read(path)
+    if source is None:
         return None, {}
-    station = parse_station(_read(path), path)
+    station = parse_station(source, path)
     lpath = _join(os.path.dirname(path), 'likeness.json')
-    accounts = parse_accounts(_read(lpath), lpath, profile) if os.path.exists(lpath) else {}
+    lsource = _read(lpath)
+    accounts = {} if lsource is None else parse_accounts(lsource, lpath, profile)
     return station, accounts
 
 

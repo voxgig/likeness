@@ -66,16 +66,26 @@ module Likeness
     end
   end
 
-  def read_text(path)
-    File.read(path, encoding: 'UTF-8').scrub
+  # nil when the file is not there. One that is there and cannot be read as a
+  # file, such as a directory, is refused rather than taken for absent.
+  def read_config(path)
+    return nil unless File.exist?(path)
+
+    begin
+      File.read(path, encoding: 'UTF-8').scrub
+    rescue SystemCallError, IOError
+      raise ConfigError, "#{path} cannot be read"
+    end
   end
 
   def load_config(path, profile)
-    return [nil, {}] unless File.exist?(path)
+    source = read_config(path)
+    return [nil, {}] if source.nil?
 
-    station = parse_station(read_text(path), path)
+    station = parse_station(source, path)
     lpath = File.join(File.dirname(path), 'likeness.json')
-    [station, File.exist?(lpath) ? parse_accounts(read_text(lpath), lpath, profile) : {}]
+    lsource = read_config(lpath)
+    [station, lsource.nil? ? {} : parse_accounts(lsource, lpath, profile)]
   end
 
   def probe_path(env)

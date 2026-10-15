@@ -50,11 +50,21 @@ export function parseAccounts (source: string, path: string, profile: string): R
   return out
 }
 
+// A file that is not there is absent; one that is there and cannot be read as
+// a file, such as a directory, is refused rather than taken for absent.
+function readConfig (path: string): string | undefined {
+  if (!existsSync(path)) return undefined
+  try { return readFileSync(path, 'utf8') }
+  catch { throw new ConfigError(path + ' cannot be read') }
+}
+
 function loadConfig (path: string, profile: string): { station: unknown, accounts: Record<string, string> } {
-  if (!existsSync(path)) return { station: null, accounts: {} }
-  const station = parseStation(readFileSync(path, 'utf8'), path)
+  const source = readConfig(path)
+  if (undefined === source) return { station: null, accounts: {} }
+  const station = parseStation(source, path)
   const lpath = join(dirname(path), 'likeness.json')
-  const accounts = existsSync(lpath) ? parseAccounts(readFileSync(lpath, 'utf8'), lpath, profile) : {}
+  const lsource = readConfig(lpath)
+  const accounts = undefined === lsource ? {} : parseAccounts(lsource, lpath, profile)
   return { station, accounts }
 }
 

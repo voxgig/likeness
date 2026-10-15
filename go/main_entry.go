@@ -151,21 +151,38 @@ func parseAccounts(text, path, profile string) (map[string]string, error) {
 	return out, nil
 }
 
-func loadConfig(path, profile string) (map[string]any, map[string]string, error) {
+// readConfig reads one configuration file. A file that is not there is absent;
+// one that is there and cannot be read as a file, such as a directory, is
+// refused rather than taken for absent.
+func readConfig(path string) (string, bool, error) {
+	if _, err := os.Stat(path); nil != err {
+		return "", false, nil
+	}
 	raw, err := os.ReadFile(path)
 	if nil != err {
-		return nil, map[string]string{}, nil
+		return "", false, fmt.Errorf("%s cannot be read", path)
 	}
-	doc, err := parseStation(string(raw), path)
+	return string(raw), true, nil
+}
+
+func loadConfig(path, profile string) (map[string]any, map[string]string, error) {
+	text, found, err := readConfig(path)
+	if nil != err || !found {
+		return nil, map[string]string{}, err
+	}
+	doc, err := parseStation(text, path)
 	if nil != err {
 		return nil, nil, err
 	}
 	lpath := filepath.Join(filepath.Dir(path), "likeness.json")
-	lraw, err := os.ReadFile(lpath)
+	ltext, found, err := readConfig(lpath)
 	if nil != err {
+		return nil, nil, err
+	}
+	if !found {
 		return doc, map[string]string{}, nil
 	}
-	accounts, err := parseAccounts(string(lraw), lpath, profile)
+	accounts, err := parseAccounts(ltext, lpath, profile)
 	if nil != err {
 		return nil, nil, err
 	}

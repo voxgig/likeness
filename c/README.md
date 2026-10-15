@@ -38,8 +38,8 @@ station's C library reads only the environment, so it can neither validate
 The argv shell reads `station.json` and the `likeness.json` beside it only far
 enough to refuse a file that is not a JSON object, as the other ports refuse it.
 Station's own validation of the file waits on station#23. A configuration that
-exists and cannot be read, such as a directory, counts as absent, as the Go port
-counts it.
+is not there is absent; one that is there and cannot be read as a file, such as
+a directory, is refused as every port refuses it.
 
 ## The suites
 
@@ -47,7 +47,7 @@ counts it.
 |---|---|
 | `test/unit.c` | `spec/unit.json`, entry by entry. `connections` is declared waiting, and the run fails if that list names a function the port implements or one the corpus does not use, or if the corpus uses a function the port neither implements nor declares. A waiting entry is reported as a TAP `SKIP`, never as a pass. `unit ROOT --eval` answers `{"fn","in"}` lines on stdin, for comparing the port with another |
 | `test/transcript.c` | the 37 entries of `spec/cli.json` this port answers, against the committed bytes in `spec/expect/`. Every other entry is a `SKIP`, and the port's answer to it must be the refusal naming the three issues |
-| `test/process.c` | the binary as a process: no checkout and an empty `HOME`, a malformed configuration through both flag forms, a broken pipe, `which` over a real `PATH`, an argument that is not UTF-8 |
+| `test/process.c` | the binary as a process: no checkout and an empty `HOME`, a malformed configuration through both flag forms, one that cannot be read, a broken pipe, `which` over a real `PATH`, an argument that is not UTF-8 |
 | `test/selftest.c` | the building blocks against the canonical runtime: Node's `Number` formatting, `JSON.parse`, its UTF-8 decoder and `path.posix`, and the FIPS 180-4 SHA-256 examples |
 
 The unit and transcript suites prove they can go red: their meta checks mutate

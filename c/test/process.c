@@ -244,8 +244,62 @@ int main(int argc, char **argv) {
 
     args[2] = dir;
     r = spawn(a, home, home, "", args, 0);
-    expect(&t, "a configuration that cannot be read counts as absent, as the Go port counts it",
-      0 == r.status && 0 < r.out.n, described(a, r));
+    sb_init(&want, a);
+    sb_puts(&want, "error: invalid-project\n  ");
+    sb_puts(&want, dir);
+    sb_puts(&want, " cannot be read\n  remedy  fix the file, or point --config at another\n");
+    expect(&t, "a configuration that cannot be read as a file is refused, not taken for absent",
+      3 == r.status && 0 == r.out.n && str_eq(r.err, sb_done(&want)), described(a, r));
+  }
+
+  {
+    const char *dir = joinpath(a, home, str_of("cfg2"));
+    const char *args[4];
+    sbuf want;
+    mkdir(dir, 0700);
+    mkdir(joinpath(a, dir, str_of("likeness.json")), 0700);
+    write_text(a, dir, "station.json", "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}");
+    args[0] = "version";
+    args[1] = "--config";
+    args[2] = joinpath(a, dir, str_of("station.json"));
+    args[3] = NULL;
+    sb_init(&want, a);
+    sb_puts(&want, "error: invalid-project\n  ");
+    sb_puts(&want, joinpath(a, dir, str_of("likeness.json")));
+    sb_puts(&want, " cannot be read\n  remedy  fix the file, or point --config at another\n");
+    r = spawn(a, home, home, "", args, 0);
+    expect(&t, "likeness.json beside the configuration is refused when it cannot be read as a file",
+      3 == r.status && 0 == r.out.n && str_eq(r.err, sb_done(&want)), described(a, r));
+  }
+
+  {
+    const char *dir = joinpath(a, home, str_of("cfg3"));
+    const char *station;
+    const char *args[4];
+    const char *name = "a configuration this process has no permission to read is refused";
+    FILE *probe;
+    sbuf want;
+    mkdir(dir, 0700);
+    write_text(a, dir, "station.json", "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}");
+    station = joinpath(a, dir, str_of("station.json"));
+    chmod(station, 0);
+    probe = fopen(station, "rb");
+    if (NULL != probe) {
+      fclose(probe);
+      tap_skip(&t, str_of(name), "this process reads a file without permission to, so the refusal cannot be shown here");
+    }
+    else {
+      args[0] = "version";
+      args[1] = "--config";
+      args[2] = station;
+      args[3] = NULL;
+      sb_init(&want, a);
+      sb_puts(&want, "error: invalid-project\n  ");
+      sb_puts(&want, station);
+      sb_puts(&want, " cannot be read\n  remedy  fix the file, or point --config at another\n");
+      r = spawn(a, home, home, "", args, 0);
+      expect(&t, name, 3 == r.status && 0 == r.out.n && str_eq(r.err, sb_done(&want)), described(a, r));
+    }
   }
 
   {

@@ -167,8 +167,6 @@ static str home_dir(arena *a) {
   return u8_sanitize(a, pw->pw_dir, strlen(pw->pw_dir));
 }
 
-/* A file that exists and cannot be read counts as absent, as the Go port
- * counts it. */
 static int read_text(arena *a, str path, str *out) {
   FILE *f = fopen(ar_copy(a, path.p, path.n), "rb");
   sbuf b;
@@ -191,15 +189,17 @@ static int exists(arena *a, str path) {
 }
 
 /* Only that each file is a JSON object: station's own validation of
- * station.json waits on its C library reading it. */
+ * station.json waits on its C library reading it. A file that is not there is
+ * absent; one that is there and cannot be read as a file is refused. */
 static int json_object_fault(arena *a, str path, str *why) {
   str text;
   jval *doc = NULL;
   sbuf m;
-  if (!exists(a, path) || 0 != read_text(a, path, &text)) return 0;
+  if (!exists(a, path)) return 0;
   sb_init(&m, a);
   sb_str(&m, path);
-  if (NULL != json_parse(a, text.p, text.n, &doc)) sb_puts(&m, " is not valid JSON");
+  if (0 != read_text(a, path, &text)) sb_puts(&m, " cannot be read");
+  else if (NULL != json_parse(a, text.p, text.n, &doc)) sb_puts(&m, " is not valid JSON");
   else if (!jv_is(doc, J_OBJECT)) sb_puts(&m, " is not a JSON object");
   else return 0;
   *why = sb_done(&m);

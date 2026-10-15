@@ -11,6 +11,55 @@ import (
 
 const badStderr = "error: invalid-project\n  %s is not valid JSON\n  remedy  fix the file, or point --config at another\n"
 
+const unreadableStderr = "error: invalid-project\n  %s cannot be read\n  remedy  fix the file, or point --config at another\n"
+
+const bareStation = `{"station":1,"profiles":{"default":{"sdk":{}}}}`
+
+// runVersion runs `version --json` on the configuration at config.
+func runVersion(t *testing.T, bin, home, config string) (int, string, string) {
+	t.Helper()
+	cmd := exec.Command(bin, "version", "--json", "--config", config)
+	cmd.Dir = home
+	cmd.Env = []string{"HOME=" + home, "PATH=" + os.Getenv("PATH")}
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	_ = cmd.Run()
+	return cmd.ProcessState.ExitCode(), out.String(), errb.String()
+}
+
+func TestProcessUnreadableConfigIsRefusedNotAbsent(t *testing.T) {
+	bin := buildBinary(t)
+	home := t.TempDir()
+	dir := filepath.Join(home, "cfg")
+	if err := os.MkdirAll(filepath.Join(dir, "likeness.json"), 0o700); nil != err {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "station.json"), []byte(bareStation), 0o600); nil != err {
+		t.Fatal(err)
+	}
+	for _, c := range [][2]string{{dir, dir}, {filepath.Join(dir, "station.json"), filepath.Join(dir, "likeness.json")}} {
+		code, out, errs := runVersion(t, bin, home, c[0])
+		if want := fmt.Sprintf(unreadableStderr, c[1]); 3 != code || "" != out || want != errs {
+			t.Fatalf("%s: exit %d, stdout %q, stderr %q, expected %q", c[0], code, out, errs, want)
+		}
+	}
+}
+
+func TestProcessConfigWithoutPermissionIsRefused(t *testing.T) {
+	home := t.TempDir()
+	config := filepath.Join(home, "station.json")
+	if err := os.WriteFile(config, []byte(bareStation), 0o000); nil != err {
+		t.Fatal(err)
+	}
+	if _, err := os.ReadFile(config); nil == err {
+		t.Skip("this process reads a file without permission to, so the refusal cannot be shown here")
+	}
+	code, out, errs := runVersion(t, buildBinary(t), home, config)
+	if want := fmt.Sprintf(unreadableStderr, config); 3 != code || "" != out || want != errs {
+		t.Fatalf("exit %d, stdout %q, stderr %q, expected %q", code, out, errs, want)
+	}
+}
+
 func TestProcessMalformedConfigBothFlagForms(t *testing.T) {
 	bin := buildBinary(t)
 	home := t.TempDir()
