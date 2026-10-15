@@ -60,6 +60,7 @@ help:
 	@echo '  test-c-asan   the C suite under AddressSanitizer and UBSan'
 	@echo '  test-c-valgrind  the C suite under Valgrind'
 	@echo '  parity        the ports produce the same bytes, and each names itself'
+	@echo '  guards        no source name outside its adapter, and no TLS check turned off'
 	@echo '  check         spec, every port, and the parity comparison'
 	@echo '  expect        REGENERATE the committed expectations - read the diff'
 	@echo '  mock          run the local source mock server'
@@ -72,7 +73,16 @@ spec: spec-fmt spec-check spec-expect spec-fresh spec-agree
 
 # Everything. What CI runs, and what a change should run before it is pushed.
 .PHONY: check
-check: comments spec test-ts test-go test-py test-rb test-c parity
+check: comments guards spec test-ts test-go test-py test-rb test-c parity
+
+
+# The two rules a port's code may not break whatever its tests say: a source
+# named outside its adapter, and certificate verification turned off. The
+# self-test plants a breach of each and requires it to be reported.
+.PHONY: guards
+guards:
+	@node tools/check-guards.mjs
+	@node tools/check-guards.mjs --selftest
 
 
 .PHONY: spec-expect

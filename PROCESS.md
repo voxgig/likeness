@@ -39,6 +39,7 @@ surprises you, and before changing the thing you assume produced it.
 | `make spec-fresh` | a compiled JSON file — under `spec/`, or an embedded copy under `typescript/src/spec/`, `go/spec/`, `python/likeness/spec/`, `ruby/lib/likeness/spec/` or in `c/src/spec_embed.c` — that no longer matches its `.aontu` source |
 | `make spec-fmt` | formatting drift, so a diff is about meaning |
 | `make spec-hash` | a pin per schema file, for the AGENTS.md stanza and for release notes |
+| `make guards` | a source's name as a string literal in a port's shipped code outside the capability data and that source's adapter (SPEC §11.5, §12.3) — the first line of `if (source == "notion")`, which the capability matrix replaces — and certificate verification turned off in any spelling, anywhere (SPEC §18), which is how a self-signed certificate gets "fixed" without being pinned. It reads string literals and patterns, not meaning, so a branch on a constant still needs review. `tools/check-guards.json` excuses a finding by its exact line, with a reason, and fails on an excuse that no longer matches; its self-test plants a breach of each rule |
 
 ---
 
