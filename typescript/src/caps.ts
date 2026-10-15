@@ -19,3 +19,14 @@ export function pageMax (source: string): number {
   const c = caps()[source]
   return undefined === c ? 0 : (c.limit?.page_max ?? 0)
 }
+
+// A capability is `false` or absent when refused, and anything else when offered.
+export function supports (source: string, entity: string, op: string): boolean {
+  const v = caps()[source]?.entity?.[entity]?.op?.[op]
+  return undefined !== v && false !== v
+}
+
+// The source's own word for one of likeness's entities, or the entity's name.
+export function termOf (source: string, entity: string): string {
+  return caps()[source]?.entity?.[entity]?.term ?? entity
+}

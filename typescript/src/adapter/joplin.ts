@@ -6,11 +6,12 @@ import type { Note } from '../note.js'
 import { LikenessError } from '../errors.js'
 import { pageMax } from '../caps.js'
 import { renderRaw } from '../envelope.js'
+import type { Check, Conn } from '../adapters.js'
 
 // eslint-disable-next-line
 import pkg from '@voxgig-sdk/joplin-sdk'
 
-const SOURCE = 'joplin'
+export const SOURCE = 'joplin'
 
 export const SUPPLIES: string[] = [
   'source', 'instance', 'space', 'title', 'body', 'created', 'updated',
@@ -29,16 +30,11 @@ function ms (v: unknown): number {
   return 'number' === typeof v && Number.isInteger(v) ? v : 0
 }
 
-export type Conn = {
-  instance: string
-  account: string
-}
-
 export const SDK: any = (pkg as any).JoplinSDK ?? (pkg as any).default ?? pkg
 
 // The ref goes in the station feature's options: the SDK refuses a top-level instance option.
-export function connect (station: Station, instance: string, seed?: unknown): any {
-  const feature: Record<string, unknown> = { station: { instance } }
+export function connect (station: Station, conn: Conn, _config: unknown, seed?: unknown): any {
+  const feature: Record<string, unknown> = { station: { instance: conn.instance } }
   if (undefined !== seed) feature.test = { ...(seed as Record<string, unknown>), active: true }
   return station.connect(SDK, { feature })
 }
@@ -118,7 +114,7 @@ export async function loadNote (client: any, conn: Conn, id: string, withRaw: bo
   }
 }
 
-export async function check (client: any): Promise<{ ok: boolean, code?: string, detail: string }> {
+export async function check (client: any): Promise<Check> {
   try {
     await client.Note().list({ fields: FIELDS })
     return { ok: true, detail: 'ok' }

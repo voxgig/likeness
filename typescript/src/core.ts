@@ -9,7 +9,8 @@ import { evaluate } from './evaluate.js'
 import { sortNotes, type Note } from './note.js'
 import { Calls, type Call } from './calls.js'
 import { exitFor, LikenessError } from './errors.js'
-import * as joplin from './adapter/joplin.js'
+import { ADAPTERS, type Adapter, type Check } from './adapters.js'
+import { supports, termOf } from './caps.js'
 import { parseArgv, commandDef, commandWords, helpText, helpRows, type Parsed } from './args.js'
 import { vaultEntry, vaultChain, secrets, type VaultEntry, type VaultFlags } from './vault.js'
 
@@ -49,7 +50,7 @@ export type Ctx = {
 type Session = {
   conns: Connection[]
   calls: Calls
-  client: (c: Connection) => any
+  handle: (c: Connection) => unknown
 }
 
 export function profileOf (env?: Record<string, string>): string {
@@ -171,10 +172,28 @@ function selected (all: Connection[], flags: Flags): Connection[] {
 
 function q (s: string): string { return '"' + s + '"' }
 
-const ADAPTERS: Record<string, typeof joplin> = { joplin }
-
-function adapterFor (c: Connection): typeof joplin | undefined {
+function adapterFor (c: Connection): Adapter | undefined {
   return ADAPTERS[c.source]
+}
+
+// Decided from the capability data alone, before any call (SPEC 12.3).
+function listable (c: Connection): boolean {
+  return undefined !== adapterFor(c)?.listNotes && supports(c.source, 'note', 'list')
+}
+
+function cannotList (conns: Connection[]): LikenessError {
+  const sources = [...new Set(conns.map(c => c.source))].sort()
+  const detail: Record<string, string> = { entity: 'note', op: 'list' }
+  if (1 === sources.length) detail.source = sources[0]
+  if (1 === conns.length) detail.instance = conns[0].instance
+  const ref = 1 === conns.length
+    ? conns[0].instance + ':<' + termOf(conns[0].source, 'note') + ' id>'
+    : '<instance>:<id>'
+  return new LikenessError('unsupported-capability', sources.join(', ') + ' cannot list notes',
+    conns.every(c => supports(c.source, 'note', 'get'))
+      ? 'get one by its ref instead: `likeness get ' + ref + '`'
+      : 'narrow to a source that can list notes with --source',
+    detail)
 }
 
 /* Fetch from every selected connection, carrying a failure the whole length of
@@ -197,14 +216,21 @@ Promise<{ notes: Note[], ok: string[], failed: string[], short: string[] }> {
         'no adapter for source "' + c.source + '" (connection "' + c.instance + '")',
         'drop that connection, or narrow to one that is supported with --source')
     }
+    // Asked nothing, and counted as a connection that did not answer.
+    if (!listable(c) || undefined === adapter.listNotes) {
+      failed.push(c.instance)
+      if (strict) break
+      continue
+    }
     try {
-      const got = await adapter.listNotes(session.client(c), c, withRaw)
+      const got = await adapter.listNotes(session.handle(c), c, withRaw)
       notes.push(...got.notes)
       ok.push(c.instance)
       if (got.more) short.push(c.instance)
     }
     catch (err) {
-      if (err instanceof LikenessError && 'unsupported-capability' === err.code) throw err
+      // A guard's refusal stops the command: it is never an unavailable source.
+      if (err instanceof LikenessError && 4 === exitFor(err.code)) throw err
       failed.push(c.instance)
       // `--strict` HALTS. `fanout-halted` means the fan-out stopped after a
       // member failed; continuing through every remaining connection and only
@@ -219,11 +245,7 @@ Promise<{ notes: Note[], ok: string[], failed: string[], short: string[] }> {
 const UNIVERSAL = ['lid', 'id', 'title', 'url', 'created', 'updated', 'source', 'instance']
 
 function supplies (c: Connection): Set<string> {
-  // ONE adapter in Stage 1. The lookup is by the connection's declared source
-  // rather than by a conditional on its name, so adding the second adapter
-  // adds a row here and changes nothing else.
-  const bySource: Record<string, string[]> = { joplin: joplin.SUPPLIES }
-  return new Set([...UNIVERSAL, ...(bySource[c.source] ?? [])])
+  return new Set([...UNIVERSAL, ...(adapterFor(c)?.SUPPLIES ?? [])])
 }
 
 function unanswerable (conns: Connection[], fields: string[]): string[] {
@@ -239,9 +261,13 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], session: Session
 
   let filter = null
   const selector = rest.join(' ')
-  if ('' !== selector) {
-    filter = parseSelector(selector)
-    const unsupported = unanswerable(conns, fieldsOf(filter))
+  if ('' !== selector) filter = parseSelector(selector)
+
+  const unlisted = conns.filter(c => undefined !== adapterFor(c) && !listable(c))
+  if (0 < conns.length && unlisted.length === conns.length) throw cannotList(unlisted)
+
+  if (null !== filter) {
+    const unsupported = unanswerable(conns.filter(c => !unlisted.includes(c)), fieldsOf(filter))
     if (0 < unsupported.length) {
       throw new LikenessError('unsupported-capability',
         'no source can answer a question about ' + unsupported.join(', '),
@@ -331,7 +357,12 @@ async function cmdGet (flags: Flags, rest: string[], session: Session): Promise<
         'no adapter for source "' + c.source + '" (connection "' + c.instance + '")',
         'this source arrives in a later stage')
     }
-    const note = await adapter.loadNote(session.client(c), c, id, flags.raw)
+    if (undefined === adapter.loadNote || !supports(c.source, 'note', 'get')) {
+      throw new LikenessError('unsupported-capability', c.source + ' cannot get a note',
+        'run `likeness doctor` to see what each connection offers',
+        { source: c.source, instance: c.instance, entity: 'note', op: 'get' })
+    }
+    const note = await adapter.loadNote(session.handle(c), c, id, flags.raw)
     if (null === note) {
       throw new LikenessError('not-found', ref + ' does not exist',
         'check the ref, or run `likeness list` to see what is there')
@@ -361,9 +392,9 @@ async function cmdDoctor (flags: Flags, session: Session): Promise<Envelope> {
       bad++
       continue
     }
-    let r: { ok: boolean, code?: string, detail: string }
+    let r: Check
     try {
-      r = await adapter.check(session.client(c))
+      r = await adapter.check(session.handle(c))
     }
     catch {
       r = { ok: false, code: 'source-unavailable', detail: 'station could not connect this instance' }
@@ -372,6 +403,7 @@ async function cmdDoctor (flags: Flags, session: Session): Promise<Envelope> {
       instance: c.instance, source: c.source, check: r.ok ? 'ok' : 'FAIL', detail: r.detail,
     }
     if (!r.ok) { row.code = r.code as string; failures.push(r.code as string); bad++ }
+    if (undefined !== r.remedy) row.remedy = r.remedy
     rows.push(row)
   }
   const codes = [...new Set(failures)].sort((a, b) => {
@@ -511,6 +543,7 @@ async function openSession (ctx: Ctx, flags: Flags): Promise<Session> {
   const entry = entryOf(ctx, flags)
   let station = openStation(withChain(ctx.station, []), ctx.env)
   const conns = connectionsOf(station, ctx.accounts ?? {}, profileOf(ctx.env))
+  const configs = configured(station, conns)
   if (undefined === ctx.fixture && 0 < conns.length) {
     const chain = await vaultChain(ctx, entry, flags)
     try {
@@ -521,19 +554,30 @@ async function openSession (ctx: Ctx, flags: Flags): Promise<Session> {
         'this port\'s station must read minivault stores; see "Secrets" in the README')
     }
   }
-  const clients = new Map<string, any>()
+  const handles = new Map<string, unknown>()
   return {
     conns,
     calls: new Calls(station),
-    client: (c: Connection): any => {
-      let client = clients.get(c.instance)
-      if (undefined === client) {
-        client = (adapterFor(c) as typeof joplin).connect(station, c.instance, ctx.fixture?.[c.instance])
-        clients.set(c.instance, client)
+    handle: (c: Connection): unknown => {
+      if (!handles.has(c.instance)) {
+        handles.set(c.instance, (adapterFor(c) as Adapter).connect(
+          station, c, configs.get(c.instance), ctx.fixture?.[c.instance]))
       }
-      return client
+      return handles.get(c.instance)
     },
   }
+}
+
+// Each connection's block from station.json, read by its own adapter. A block
+// the adapter cannot use refuses the command before any call or prompt.
+function configured (station: Station, conns: Connection[]): Map<string, unknown> {
+  const blocks = new Map(station.instances().map(i => [i.name, i.block as Record<string, unknown>]))
+  const out = new Map<string, unknown>()
+  for (const c of conns) {
+    const configure = adapterFor(c)?.configure
+    if (undefined !== configure) out.set(c.instance, configure(c.instance, blocks.get(c.instance) ?? {}))
+  }
+  return out
 }
 
 function errorEnvelope (name: string, err: unknown, calls: Calls): Envelope {
