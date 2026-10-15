@@ -42,6 +42,34 @@ class SourcesTest < Minitest::Test
     end
   end
 
+  # Or for the nth write, which creates its file and then fails, as a full disk does.
+  class FailingWrite < Failing
+    def initialize(nth)
+      super()
+      @write = nth
+      @writes = 0
+    end
+
+    def write(path, data, mode)
+      @writes += 1
+      return super unless @write == @writes
+
+      super(path, '', mode)
+      raise Errno::ENOSPC
+    end
+  end
+
+  # Or for the nth write, whose temporary name another file already holds.
+  class TakenWrite < FailingWrite
+    def write(path, data, mode)
+      @writes += 1
+      return Likeness::FileOps.write(path, data, mode) unless @write == @writes
+
+      File.write(path, "not this write's\n")
+      raise Errno::EEXIST
+    end
+  end
+
   def entry(id)
     found = ALL.find { |e| e['id'] == id }
     refute_nil found, "no corpus entry with id #{id}"
@@ -84,6 +112,39 @@ class SourcesTest < Minitest::Test
       assert_equal "old likeness\n", File.read(likeness)
       assert_equal "old station\n", File.read(station)
       assert_equal %w[likeness.json station.json], Dir.children(dir).sort
+    end
+  end
+
+  def test_a_write_that_fails_after_creating_its_temporary_file_leaves_none_behind_and_changes_nothing
+    in_folder('likeness.json' => "old likeness\n", 'station.json' => "old station\n") do |dir|
+      likeness = File.join(dir, 'likeness.json')
+      station = File.join(dir, 'station.json')
+      [1, 2, 3, 4].each do |nth|
+        err = assert_raises(Likeness::WriteError, "write #{nth}") do
+          Likeness.write_all([Likeness::Write.new(path: likeness, text: "new likeness\n", was: was(likeness)),
+                              Likeness::Write.new(path: station, text: "new station\n", was: was(station))],
+                             FailingWrite.new(nth))
+        end
+        assert err.restored, "write #{nth}"
+        assert_equal %w[likeness.json station.json], Dir.children(dir).sort, "write #{nth}"
+        assert_equal ["old likeness\n", "old station\n"], [File.read(likeness), File.read(station)], "write #{nth}"
+      end
+    end
+  end
+
+  def test_a_temporary_name_another_file_holds_is_left_to_it
+    in_folder('likeness.json' => "old likeness\n", 'station.json' => "old station\n") do |dir|
+      likeness = File.join(dir, 'likeness.json')
+      station = File.join(dir, 'station.json')
+      assert_raises(Likeness::WriteError) do
+        Likeness.write_all([Likeness::Write.new(path: likeness, text: "new likeness\n", was: was(likeness)),
+                            Likeness::Write.new(path: station, text: "new station\n", was: was(station))],
+                           TakenWrite.new(2))
+      end
+      taken = Dir.children(dir).sort - %w[likeness.json station.json]
+      assert_equal 1, taken.length, Dir.children(dir).inspect
+      assert_equal "not this write's\n", File.read(File.join(dir, taken[0]))
+      assert_equal ["old likeness\n", "old station\n"], [File.read(likeness), File.read(station)]
     end
   end
 

@@ -353,7 +353,19 @@ module Likeness
     temps = []
     place = lambda do |path, data, mode|
       temp = temp_of(path)
-      fs.write(temp, data, mode)
+      begin
+        fs.write(temp, data, mode)
+      rescue StandardError => e
+        # A write that fails leaves the file the exclusive open made; EEXIST means it made none.
+        unless e.is_a?(Errno::EEXIST)
+          begin
+            fs.unlink(temp)
+          rescue StandardError
+            nil
+          end
+        end
+        raise
+      end
       temps << temp
       temp
     end
