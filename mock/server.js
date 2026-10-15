@@ -99,6 +99,59 @@ function sourceOf (url) {
 }
 
 
+const GRAPHQL_TOKEN = /"""[\s\S]*?"""|"(?:[^"\\\n]|\\.)*"|#[^\n]*|\.\.\.|[A-Za-z_][A-Za-z0-9_]*|\S/g
+
+/* The operation a GraphQL document runs, and the root fields it selects. The
+ * name says what the client meant and the root field what it asked for, and
+ * the two differ when a generator picks the wrong field for an operation: the
+ * mock dispatches on the name, so only this shows the field.
+ */
+export function selection (doc) {
+  if ('string' !== typeof doc) return null
+  const tokens = (doc.match(GRAPHQL_TOKEN) || []).filter(t => !t.startsWith('#'))
+  let i = 0
+  let operation = null
+  for (;;) {
+    if (i >= tokens.length) return null
+    const t = tokens[i]
+    if ('{' === t) break
+    if ('query' === t || 'mutation' === t || 'subscription' === t) {
+      if (/^[A-Za-z_]/.test(tokens[i + 1] || '')) operation = tokens[i + 1]
+      for (let paren = 0; i < tokens.length && !('{' === tokens[i] && 0 === paren); i++) {
+        if ('(' === tokens[i]) paren++
+        else if (')' === tokens[i]) paren--
+      }
+      break
+    }
+    // A fragment is skipped whole: it is not what the document runs.
+    for (let depth = 0; i < tokens.length; i++) {
+      if ('{' === tokens[i]) depth++
+      else if ('}' === tokens[i] && 0 === --depth) { i++; break }
+    }
+  }
+
+  const root = []
+  let depth = 0
+  let paren = 0
+  for (i++; i < tokens.length && 0 <= depth; i++) {
+    const t = tokens[i]
+    if ('{' === t) depth++
+    else if ('}' === t) depth--
+    else if ('(' === t) paren++
+    else if (')' === t) paren--
+    else if (0 === depth && 0 === paren && /^[A-Za-z_]/.test(t)) {
+      const prev = tokens[i - 1]
+      // A spread, a directive or an inline fragment's type is no field, and
+      // an alias is followed by the field it names.
+      if ('...' === prev || '@' === prev || ('on' === prev && '...' === tokens[i - 2])) continue
+      if (':' === tokens[i + 1]) continue
+      root.push(t)
+    }
+  }
+  return { operation, root }
+}
+
+
 /* Build the app.
  *
  *   buildServer()                 // fresh store, seeds from fixtures/
@@ -106,12 +159,15 @@ function sourceOf (url) {
  *   buildServer({ logger: true }) // Fastify logging
  *   buildServer({ sources: ['joplin'] })  // mount a subset
  *   buildServer({ https: { key, cert } }) // serve TLS, with that certificate
+ *   buildServer({ credentials: { joplin: 'tok' } })  // accept this token, not the seed's
  *
  * The returned app carries `app.store` so an in-process test can read state
  * and `app.likeness` with the mounted source descriptors.
  */
 export async function buildServer (opts = {}) {
   const store = opts.store || makeStore(opts)
+  const chosen = opts.credentials || {}
+  const credentialOf = src => (null == chosen[src.name] ? src.credential : chosen[src.name])
 
   const app = Fastify({
     logger: opts.logger || false,
@@ -137,20 +193,22 @@ export async function buildServer (opts = {}) {
 
     let auth = 'bad'
     try {
-      auth = AUTHCHECK[src.name](req, src.credential) ? 'ok' : 'bad'
+      auth = AUTHCHECK[src.name](req, credentialOf(src)) ? 'ok' : 'bad'
     }
     catch (err) {
       auth = 'bad'
     }
 
-    store.requests.push({
+    const row = {
       source: src.name,
       method: req.method,
       url: req.url,
       auth,
       status: reply.statusCode,
       headers: sent(req.headers)
-    })
+    }
+    if ('graphql' === src.protocol) row.graphql = selection(req.body && req.body.query)
+    store.requests.push(row)
 
     // A ring, not a log: a long soak must not grow without bound.
     while (store.requestMax < store.requests.length) store.requests.shift()
@@ -208,7 +266,8 @@ export async function buildServer (opts = {}) {
       prefix: src.prefix,
       store,
       clock: store.clock,
-      seed: store.seeds[src.name] || undefined
+      seed: store.seeds[src.name] || undefined,
+      ...(null == chosen[src.name] ? {} : { apikey: chosen[src.name] })
     })
   }
 

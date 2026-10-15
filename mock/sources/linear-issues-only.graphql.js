@@ -147,6 +147,7 @@ function ensureState (store, opts, clock) {
 
   const seed = loadSeed(opts)
   const config = Object.assign({}, DEFAULT_CONFIG, seed.config || {})
+  if (opts && null != opts.apikey) config.apikeys = [opts.apikey]
 
   state = {
     ready: true,

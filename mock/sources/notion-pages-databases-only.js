@@ -178,6 +178,7 @@ function makeState (opts) {
 
   const seed = (opts && opts.seed) || (opts.store && opts.store.seed) || null
   if (null != seed) applySeed(state, seed)
+  if (null != opts.apikey) state.token = opts.apikey
 
   return state
 }

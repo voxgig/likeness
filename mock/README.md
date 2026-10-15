@@ -33,11 +33,15 @@ const port = app.server.address().port
 await app.close()
 ```
 
-`buildServer(opts)` takes `{ store, logger, sources, clockStart, clockStep, https }`.
+`buildServer(opts)` takes `{ store, logger, sources, clockStart, clockStep, https, credentials }`.
 `sources` mounts a subset (`{ sources: ['joplin'] }`). `https` (`{ key, cert }`)
 serves TLS with that certificate instead of plain HTTP, which is how a suite
-reaches the Obsidian plugin's HTTPS port with a certificate it pins. The app is
-decorated with `app.store` and `app.likeness.sources`.
+reaches the Obsidian plugin's HTTPS port with a certificate it pins.
+`credentials` (`{ joplin: 'tok' }`) makes a source accept that token in place of
+its seed's, and the request ring judges `auth` against it: that is how
+`make matrix` sends tokens it made for the run, Joplin's holding characters a
+query must percent-encode. The app is decorated with `app.store` and
+`app.likeness.sources`.
 
 ## Sources
 
@@ -64,7 +68,8 @@ Two prefix notes worth knowing:
 
 Credentials are not invented here — each one is read out of that source's
 `fixtures/sources/<slug>/seed.json` and is restated in `store.js` only so that
-`/__health` and a test harness agree with the seed.
+`/__health` and a test harness agree with the seed. A caller's `credentials`
+replace them for the server it builds.
 
 ## Control plane
 
@@ -126,6 +131,11 @@ calls were made, in order, not merely that the end state looks right.
   rule. It is *not* redundant with `status`: **Linear answers HTTP 200 to a bad
   credential**, with the failure in the GraphQL `errors` array, so `status` alone
   cannot tell an authenticated call from a rejected one.
+- `graphql`, on a Linear row, is `{ operation, root }`: the operation the
+  document names, and the root fields it selects. The mock dispatches on the
+  name, so a document named `IssueLoad` that selects `attachmentIssue` is answered
+  as a load; only `root` shows which field the client asked for. A body with no
+  document records `null`.
 
 ## Determinism
 
