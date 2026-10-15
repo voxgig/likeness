@@ -13,7 +13,12 @@ Net: type(close({
   errorTimes?: $.Count
 }))
 
-Conn: type(close({ instance:$.InstanceRef account:string net?:$.Net }))
+Conn: type(close({
+  instance: $.InstanceRef
+  account: string
+  net?: $.Net
+  block?: { &: top }
+}))
 
 VaultKey: type(close({
   key: string

@@ -16,6 +16,7 @@ export type CorpusConn = {
   instance: string
   account: string
   net?: Record<string, unknown>
+  block?: Record<string, unknown>
 }
 
 export type CliEntry = {
@@ -78,9 +79,10 @@ process.on('exit', () => { for (const h of homes) rmSync(h, { recursive: true, f
 // The prompts each run showed, for the entry to compare.
 export const PROMPTS = new WeakMap<Ctx, string[]>()
 
-// Each connection becomes a declared station instance, its account the
-// likeness.json entry beside it, and its seed the SDK's offline transport.
-// Every run gets a home of its own, holding the entry's files.
+// Each connection becomes a declared station instance, its block the one the
+// entry gives, its account the likeness.json entry beside it, and its seed
+// the SDK's offline transport. Every run gets a home of its own, holding the
+// entry's files.
 export function buildCtx (e: CliEntry): Ctx {
   const seed = JSON.parse(
     readFileSync(join(ROOT, 'fixtures', 'sources', e.ctx.fixture, 'seed.json'), 'utf8'))
@@ -90,7 +92,7 @@ export function buildCtx (e: CliEntry): Ctx {
   const accounts: Record<string, string> = {}
   const fixture: Record<string, unknown> = {}
   for (const c of e.ctx.connections) {
-    sdk[c.instance] = {}
+    sdk[c.instance] = JSON.parse(JSON.stringify(c.block ?? {}))
     accounts[c.instance] = c.account
     const own = JSON.parse(JSON.stringify(seed))
     if (undefined !== c.net) own.net = c.net

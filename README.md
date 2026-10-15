@@ -19,7 +19,7 @@ The reasoned specification lives in
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
 | `spec/unit.aontu` — the pure-function corpus | 157 entries, run by every port, C included but for the twelve of `connections` |
-| `spec/cli.aontu` — the transcript corpus | 142 whole commands, run by the TypeScript, Go, Python and Ruby ports; C answers the 37 that need no source |
+| `spec/cli.aontu` — the transcript corpus | 143 whole commands, run by the TypeScript, Go, Python and Ruby ports; C answers the 37 that need no source |
 | `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
 | `python/` — the third port | the same again, through station's Python library |

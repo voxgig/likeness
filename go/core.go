@@ -340,6 +340,19 @@ func entryOf(c Ctx, f flags) (VaultEntry, error) {
 	return vaultEntry(c.Station, profileOf(c.Env), home, dir, f.vaultKey)
 }
 
+const stationRemedy = "fix station.json; station validates it against its own shape"
+
+// openConfigured opens station on the configuration with no secret chain. Any
+// refusal of station's own here is the project's, whatever its code: no source
+// has been asked anything yet.
+func openConfigured(c Ctx) (*station.Station, error) {
+	st, err := openStation(withChain(c.Station, []any{}), c.Env)
+	if se, ok := err.(*station.Error); ok && strings.HasPrefix(se.Code, "station_") {
+		return nil, &LikenessError{Code: "invalid-project", Msg: se.Error(), Remedy: stationRemedy}
+	}
+	return st, err
+}
+
 // openSession opens one station per run: every client is connected through
 // it lazily, and the calls a command made are the requests it observed. A live
 // run with a connection to make opens it on the vault.
@@ -349,7 +362,7 @@ func openSession(c Ctx, f flags) (*session, error) {
 	if nil != err {
 		return s, err
 	}
-	st, err := openStation(withChain(c.Station, []any{}), c.Env)
+	st, err := openConfigured(c)
 	if nil != err {
 		return s, err
 	}
@@ -867,7 +880,7 @@ func errEnvelope(name string, err error, calls *Calls) *envelope {
 		return newEnvelope([]string{name}, "invalid-project", nil, meta{calls: calls.Count()},
 			map[string]any{
 				"message": se.Error(),
-				"remedy":  "fix station.json; station validates it against its own shape",
+				"remedy":  stationRemedy,
 			})
 	}
 	// An error no layer claimed is still the user's problem to see, and it is

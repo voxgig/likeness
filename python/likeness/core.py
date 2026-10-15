@@ -203,6 +203,22 @@ def _adapter_for(c: Connection) -> ModuleType | None:
     return None if name is None else importlib.import_module(name)
 
 
+STATION_REMEDY = 'fix station.json; station validates it against its own shape'
+
+
+def _open_configured(ctx: Ctx) -> Station:
+    """Station opened on the configuration with no secret chain. Any refusal of
+    station's own here is the project's, whatever its code: no source has been
+    asked anything yet."""
+    try:
+        return open_station(with_chain(ctx.station, []), ctx.env)
+    except Exception as err:
+        code = getattr(err, 'code', None)
+        if isinstance(code, str) and code.startswith('station_'):
+            raise LikenessError('invalid-project', str(err), STATION_REMEDY) from None
+        raise
+
+
 def with_chain(config: Any, chain: list[Any]) -> Any:
     """station.json with its secret chain replaced, in every profile, by the one likeness decided on."""
     if not isinstance(config, (dict, list)):
@@ -230,7 +246,7 @@ class Session:
 
     def __init__(self, ctx: Ctx, flags: Flags) -> None:
         entry = _entry_of(ctx, flags)
-        station = open_station(with_chain(ctx.station, []), ctx.env)
+        station = _open_configured(ctx)
         self.conns = connections_of(station, ctx.accounts or {}, profile_of(ctx.env))
         if ctx.fixture is None and self.conns:
             chain = vault_chain(ctx, entry, flags)
@@ -539,7 +555,7 @@ def _error_envelope(name: str, err: Exception, calls: Calls) -> dict[str, Any]:
     if 'station_config_invalid' == getattr(err, 'code', None):
         return _envelope([name], 'invalid-project', None, calls=calls.count(), error={
             'message': str(err),
-            'remedy': 'fix station.json; station validates it against its own shape',
+            'remedy': STATION_REMEDY,
         })
     status = getattr(err, 'status', None)
     code = 'auth-failed' if status in (401, 403) else 'rate-limited' if 429 == status \

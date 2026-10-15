@@ -82,10 +82,24 @@ module Likeness
                              dir: ctx.dir || File.join(home, '.config', 'likeness'), key: flags.vault_key)
   end
 
+  STATION_REMEDY = 'fix station.json; station validates it against its own shape'
+
+  # Station opened on the configuration with no secret chain. Any refusal of
+  # station's own here is the project's, whatever its code: no source has been
+  # asked anything yet.
+  def open_configured(ctx)
+    open_station(with_chain(ctx.station, []), ctx.env)
+  rescue StandardError => e
+    code = e.respond_to?(:code) ? e.code : nil
+    raise unless code.is_a?(String) && code.start_with?('station_')
+
+    raise LikenessError.new('invalid-project', e.message, STATION_REMEDY)
+  end
+
   # A live run with a connection to make opens its station on the vault.
   def open_session(ctx, flags)
     entry = entry_of(ctx, flags)
-    station = open_station(with_chain(ctx.station, []), ctx.env)
+    station = open_configured(ctx)
     conns = connections_of(station, ctx.accounts || {}, profile_of(ctx.env))
     if ctx.fixture.nil? && !conns.empty?
       chain = vault_chain(ctx, entry, flags)
@@ -447,8 +461,7 @@ module Likeness
     end
     if err.respond_to?(:code) && 'station_config_invalid' == err.code
       return envelope([name], 'invalid-project', nil, meta,
-                      { 'message' => err.message,
-                        'remedy' => 'fix station.json; station validates it against its own shape' })
+                      { 'message' => err.message, 'remedy' => STATION_REMEDY })
     end
     code =
       case status_of(err)

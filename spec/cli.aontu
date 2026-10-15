@@ -354,6 +354,30 @@ primary: cli: {
     }
 
     {
+      id: "list/station-refusal-at-open-is-the-configuration"
+      # A token pasted where the secret's name belongs. Station refuses the
+      # configuration as it opens, so the answer is the project's, not a source's.
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          {
+            instance: "joplin"
+            account: "local"
+            block: secret: "0123456789abcdef0123456789abcdef"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/list/station-refuses-the-configuration.json"
+        calls: []
+      }
+    }
+
+    {
       id: "list/unanswerable-field-refused-before-the-network"
       args: ["list" "tag:anything" "--json"]
       ctx: {

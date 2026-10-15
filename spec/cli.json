@@ -1018,6 +1018,32 @@
           {
             "args": [
               "list",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "block": {
+                    "secret": "0123456789abcdef0123456789abcdef"
+                  },
+                  "instance": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/station-refusal-at-open-is-the-configuration",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/station-refuses-the-configuration.json"
+            }
+          },
+          {
+            "args": [
+              "list",
               "tag:anything",
               "--json"
             ],
