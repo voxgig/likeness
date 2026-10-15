@@ -5,7 +5,7 @@ source: {
     def: "joplin-notes-folders-tags.json"
     defkind: "openapi"
     semver: "0.0.1"
-    rev: "c7621966bf0c5d2f0f385038b75a74a10372acfb"
+    rev: "89b86ca5df39d8d607091a12a59e988253545874"
     protocol: "http"
     local: false
 
@@ -16,31 +16,31 @@ source: {
         dir: "ts"
         package: "@voxgig-sdk/joplin-sdk"
         published: false
-        pin: "clone https://github.com/voxgig-sdk/joplin-sdk at c7621966bf0c5d2f0f385038b75a74a10372acfb, then npm install <clone>/ts"
+        pin: "clone https://github.com/voxgig-sdk/joplin-sdk at 89b86ca5df39d8d607091a12a59e988253545874, then npm install <clone>/ts"
       }
       go: {
         dir: "go"
         package: "github.com/voxgig-sdk/joplin-sdk/go"
         published: false
-        pin: "github.com/voxgig-sdk/joplin-sdk/go@c7621966bf0c5d2f0f385038b75a74a10372acfb"
+        pin: "github.com/voxgig-sdk/joplin-sdk/go@89b86ca5df39d8d607091a12a59e988253545874"
       }
       py: {
         dir: "py"
         package: "voxgig-sdk-joplin-sdk"
         published: false
-        pin: "git+https://github.com/voxgig-sdk/joplin-sdk@c7621966bf0c5d2f0f385038b75a74a10372acfb#subdirectory=py"
+        pin: "git+https://github.com/voxgig-sdk/joplin-sdk@89b86ca5df39d8d607091a12a59e988253545874#subdirectory=py"
       }
       rb: {
         dir: "rb"
         package: "voxgig-sdk-joplin-sdk"
         published: false
-        pin: "git: 'https://github.com/voxgig-sdk/joplin-sdk', ref: 'c7621966bf0c5d2f0f385038b75a74a10372acfb', glob: 'rb/*.gemspec'"
+        pin: "git: 'https://github.com/voxgig-sdk/joplin-sdk', ref: '89b86ca5df39d8d607091a12a59e988253545874', glob: 'rb/*.gemspec'"
       }
       c: {
         dir: "c"
         package: "voxgig-sdk-joplin-sdk"
         published: false
-        pin: "vendored from voxgig-sdk/joplin-sdk@c7621966bf0c5d2f0f385038b75a74a10372acfb c/"
+        pin: "vendored from voxgig-sdk/joplin-sdk@89b86ca5df39d8d607091a12a59e988253545874 c/"
       }
     }
 
@@ -171,46 +171,46 @@ source: {
   obsidian: {
     name: "obsidian"
     repo: "voxgig-sdk/obsidian-sdk"
-    def: "obsidian-vault-only.json"
+    # The plugin's own published definition, in full.
+    def: "obsidian-local-rest-api-openapi.yaml"
     defkind: "openapi"
     semver: "0.0.1"
-    rev: "958b620f1ef9ecdfc6c9d553cda94029e060c523"
+    rev: "5e8cd8e4969cec21354e06736bb849935870304a"
     protocol: "http"
-    # The REST plugin is one path to a vault; the vault is also just files, and
-    # that second path makes no outbound call at all.
-    local: true
+    # Reached only through the plugin, on 127.0.0.1, like Joplin.
+    local: false
     auth: { kind:"bearer" carrier:"authorization" prefix:"Bearer" }
 
     target: {
       ts: {
         dir: "ts"
-        package: "@voxgig-sdk/obsidian"
+        package: "@voxgig-sdk/obsidian-sdk"
         published: false
-        pin: "clone https://github.com/voxgig-sdk/obsidian-sdk at 958b620f1ef9ecdfc6c9d553cda94029e060c523, then npm install <clone>/ts"
+        pin: "clone https://github.com/voxgig-sdk/obsidian-sdk at 5e8cd8e4969cec21354e06736bb849935870304a, then npm install <clone>/ts"
       }
       go: {
         dir: "go"
         package: "github.com/voxgig-sdk/obsidian-sdk/go"
         published: false
-        pin: "github.com/voxgig-sdk/obsidian-sdk/go@958b620f1ef9ecdfc6c9d553cda94029e060c523"
+        pin: "github.com/voxgig-sdk/obsidian-sdk/go@5e8cd8e4969cec21354e06736bb849935870304a"
       }
       py: {
         dir: "py"
-        package: "voxgig-sdk-obsidian"
+        package: "voxgig-sdk-obsidian-sdk"
         published: false
-        pin: "git+https://github.com/voxgig-sdk/obsidian-sdk@958b620f1ef9ecdfc6c9d553cda94029e060c523#subdirectory=py"
+        pin: "git+https://github.com/voxgig-sdk/obsidian-sdk@5e8cd8e4969cec21354e06736bb849935870304a#subdirectory=py"
       }
       rb: {
         dir: "rb"
-        package: "voxgig-sdk-obsidian"
+        package: "voxgig-sdk-obsidian-sdk"
         published: false
-        pin: "git: 'https://github.com/voxgig-sdk/obsidian-sdk', ref: '958b620f1ef9ecdfc6c9d553cda94029e060c523', glob: 'rb/*.gemspec'"
+        pin: "git: 'https://github.com/voxgig-sdk/obsidian-sdk', ref: '5e8cd8e4969cec21354e06736bb849935870304a', glob: 'rb/*.gemspec'"
       }
       c: {
         dir: "c"
-        package: "voxgig-sdk-obsidian"
+        package: "voxgig-sdk-obsidian-sdk"
         published: false
-        pin: "vendored from voxgig-sdk/obsidian-sdk@958b620f1ef9ecdfc6c9d553cda94029e060c523 c/"
+        pin: "vendored from voxgig-sdk/obsidian-sdk@5e8cd8e4969cec21354e06736bb849935870304a c/"
       }
     }
 
@@ -224,6 +224,8 @@ source: {
         route: ["/vault/"]
         pages: false
       }
+      # Both points select on `id` alone, so the file point is always the one
+      # chosen; a directory is listed through it, by an id ending in `/`.
       vault: op: load: {
         name: "load"
         method: "GET"
@@ -258,6 +260,95 @@ source: {
       tag: name: "tag"
       tag: idfield: "id"
       tag: op: list: { name:"list" method:"GET" route: ["/tags/"] pages:false }
+      search: accessor: "Search"
+      search: name: "search"
+      search: idfield: "id"
+      search: op: create: {
+        name: "create"
+        method: "POST"
+        route: ["/search/simple/" "/search/"]
+        pages: false
+      }
+      open: accessor: "Open"
+      open: name: "open"
+      open: idfield: "id"
+      open: op: create: {
+        name: "create"
+        method: "POST"
+        route: ["/open/{filename}"]
+        pages: false
+      }
+      active: accessor: "Active"
+      active: name: "active"
+      active: idfield: "id"
+      active: op: load: {
+        name: "load"
+        method: "GET"
+        route: ["/active/"]
+        pages: false
+      }
+      active: op: create: {
+        name: "create"
+        method: "POST"
+        route: ["/active/"]
+        pages: false
+      }
+      active: op: update: {
+        name: "update"
+        method: "PUT"
+        route: ["/active/"]
+        pages: false
+      }
+      active: op: patch: {
+        name: "patch"
+        method: "PATCH"
+        route: ["/active/"]
+        pages: false
+      }
+      active: op: remove: {
+        name: "remove"
+        method: "DELETE"
+        route: ["/active/"]
+        pages: false
+      }
+      command: accessor: "Command"
+      command: name: "command"
+      command: idfield: "id"
+      command: op: list: {
+        name: "list"
+        method: "GET"
+        route: ["/commands/"]
+        pages: false
+      }
+      command: op: create: {
+        name: "create"
+        method: "POST"
+        route: ["/commands/{commandId}/"]
+        pages: false
+      }
+      system: accessor: "System"
+      system: name: "system"
+      system: idfield: "id"
+      system: op: load: {
+        name: "load"
+        method: "GET"
+        route: ["/obsidian-local-rest-api.crt" "/openapi.yaml"]
+        pages: false
+      }
+      mcp: accessor: "Mcp"
+      mcp: name: "mcp"
+      mcp: idfield: "id"
+      mcp: op: load: { name:"load" method:"GET" route: ["/mcp/"] pages:false }
+      mcp: op: create: {
+        name: "create"
+        method: "POST"
+        route: ["/mcp/"]
+        pages: false
+      }
+      entity1: accessor: "Entity1"
+      entity1: name: "entity1"
+      entity1: idfield: "id"
+      entity1: op: load: { name:"load" method:"GET" route: ["/"] pages:false }
     }
 
     test: {
@@ -268,7 +359,17 @@ source: {
         rb: "ObsidianSDK.test({'entity' => {'vault' => {'a.md' => {'id' => 'a.md'}}}})"
         c: "test_sdk(seed, NULL)"
       }
-      idfield: { vault:"id" tag:"id" }
+      # As the SDK's own resolver derives them. `active` has no path parameter,
+      # and the resolver takes its optional `permanent` query parameter instead.
+      idfield: active: "permanent"
+      idfield: command: "id"
+      idfield: entity1: "id"
+      idfield: mcp: "id"
+      idfield: open: "id"
+      idfield: search: "id"
+      idfield: system: "id"
+      idfield: tag: "id"
+      idfield: vault: "id"
       mints_id: true
       netsim: {
         available: true
@@ -290,7 +391,7 @@ source: {
     def: "notion-pages-databases-only.json"
     defkind: "openapi"
     semver: "0.0.1"
-    rev: "785fb7e1e6c1ec3369a001956d1d14eefca0c16d"
+    rev: "1e45fc399a541f60c26a4d78fd76559456e61b56"
     protocol: "http"
     local: false
     auth: { kind:"bearer" carrier:"authorization" prefix:"Bearer" }
@@ -298,27 +399,33 @@ source: {
     target: {
       ts: {
         dir: "ts"
-        package: "@voxgig-sdk/notion"
+        package: "@voxgig-sdk/notion-sdk"
         published: false
-        pin: "clone https://github.com/voxgig-sdk/notion-sdk at 785fb7e1e6c1ec3369a001956d1d14eefca0c16d, then npm install <clone>/ts"
+        pin: "clone https://github.com/voxgig-sdk/notion-sdk at 1e45fc399a541f60c26a4d78fd76559456e61b56, then npm install <clone>/ts"
       }
       go: {
         dir: "go"
         package: "github.com/voxgig-sdk/notion-sdk/go"
         published: false
-        pin: "github.com/voxgig-sdk/notion-sdk/go@785fb7e1e6c1ec3369a001956d1d14eefca0c16d"
+        pin: "github.com/voxgig-sdk/notion-sdk/go@1e45fc399a541f60c26a4d78fd76559456e61b56"
       }
       py: {
         dir: "py"
-        package: "voxgig-sdk-notion"
+        package: "voxgig-sdk-notion-sdk"
         published: false
-        pin: "git+https://github.com/voxgig-sdk/notion-sdk@785fb7e1e6c1ec3369a001956d1d14eefca0c16d#subdirectory=py"
+        pin: "git+https://github.com/voxgig-sdk/notion-sdk@1e45fc399a541f60c26a4d78fd76559456e61b56#subdirectory=py"
+      }
+      rb: {
+        dir: "rb"
+        package: "voxgig-sdk-notion-sdk"
+        published: false
+        pin: "git: 'https://github.com/voxgig-sdk/notion-sdk', ref: '1e45fc399a541f60c26a4d78fd76559456e61b56', glob: 'rb/*.gemspec'"
       }
       c: {
         dir: "c"
-        package: "voxgig-sdk-notion"
+        package: "voxgig-sdk-notion-sdk"
         published: false
-        pin: "vendored from voxgig-sdk/notion-sdk@785fb7e1e6c1ec3369a001956d1d14eefca0c16d c/"
+        pin: "vendored from voxgig-sdk/notion-sdk@1e45fc399a541f60c26a4d78fd76559456e61b56 c/"
       }
     }
 
@@ -374,6 +481,7 @@ source: {
         ts: "NotionSDK.test({entity: {page: {p1: {id: 'p1'}}}})"
         go: "sdk.TestSDK(map[string]any{\"entity\": ...}, nil)"
         py: "NotionSDK.test({'entity': {'page': {'p1': {'id': 'p1'}}}})"
+        rb: "NotionSDK.test({'entity' => {'page' => {'p1' => {'id' => 'p1'}}}})"
         c: "test_sdk(seed, NULL)"
       }
       idfield: { page:"id" database:"id" }

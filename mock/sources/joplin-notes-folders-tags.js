@@ -19,14 +19,11 @@
  * GENERATED client disagree in places. Where they disagree the mock satisfies
  * the CODE, because the code is what talks to it. Specifically:
  *
- *  1. AUTH IS A HEADER. The definition declares `apiKey in:query name:token`,
- *     but PrepareAuthUtility hardcodes `Authorization: <raw apikey>` (no
- *     scheme prefix) and the generator drops the in/name facts from Config.
- *     The SDK never adds a `token` query parameter by itself. So: the mock
- *     authenticates on the Authorization header (raw value; a "Bearer "/
- *     "Token " prefix is stripped if the caller configured auth.prefix), and
- *     ALSO accepts `?token=` because a caller can smuggle it through the match
- *     object or direct({query}).
+ *  1. AUTH IS THE `token` QUERY PARAMETER, as the definition declares
+ *     (`apiKey in:query name:token`), in the SDK pinned since its station
+ *     regeneration. Earlier revisions sent `Authorization: <raw apikey>`
+ *     instead, so the mock accepts either: the header (raw value; a "Bearer "/
+ *     "Token " prefix is stripped) or `?token=`.
  *
  *  2. THE PATH PARAM IS DUPLICATED INTO THE QUERY. load/remove send
  *     `GET /notes/n1?id=n1`; the sub-resource lists send `&id=n1` too
@@ -355,8 +352,6 @@ function credential (req) {
     const m = /^(?:bearer|token)\s+(.+)$/i.exec(val)
     return m ? m[1].trim() : val
   }
-  // Secondary path: `?token=` can only arrive because the SDK copies every
-  // un-consumed match key into the query string. Nothing sends it by itself.
   const tok = qv(req.query || {}, 'token')
   return null == tok ? null : String(tok)
 }

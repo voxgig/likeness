@@ -1,0 +1,16 @@
+github.com/voxgig/omni/go v0.1.0 h1:WT+WAzBE6wjUldsYbj4+9t8vUV4aOjHq9khgY+D4K7E=
+github.com/voxgig/omni/go v0.1.0/go.mod h1:DHNBwo/Up+RHQQYES3MZhVfqCrFxrhMxfiQj3ms1b9o=
+github.com/voxgig/plugin/go v0.0.0-20260901203214-91f294b7a228 h1:1Ymh0cwv1nKIULf9+EBhsi1G70J9msxA8HqIRQf8T1w=
+github.com/voxgig/plugin/go v0.0.0-20260901203214-91f294b7a228/go.mod h1:JWU6S3ozw+ubz54qiRwWHcq7WoL79d1Ka4xdVDXAoa8=
+github.com/voxgig/sekreto/go v0.0.0-20260916220330-32b83acba90a h1:3qNNhyU86OPx7IstxcBEq5tgFPj/XRkSKLUjlIzKdkI=
+github.com/voxgig/sekreto/go v0.0.0-20260916220330-32b83acba90a/go.mod h1:4exRKJE5U+4sY9gsmczzucjB6HlZ0qy6qZ7fELcbMpI=
+github.com/voxgig/station/go v0.0.0-20260918114619-50667dc650e9 h1:jIm+0ZYBK9gtPltp11tV1MJ5bJlvqEGuiPL11JbsOH0=
+github.com/voxgig/station/go v0.0.0-20260918114619-50667dc650e9/go.mod h1:BzdhVKKYHpSA0DsvEhChG+rqWf/JHEIZy3gzZsfGE7s=
+github.com/voxgig/struct/go v0.1.6 h1:upl3R+jl2cFt8B1EFJ7SFYkZOT0nnRKxo/+s9pn7P3k=
+github.com/voxgig/struct/go v0.1.6/go.mod h1:qBM2VlhILx79MCFDdjNID59eQY2J76DqFqkwYKgxghA=
+github.com/voxgig/struct/go/testutil v0.0.0-20261009084424-3ab807cc2ae7 h1:/bk5G9ujF/WqBWywrCZTMtchuoslSIG9ztxOtnTBAq0=
+github.com/voxgig/struct/go/testutil v0.0.0-20261009084424-3ab807cc2ae7/go.mod h1:OAQkloBRUPUtDQcudh1z2bgNc8YNvZGgn9q1sckAyR4=
+golang.org/x/sys v0.34.0 h1:H5Y5sJ2L2JRdyv7ROF1he/lPdvFsd0mJHFw2ThKHxLA=
+golang.org/x/sys v0.34.0/go.mod h1:BJP2sWEmIv4KK5OTEluFJCKSidICx8ciO85XgH3Ak8k=
+golang.org/x/term v0.33.0 h1:NuFncQrRcaRvVmgRkvM3j/F00gWIAlcmlB8ACEKmGIg=
+golang.org/x/term v0.33.0/go.mod h1:s18+ql9tYWp1IfpV9DmCtQDDSRBUjKaw9M1eAv5UeF0=

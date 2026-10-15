@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"ok","data":{"account":"8dc726dfc2eecbf2","base":"http://127.0.0.1:27123","instance":"obsidian","secret":"obsidian.apikey","source":"obsidian"},"meta":{"calls":0,"count":1,"incomplete":[],"sources":[],"truncated":false},"ok":true,"version":"0.1.0"}

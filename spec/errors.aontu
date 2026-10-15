@@ -15,7 +15,7 @@ error: {
   not-found: exit: 1
   not-found: partial: false
   not-found: retryable: false
-  not-found: means: "a named ref does not exist"
+  not-found: means: "a named ref, secret or key does not exist"
 
   partial: code: "partial"
   partial: exit: 2
@@ -43,6 +43,13 @@ error: {
   secret-backend-unavailable: partial: false
   secret-backend-unavailable: retryable: true
   secret-backend-unavailable: means: "the secret store could not be reached"
+  vault-locked: {
+    code: "vault-locked"
+    exit: 3
+    partial: false
+    retryable: false
+    means: "the vault does not open with the passphrase and key this run has"
+  }
 
   source-unavailable: {
     code: "source-unavailable"
@@ -62,6 +69,13 @@ error: {
   invalid-ref: partial: false
   invalid-ref: retryable: false
   invalid-ref: means: "the ref is malformed"
+  invalid-argument: {
+    code: "invalid-argument"
+    exit: 3
+    partial: false
+    retryable: false
+    means: "the arguments do not satisfy the command's declared grammar"
+  }
   invalid-project: code: "invalid-project"
   invalid-project: exit: 3
   invalid-project: partial: false
@@ -121,12 +135,38 @@ error: {
   write-refused: partial: false
   write-refused: retryable: false
   write-refused: means: "a human-decision floor refused this write"
+  vault-denied: code: "vault-denied"
+  vault-denied: exit: 4
+  vault-denied: partial: false
+  vault-denied: retryable: false
+  vault-denied: means: "the vault key in use may not do this"
+  vault-exists: {
+    code: "vault-exists"
+    exit: 4
+    partial: false
+    retryable: false
+    means: "the vault, or a key in it, is already there and is never overwritten"
+  }
+  instance-exists: {
+    code: "instance-exists"
+    exit: 4
+    partial: false
+    retryable: false
+    means: "a connection with that ref is already configured, and is never overwritten"
+  }
   limit-exceeded: {
     code: "limit-exceeded"
     exit: 4
     partial: false
     retryable: false
     means: "the operation would affect more records than the limit allows"
+  }
+  certificate-rejected: {
+    code: "certificate-rejected"
+    exit: 4
+    partial: false
+    retryable: false
+    means: "the source's certificate is not the one its connection pins, or failed verification"
   }
 
   budget-exceeded: code: "budget-exceeded"

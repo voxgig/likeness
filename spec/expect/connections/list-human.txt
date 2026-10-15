@@ -1,0 +1,3 @@
+{"account":"local","base":"http://127.0.0.1:41184","instance":"joplin","secret":"joplin.apikey","source":"joplin"}
+{"account":"acme-workspace","instance":"notion","secret":"notion.apikey","source":"notion"}
+{"account":"8dc726dfc2eecbf2","instance":"obsidian","secret":"obsidian.apikey","source":"obsidian"}

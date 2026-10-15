@@ -1,0 +1,1 @@
+{"cmd":["doctor"],"code":"invalid-project","data":null,"error":{"message":"obsidian connection \"obsidian\" is plain HTTP and does not declare it","remedy":"declare plain HTTP with \"options\": { \"tls\": false }, or use the plugin's HTTPS base with a pinned certificate"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

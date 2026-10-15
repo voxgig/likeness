@@ -1,0 +1,1 @@
+{"cmd":["sources","list"],"code":"ok","data":[{"account":"local","base":"http://127.0.0.1:41184","instance":"joplin$work","secret":"joplin_work.apikey","source":"joplin"}],"meta":{"calls":0,"count":1,"incomplete":[],"sources":[],"truncated":false},"ok":true,"version":"0.1.0"}

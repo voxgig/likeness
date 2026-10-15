@@ -19,7 +19,8 @@ VET_PAIRS := \
 	$(DEF)/project.aontu:$(SPEC)/example/likeness.aontu \
 	$(DEF)/replica.aontu:$(SPEC)/replica.aontu \
 	$(DEF)/corpus.aontu:$(SPEC)/unit.aontu \
-	$(DEF)/corpus.aontu:$(SPEC)/cli.aontu
+	$(DEF)/corpus.aontu:$(SPEC)/cli.aontu \
+	$(DEF)/command.aontu:$(SPEC)/commands.aontu
 
 # Files that MUST fail to vet, AND MUST FAIL FOR THE RIGHT REASON. `aontu vet`
 # exits 1 for a contradiction, 2 for a usage error and 3 for an incomplete
@@ -30,13 +31,15 @@ VET_PAIRS := \
 VET_MUSTFAIL := \
 	$(DEF)/project.aontu:$(SPEC)/example/likeness-broken.aontu \
 	$(DEF)/corpus.aontu:$(SPEC)/example/unit-broken.aontu \
-	$(DEF)/corpus.aontu:$(SPEC)/example/cli-broken.aontu
+	$(DEF)/corpus.aontu:$(SPEC)/example/cli-broken.aontu \
+	$(DEF)/command.aontu:$(SPEC)/example/commands-broken.aontu
 
 
 .PHONY: help
 help:
 	@echo 'likeness make targets:'
 	@echo '  spec-check    every data file satisfies its shape, and the red tests go red'
+	@echo '  spec-expect   every committed JSON expectation satisfies the envelope shape'
 	@echo '  spec-agree    the registry is present, capability rows match it, and the'
 	@echo '                registry matches the cloned SDK models (needs `make sdk`)'
 	@echo '  spec-build    compile the data files to the JSON every port reads'
@@ -44,25 +47,48 @@ help:
 	@echo '  spec-json     export the shapes as JSON Schema'
 	@echo '  spec-fmt      check schema formatting'
 	@echo '  spec-hash     print a content hash per schema file'
-	@echo '  spec          spec-fmt, spec-check, spec-fresh and spec-agree'
+	@echo '  spec          spec-fmt, spec-check, spec-expect, spec-fresh and spec-agree'
 	@echo '  sdk           clone the generated SDKs at their pinned revisions'
 	@echo '  sdk-check     fail if a clone is missing or off its pin'
 	@echo '  test-ts       build and run the TypeScript port against both corpora'
 	@echo '  test-go       build and run the Go port against both corpora'
+	@echo '  py-deps       clone the checkouts the Python port imports, build python/.venv'
+	@echo '  test-py       run the Python port against both corpora'
+	@echo '  test-rb       run the Ruby port against both corpora'
+	@echo '  rb-libs       clone the voxgig libraries the Ruby port loads, at their pinned revisions'
+	@echo '  test-c        build and run the C port: the unit corpus and what it answers'
+	@echo '  test-c-asan   the C suite under AddressSanitizer and UBSan'
+	@echo '  test-c-valgrind  the C suite under Valgrind'
 	@echo '  parity        the ports produce the same bytes, and each names itself'
-	@echo '  check         spec, every port, and the parity comparison'
+	@echo '  matrix        the CLI of every port reaches every source through station, against mock/'
+	@echo '  guards        no source name outside its adapter, and no TLS check turned off'
+	@echo '  check         spec, every port, the parity comparison and the matrix'
 	@echo '  expect        REGENERATE the committed expectations - read the diff'
 	@echo '  mock          run the local source mock server'
 	@echo '  mock-deps     install the mock server dependencies the wire tests need'
 
 
 .PHONY: spec
-spec: spec-fmt spec-check spec-fresh spec-agree
+spec: spec-fmt spec-check spec-expect spec-fresh spec-agree
 
 
 # Everything. What CI runs, and what a change should run before it is pushed.
 .PHONY: check
-check: comments spec test-ts test-go parity
+check: comments guards spec test-ts test-go test-py test-rb test-c parity matrix
+
+
+# The two rules a port's code may not break whatever its tests say: a source
+# named outside its adapter, and certificate verification turned off. The
+# self-test plants a breach of each and requires it to be reported.
+.PHONY: guards
+guards:
+	@node tools/check-guards.mjs
+	@node tools/check-guards.mjs --selftest
+
+
+.PHONY: spec-expect
+spec-expect:
+	@AONTU="$(AONTU)" node tools/vet-expect.mjs
 
 
 .PHONY: spec-build
@@ -94,13 +120,67 @@ sdk-check:
 # sdk-check first: a port built against a drifted clone produces a corpus
 # result about an SDK nobody else has.
 .PHONY: test-ts
-test-ts: sdk-check mock-deps
+test-ts: sdk-check mock-deps ts-deps
 	@cd typescript && npm run build && npm test
 
 
 .PHONY: test-go
 test-go: sdk-check mock-deps
 	@cd go && gofmt -l . | (! grep .) && go vet ./... && go test ./...
+
+
+# station, sekreto and plugin publish no Python package, so the port imports
+# pinned checkouts through its own venv. The pins are python/deps.json and
+# python/requirements.txt and are never restated here; the venv is rebuilt
+# only when one of them, or PYTHON, changes.
+.PHONY: py-deps
+py-deps:
+	@node tools/py-deps.mjs
+
+
+.PHONY: test-py
+test-py: sdk-check mock-deps py-deps
+	@cd python && .venv/bin/python -m unittest discover -s tests -t .
+
+
+# station, sekreto and plugin are no more published than the SDKs, so the
+# Ruby port loads them from checkouts at the revisions ruby/libs.json pins:
+# `rb-libs` clones them, and `rb-deps` verifies every pin and links each
+# checkout, and the SDK clones, under ruby/vendor/ - the one place the port
+# looks. Point STATION_HOME, SEKRETO_HOME or PLUGIN_HOME at a checkout of the
+# pin to use it instead of a clone.
+RB_SDK_ROOT := $(abspath $(or $(LIKENESS_SDK_ROOT),$(CURDIR)/../voxgig-sdk))
+RB_SDKS := joplin-sdk notion-sdk obsidian-sdk
+
+.PHONY: rb-libs
+rb-libs:
+	@node tools/fetch-lib.mjs ruby/libs.json
+
+.PHONY: rb-deps
+rb-deps: sdk-check
+	@node tools/fetch-lib.mjs ruby/libs.json --check --link ruby/vendor
+	@for sdk in $(RB_SDKS); do ln -sfn "$(RB_SDK_ROOT)/$$sdk" "ruby/vendor/$$sdk"; done
+
+RB_TEST := ruby -Ilib -Itest -e 'ARGV.each { |f| require File.expand_path(f) }'
+
+.PHONY: test-rb
+test-rb: rb-deps mock-deps
+	@cd ruby && $(RB_TEST) test/*_test.rb
+
+
+# The C port reads no SDK and no clone. Until the C SDK has a live transport,
+# its SDKs link into one program and station's C library reads the vault, it
+# runs the unit corpus and the transcript entries that need no source, and
+# `parity` does not include it.
+.PHONY: test-c test-c-asan test-c-valgrind
+test-c:
+	@$(MAKE) --no-print-directory -C c test
+
+test-c-asan:
+	@$(MAKE) --no-print-directory -C c asan
+
+test-c-valgrind:
+	@$(MAKE) --no-print-directory -C c valgrind
 
 
 # The cross-port byte comparison. Each port's suite writes its RAW transcript
@@ -113,18 +193,38 @@ test-go: sdk-check mock-deps
 # difference and requiring it to be reported: a comparison nobody has seen go
 # red might be comparing nothing at all.
 PARITY_DIR := build/parity
+PARITY_PORTS := go,py,rb,ts
 
 .PHONY: parity
-parity: sdk-check mock-deps
+parity: sdk-check mock-deps ts-deps py-deps rb-deps
 	@rm -rf $(PARITY_DIR) && mkdir -p $(PARITY_DIR)
 	@cd typescript && npm run build >/dev/null && \
 	  LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" npm test >/dev/null
 	@# -count=1 defeats the test cache. Without it Go reports a cached PASS and
-	@# writes no files, and the comparison then finds one port and says so -
-	@# which is at least loud, but only because the comparison checks for it.
+	@# writes no files, and the comparison then reports every Go answer missing -
+	@# which is at least loud, but only because --ports names Go.
 	@cd go && LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" go test -count=1 -run TestEmitParity ./... >/dev/null
-	@node tools/parity.mjs $(PARITY_DIR)
-	@node tools/parity.mjs $(PARITY_DIR) --selftest 2>/dev/null
+	@cd python && out=$$(LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" \
+	  .venv/bin/python -m unittest tests.test_parity 2>&1) || { echo "$$out"; exit 1; }
+	@cd ruby && LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" $(RB_TEST) test/parity_test.rb >/dev/null
+	@node tools/parity.mjs $(PARITY_DIR) --ports $(PARITY_PORTS)
+	@node tools/parity.mjs $(PARITY_DIR) --ports $(PARITY_PORTS) --selftest 2>/dev/null
+
+
+# The source x port matrix: each port's own CLI binary, through its
+# station-bound SDK and a vault the run makes, against mock/ served from the
+# tool's process. A red cell is declared in tools/matrix-waiting.json with the
+# upstream issue it waits on, and held to what that issue predicts; then
+# --selftest plants faults and requires each to turn the matrix red. In CI the
+# table also goes to the step summary.
+MATRIX_GO := build/matrix/likeness-go
+
+.PHONY: matrix
+matrix: sdk-check mock-deps ts-deps py-deps rb-deps
+	@cd typescript && npm run build >/dev/null
+	@cd go && go build -o "$(CURDIR)/$(MATRIX_GO)" ./cmd/likeness-go
+	@$(MAKE) --no-print-directory -C c bin/likeness-c >/dev/null
+	@node tools/matrix.mjs --selftest
 
 
 # NOT A TEST, and never run to make one pass. It rewrites the contract to agree
@@ -211,6 +311,15 @@ mock:
 .PHONY: mock-deps
 mock-deps:
 	@test -d mock/node_modules || (cd mock && npm ci --no-audit --no-fund >/dev/null)
+
+
+# typescript/.npmrc installs the SDK clone as a copy, so that its peer
+# dependency on station resolves from the port. A copy does not follow the
+# clone when `make sdk` moves it, so it is taken again on every run.
+.PHONY: ts-deps
+ts-deps:
+	@cd typescript && rm -rf node_modules/@voxgig-sdk && \
+	  npm install --no-audit --no-fund --loglevel=error >/dev/null
 
 
 .PHONY: comments comments-test hooks

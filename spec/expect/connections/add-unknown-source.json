@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"no-such-source","data":null,"error":{"message":"likeness reaches no source by the name --source gives","remedy":"name one of joplin, notion or obsidian"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

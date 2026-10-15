@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"invalid-argument","data":null,"error":{"message":"an http base is plain HTTP, which only --plain-http declares","remedy":"add --plain-http, or give the plugin's HTTPS address with --base"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

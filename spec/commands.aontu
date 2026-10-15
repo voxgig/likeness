@@ -1,0 +1,539 @@
+# The command surface and its argument grammar (SPEC 13.1), declared once.
+# Every port's argv shell is one table-driven parser over the compiled form,
+# and `help` prints text rendered from it at build time.
+
+global: {
+  json: { type:"boolean" short:"print the envelope as one line of JSON" }
+  source: type: "name"
+  source: value: "API"
+  source: repeat: true
+  source: short: "only the connections to this API"
+  instance: type: "instance"
+  instance: value: "REF"
+  instance: repeat: true
+  instance: short: "only this connection"
+  strict: { type:"boolean" short:"stop at the first connection that fails" }
+  deterministic: type: "boolean"
+  deterministic: short: "zero the fields that vary from run to run"
+  config: { type:"path" value:"PATH" short:"read station.json from PATH" }
+  passphrase-env: {
+    type: "envvar"
+    value: "VAR"
+    short: "read the vault passphrase from VAR, not LIKENESS_PASSPHRASE"
+  }
+  vault-key: type: "name"
+  vault-key: value: "NAME"
+  vault-key: short: "open the vault as the key NAME, not master"
+}
+
+command: {
+  list: {
+    short: "notes matching a selector, across the selected connections"
+    ready: true
+    writes: false
+    arg: [
+      {
+        name: "selector"
+        type: "selector"
+        required: false
+        repeat: true
+        short: "the selector's terms, joined with spaces"
+      }
+    ]
+    flag: limit: {
+      type: "integer"
+      min: 1
+      max: 999999999
+      value: "N"
+      short: "at most N notes"
+    }
+    flag: sort: { type:"name" value:"KEY" short:"order the notes by KEY" }
+    flag: raw: { type:"boolean" short:"carry each source's own record" }
+    exits: [
+      "ok"
+      "no-match"
+      "partial"
+      "fanout-halted"
+      "invalid-argument"
+      "invalid-selector"
+      "invalid-project"
+      "no-such-source"
+      "unsupported-capability"
+      "source-unavailable"
+      "auth-failed"
+      "rate-limited"
+      "vault-locked"
+      "secret-backend-unavailable"
+      "certificate-rejected"
+    ]
+  }
+
+  get: {
+    short: "notes by ref"
+    ready: true
+    writes: false
+    arg: [
+      {
+        name: "ref"
+        type: "ref"
+        required: true
+        repeat: true
+        short: "<instance>:<id>"
+      }
+    ]
+    flag: raw: { type:"boolean" short:"carry the source's own record" }
+    exits: [
+      "ok"
+      "not-found"
+      "invalid-argument"
+      "invalid-ref"
+      "invalid-project"
+      "no-such-source"
+      "unsupported-capability"
+      "source-unavailable"
+      "auth-failed"
+      "rate-limited"
+      "vault-locked"
+      "secret-backend-unavailable"
+      "certificate-rejected"
+    ]
+  }
+
+  doctor: {
+    short: "check every selected connection"
+    ready: true
+    writes: false
+    arg: []
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "no-such-source"
+      "unsupported-capability"
+      "source-unavailable"
+      "auth-failed"
+      "rate-limited"
+      "vault-locked"
+      "secret-backend-unavailable"
+      "certificate-rejected"
+    ]
+  }
+
+  which: short: "every likeness on PATH: path, port, version"
+  which: ready: true
+  which: writes: false
+  which: arg: []
+  which: flag: {}
+  which: exits: ["ok" "no-match" "invalid-argument"]
+
+  version: short: "this port and its version"
+  version: ready: true
+  version: writes: false
+  version: arg: []
+  version: flag: {}
+  version: exits: ["ok" "invalid-argument"]
+
+  help: {
+    short: "the command list, or one command's help"
+    ready: true
+    writes: false
+    arg: [
+      {
+        name: "command"
+        type: "name"
+        required: false
+        repeat: true
+        short: "the command to describe, as its words"
+      }
+    ]
+    flag: {}
+    exits: ["ok" "invalid-argument"]
+  }
+
+  describe: short: "the whole surface, for agents"
+  describe: ready: false
+  describe: writes: false
+  describe: arg: []
+  describe: flag: {}
+  describe: exits: ["unsupported-capability" "invalid-argument"]
+
+  caps: short: "the capability matrix"
+  caps: ready: false
+  caps: writes: false
+  caps: arg: []
+  caps: flag: {}
+  caps: exits: ["unsupported-capability" "invalid-argument"]
+
+  # The connections in station.json, each with its account in likeness.json
+  # (SPEC 11.2, 12.2): `sources` is a group, and every write changes both
+  # files or neither.
+  "sources list": {
+    short: "every connection of the active profile: ref, source, base, account and secret name"
+    ready: true
+    writes: false
+    arg: []
+    flag: {}
+    exits: ["ok" "no-match" "invalid-argument" "invalid-project"]
+  }
+
+  # Echo is off: a token typed where an argument belongs is not repeated.
+  "sources add": {
+    short: "add a connection to --source API, tagged --instance TAG; its token goes to the vault first"
+    ready: true
+    writes: true
+    echo: false
+    arg: []
+    flag: {
+      account: {
+        type: "string"
+        value: "ID"
+        short: "the source's own id for the account, which every note's identity derives from"
+      }
+      base: type: "string"
+      base: value: "URL"
+      base: short: "where the application answers, if not at its usual address"
+      fingerprint: {
+        type: "string"
+        value: "FP"
+        short: "the certificate to pin, sha256:<hex>, held to the one presented"
+      }
+      notion-version: type: "string"
+      notion-version: value: "DATE"
+      notion-version: short: "the API version every request carries"
+      plain-http: { type:"boolean" short:"reach an http base with TLS off" }
+      secret: type: "secret"
+      secret: value: "NAME"
+      secret: short: "a token already in the vault, rather than one typed now"
+    }
+    exits: [
+      "ok"
+      "not-found"
+      "invalid-argument"
+      "invalid-project"
+      "no-such-source"
+      "unsupported-capability"
+      "instance-exists"
+      "source-unavailable"
+      "auth-failed"
+      "rate-limited"
+      "certificate-rejected"
+      "vault-locked"
+      "vault-denied"
+      "vault-exists"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "sources remove": {
+    short: "remove a connection and its account; the vault keeps its token"
+    ready: true
+    writes: true
+    arg: [
+      {
+        name: "ref"
+        type: "instance"
+        required: true
+        short: "the connection, as api or api$tag"
+      }
+    ]
+    flag: {}
+    exits: ["ok" "invalid-argument" "invalid-project" "no-such-source"]
+  }
+
+  "sources rename": {
+    short: "give a connection a new ref, its account and its token with it"
+    ready: true
+    writes: true
+    arg: [
+      { name:"ref" type:"instance" required:true short:"the connection" }
+      {
+        name: "new-ref"
+        type: "instance"
+        required: true
+        short: "its new ref, of the same API"
+      }
+    ]
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "no-such-source"
+      "instance-exists"
+    ]
+  }
+
+  "sources test": {
+    short: "check the named connections, or every one, as doctor does"
+    ready: true
+    writes: false
+    arg: [
+      {
+        name: "ref"
+        type: "instance"
+        required: false
+        repeat: true
+        short: "a connection to check"
+      }
+    ]
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "no-such-source"
+      "unsupported-capability"
+      "source-unavailable"
+      "auth-failed"
+      "rate-limited"
+      "vault-locked"
+      "secret-backend-unavailable"
+      "certificate-rejected"
+    ]
+  }
+
+  # The vault's command line (SPEC 11.3): `secrets` is a group, and its action
+  # is the next argument.
+  "secrets init": {
+    short: "create the vault station.json names, with its master key"
+    ready: true
+    writes: true
+    echo: false
+    arg: []
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "vault-exists"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets set": {
+    short: "store a secret, its value read from a terminal or from stdin"
+    ready: true
+    writes: true
+    echo: false
+    arg: [
+      { name:"name" type:"secret" required:true short:"the secret's name" }
+      {
+        name: "from"
+        type: "stdin"
+        required: false
+        short: "read the value from stdin"
+      }
+    ]
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets get": {
+    short: "whether a secret is set, and with --reveal its value"
+    ready: true
+    writes: false
+    echo: false
+    arg: [{ name:"name" type:"secret" required:true short:"the secret's name" }]
+    flag: reveal: { type:"boolean" short:"print the value" }
+    exits: [
+      "ok"
+      "not-found"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets list": {
+    short: "the names this key can read"
+    ready: true
+    writes: false
+    echo: false
+    arg: []
+    flag: {}
+    exits: [
+      "ok"
+      "no-match"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets remove": {
+    short: "drop a secret"
+    ready: true
+    writes: true
+    echo: false
+    arg: [{ name:"name" type:"secret" required:true short:"the secret's name" }]
+    flag: {}
+    exits: [
+      "ok"
+      "not-found"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets keys": {
+    short: "every key in the vault, and what it may do"
+    ready: true
+    writes: false
+    echo: false
+    arg: []
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets grant": {
+    short: "mint a restricted key that reads the named secrets"
+    ready: true
+    writes: true
+    echo: false
+    arg: [
+      { name:"key" type:"name" required:true short:"the new key's name" }
+      {
+        name: "name"
+        type: "secret"
+        required: true
+        repeat: true
+        short: "a secret the key may read"
+      }
+    ]
+    flag: {
+      write: { type:"boolean" short:"it may also overwrite those secrets" }
+      new-passphrase-env: {
+        type: "envvar"
+        value: "VAR"
+        short: "read its passphrase from VAR, not LIKENESS_NEW_PASSPHRASE"
+      }
+    }
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "vault-exists"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets revoke": {
+    short: "drop a restricted key"
+    ready: true
+    writes: true
+    echo: false
+    arg: [{ name:"key" type:"name" required:true short:"the key's name" }]
+    flag: {}
+    exits: [
+      "ok"
+      "not-found"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "secrets rotate": {
+    short: "a new root key for every secret; every other key is dropped"
+    ready: true
+    writes: true
+    echo: false
+    arg: []
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "vault-locked"
+      "vault-denied"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  search: short: "cross-source search"
+  search: ready: false
+  search: writes: false
+  search: arg: []
+  search: flag: {}
+  search: exits: ["unsupported-capability" "invalid-argument"]
+
+  new: short: "create a note"
+  new: ready: false
+  new: writes: true
+  new: arg: []
+  new: flag: {}
+  new: exits: ["unsupported-capability" "invalid-argument"]
+
+  edit: short: "change a note"
+  edit: ready: false
+  edit: writes: true
+  edit: arg: []
+  edit: flag: {}
+  edit: exits: ["unsupported-capability" "invalid-argument"]
+
+  move: short: "move notes to another space"
+  move: ready: false
+  move: writes: true
+  move: arg: []
+  move: flag: {}
+  move: exits: ["unsupported-capability" "invalid-argument"]
+
+  tag: short: "add or remove tags"
+  tag: ready: false
+  tag: writes: true
+  tag: arg: []
+  tag: flag: {}
+  tag: exits: ["unsupported-capability" "invalid-argument"]
+
+  link: short: "link two notes"
+  link: ready: false
+  link: writes: true
+  link: arg: []
+  link: flag: {}
+  link: exits: ["unsupported-capability" "invalid-argument"]
+
+  archive: short: "archive notes, reversibly"
+  archive: ready: false
+  archive: writes: true
+  archive: arg: []
+  archive: flag: {}
+  archive: exits: ["unsupported-capability" "invalid-argument"]
+
+  rm: short: "delete one note, irreversibly"
+  rm: ready: false
+  rm: writes: true
+  rm: arg: []
+  rm: flag: {}
+  rm: exits: ["unsupported-capability" "invalid-argument"]
+
+  open: short: "open a note in its own application"
+  open: ready: false
+  open: writes: false
+  open: arg: []
+  open: flag: {}
+  open: exits: ["unsupported-capability" "invalid-argument"]
+}

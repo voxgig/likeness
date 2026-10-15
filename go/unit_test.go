@@ -1,6 +1,7 @@
 package likeness
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -58,7 +59,7 @@ func unitRegistry() map[string]unitFn {
 		},
 
 		"rfc3339": func(t *testing.T, in any) (any, error) {
-			return Rfc3339(mustNum(t, in)), nil
+			return Rfc3339(mustNum(t, in))
 		},
 
 		"crockfordAlphabet": func(t *testing.T, in any) (any, error) { return Crockford, nil },
@@ -71,32 +72,141 @@ func unitRegistry() map[string]unitFn {
 			}
 			return out, nil
 		},
-		"parseStation": func(t *testing.T, in any) (any, error) {
-			conns, err := parseStation(in.(string), "station.json")
+		"parseArgv": func(t *testing.T, in any) (any, error) {
+			p, err := ParseArgv(strs(in))
+			if nil != err {
+				return nil, err
+			}
+			return map[string]any{"command": p.Command, "flags": p.Flags, "args": strList(p.Args)}, nil
+		},
+		"connections": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			config, err := parseStation(str(m, "station"), "station.json")
+			if nil != err {
+				return nil, err
+			}
+			env := map[string]string{}
+			if p, ok := m["profile"].(string); ok {
+				env["VOXGIG_STATION_PROFILE"] = p
+			}
+			accounts, err := parseAccounts(str(m, "likeness"), "likeness.json", profileOf(env))
+			if nil != err {
+				return nil, err
+			}
+			st, err := openStation(config, env)
+			if nil != err {
+				return nil, err
+			}
+			conns, err := connectionsOf(st, accounts, profileOf(env))
 			if nil != err {
 				return nil, err
 			}
 			out := make([]any, 0, len(conns))
 			for _, c := range conns {
-				m := map[string]any{"instance": c.Instance, "source": c.Source, "account": c.Account}
-				if "" != c.APIKey {
-					m["apikey"] = c.APIKey
-				}
-				if "" != c.Base {
-					m["base"] = c.Base
-				}
-				out = append(out, m)
+				out = append(out, map[string]any{"instance": c.Instance, "source": c.Source, "account": c.Account})
 			}
 			return out, nil
 		},
 		"projectJoplin": func(t *testing.T, in any) (any, error) {
 			m := in.(map[string]any)
 			raw, _ := m["raw"].(map[string]any)
-			n, err := projectNote(raw, str(m, "instance"), str(m, "account"), false)
+			n, err := joplinAdapter{}.project(raw, str(m, "instance"), str(m, "account"), false)
 			if nil != err {
 				return nil, err
 			}
 			return n.Value(), nil
+		},
+		"vaultEntry": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			config, _ := m["station"].(map[string]any)
+			profile := str(m, "profile")
+			if "" == profile {
+				profile = "default"
+			}
+			e, err := vaultEntry(config, profile, "/home/u", "/home/u/.config/likeness", str(m, "key"))
+			if nil != err {
+				return nil, err
+			}
+			return map[string]any{"file": e.File, "key": e.Key, "shown": e.Shown}, nil
+		},
+		"obsidianUrl": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			return obsidianURL(str(m, "vault"), str(m, "path")), nil
+		},
+		"vaultEntries": func(t *testing.T, in any) (any, error) {
+			got, err := vaultEntries(in.([]any))
+			return strList(got), err
+		},
+		"vaultWalk": func(t *testing.T, in any) (any, error) {
+			listings, _ := in.(map[string]any)["listings"].(map[string]any)
+			steps := []any{}
+			err := vaultWalk("", func(step vaultStep) ([]string, error) {
+				steps = append(steps, step.value())
+				if "list" != step.kind {
+					return nil, nil
+				}
+				listed, _ := listings[step.path].([]any)
+				return vaultEntries(listed)
+			})
+			return steps, err
+		},
+		"obsidianTransport": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			block, _ := m["block"].(map[string]any)
+			got, err := obsidianAdapter{}.transport(str(m, "instance"), block)
+			return got.value(), err
+		},
+		"projectObsidian": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			n, err := obsidianAdapter{}.project(m["raw"], str(m, "path"), str(m, "instance"), str(m, "account"), false)
+			if nil != err {
+				return nil, err
+			}
+			return n.Value(), nil
+		},
+		"notionVersion": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			block, _ := m["block"].(map[string]any)
+			got, err := notionAdapter{}.configure(str(m, "instance"), block)
+			if nil != err {
+				return nil, err
+			}
+			return map[string]any{"version": got.(pinnedVersion).version}, nil
+		},
+		"notionTitle": func(t *testing.T, in any) (any, error) { return titleOf(in), nil },
+		// Absent is `{}`: the corpus has no way to say "no value" but an empty record.
+		"notionSpace": func(t *testing.T, in any) (any, error) {
+			if space, ok := spaceOf(in); ok {
+				return map[string]any{"space": space}, nil
+			}
+			return map[string]any{}, nil
+		},
+		"notionTime": func(t *testing.T, in any) (any, error) { return notionStamp(in, "created_time") },
+		"projectNotion": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			n, err := notionAdapter{}.project(m["raw"], str(m, "instance"), str(m, "account"), false)
+			if nil != err {
+				return nil, err
+			}
+			return n.Value(), nil
+		},
+		"parsePin": func(t *testing.T, in any) (any, error) {
+			return parsePin(in)
+		},
+		"fingerprintOf": func(t *testing.T, in any) (any, error) {
+			der, err := hex.DecodeString(in.(string))
+			if nil != err {
+				t.Fatal(err)
+			}
+			return fingerprintOf(der), nil
+		},
+		"secretName": func(t *testing.T, in any) (any, error) { return secretName(in.(string)), nil },
+		"refFor": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			if instance, ok := m["instance"].(string); ok {
+				return refFor(str(m, "source"), instance)
+			}
+			return refFor(str(m, "source"))
 		},
 		"partialCodes": func(t *testing.T, in any) (any, error) {
 			codes := PartialCodes()

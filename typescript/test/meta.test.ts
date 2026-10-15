@@ -51,6 +51,29 @@ test('meta: stdout differing by ONE BYTE is reported', async () => {
   finally { unlinkSync(tmp) }
 })
 
+test('meta: a vault left holding the wrong names is reported', async () => {
+  const e = entry('secrets/remove')
+  assert.ok(undefined !== e.out.vault, 'secrets/remove asserts no vault state')
+  e.out.vault.names = ['joplin.apikey', 'notion.apikey']
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('vault names ')), 'no vault failure in ' + JSON.stringify(f))
+})
+
+test('meta: a vault value that differs is reported', async () => {
+  const e = entry('secrets/set-from-stdin')
+  assert.ok(undefined !== e.out.vault?.values, 'secrets/set-from-stdin asserts no values')
+  e.out.vault.values = { 'joplin.apikey': 'rotated-token\n' }
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('vault value of ')), 'no value failure in ' + JSON.stringify(f))
+})
+
+test('meta: a prompt that was not expected is reported', async () => {
+  const e = entry('secrets/passphrase-typed')
+  e.out.prompts = []
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('prompts ')), 'no prompt failure in ' + JSON.stringify(f))
+})
+
 test('meta: a MISSING call is reported', async () => {
   const e = entry('list/all')
   e.out.calls = []
@@ -60,14 +83,14 @@ test('meta: a MISSING call is reported', async () => {
 
 test('meta: an EXTRA call is reported', async () => {
   const e = entry('list/all')
-  e.out.calls = [...e.out.calls, { instance: 'jot', method: 'GET', path: '/notes' }]
+  e.out.calls = [...e.out.calls, { instance: 'joplin', method: 'GET', path: '/notes' }]
   const f = await check(e)
   assert.ok(f.some(x => x.startsWith('calls ')), 'no calls failure in ' + JSON.stringify(f))
 })
 
 test('meta: a call with the right count but the wrong path is reported', async () => {
   const e = entry('list/all')
-  e.out.calls = [{ instance: 'jot', method: 'GET', path: '/folders' }]
+  e.out.calls = [{ instance: 'joplin', method: 'GET', path: '/folders' }]
   const f = await check(e)
   assert.ok(f.some(x => x.startsWith('calls ')), 'no calls failure in ' + JSON.stringify(f))
 })
@@ -132,4 +155,25 @@ test('meta: version reporting another port in its data is reported', async () =>
   parsed.data.port = 'WRONG'
   const f = stdoutFailures(e, serialise(parsed))
   assert.ok(f.some(x => x.startsWith('data.port is')), 'not reported: ' + JSON.stringify(f))
+})
+
+test('meta: a written file that differs is reported', async () => {
+  const e = entry('connections/add-joplin')
+  e.out.files = { ...e.out.files, 'station.json': 'fixtures/config/several/station.json' }
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('station.json differs')), 'no file failure in ' + JSON.stringify(f))
+})
+
+test('meta: a file the entry says is not there, written, is reported', async () => {
+  const e = entry('connections/add-joplin')
+  e.out.absent = ['likeness.json']
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('likeness.json is there afterwards')), 'no absence failure in ' + JSON.stringify(f))
+})
+
+test('meta: a file the entry names, never written, is reported', async () => {
+  const e = entry('connections/add-joplin-needs-an-account')
+  e.out.files = { 'station.json': 'spec/written/connections/add-joplin/station.json' }
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('station.json is not there afterwards')), 'no missing-file failure in ' + JSON.stringify(f))
 })

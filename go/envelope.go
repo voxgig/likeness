@@ -105,7 +105,7 @@ func jsNumber(f float64) string {
 	if 0 == f {
 		return "0"
 	}
-	if abs := math.Abs(f); 1e-7 <= abs && abs < 1e21 {
+	if abs := math.Abs(f); 1e-6 <= abs && abs < 1e21 {
 		return strconv.FormatFloat(f, 'f', -1, 64)
 	}
 	mant, exp, _ := strings.Cut(strconv.FormatFloat(f, 'e', -1, 64), "e")
@@ -123,7 +123,14 @@ func renderNumber(v any, path string, loose bool) (string, error) {
 	case int64:
 		return strconv.FormatInt(n, 10), nil
 	case json.Number:
+		// Held to a double's exact range, as the canonical port's parse is.
 		if i, err := strconv.ParseInt(n.String(), 10, 64); nil == err {
+			if 9007199254740991 < i || i < -9007199254740991 {
+				if loose {
+					return jsNumber(float64(i)), nil
+				}
+				return "", &SerialiseError{"integer beyond exact double precision - use a bigint", path}
+			}
 			return strconv.FormatInt(i, 10), nil
 		}
 		if f, err := strconv.ParseFloat(n.String(), 64); nil == err {

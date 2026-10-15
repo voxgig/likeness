@@ -67,6 +67,7 @@ export const slug = 'obsidian-vault-only'
 export const baseUrl = 'http://127.0.0.1:27123'
 
 const NS = 'obsidian'
+const NOTE_JSON = 'application/vnd.olrapi.note+json'
 const FALLBACK_APIKEY = 'obsidian-local-rest-api-key-0001'
 const NUL = String.fromCharCode(0)
 
@@ -478,14 +479,17 @@ export default async function routes (app, opts) {
       return sendErr(reply, 404, 40403, 'File does not exist: ' + id)
     }
 
-    // QUIRK: no Accept header is ever sent (prepareHeaders clones
-    // options.headers only), so the definition's content-negotiated variants
-    // (application/vnd.olrapi.note+json, .document-map+json, text/html) are
-    // unreachable. One default representation must be chosen and it MUST be
-    // JSON: the definition's declared text/markdown default throws
-    // "Unexpected token '#' ... is not valid JSON" inside the SDK.
+    // As the plugin negotiates: the note's JSON only for exactly the note+json
+    // media type, and otherwise the file's own Markdown. The SDK sends the
+    // caller's Accept when the client's options name one and its point's
+    // `application/json` when they do not, so a client that forgets the
+    // note+json Accept gets Markdown, and the SDK fails to parse it, as it
+    // would against the plugin.
     reply.header('etag', note.etag)
-    return reply.code(200).type('application/json; charset=utf-8').send(noteJson(id, note))
+    if (NOTE_JSON === String(req.headers.accept || '').trim()) {
+      return reply.code(200).type(NOTE_JSON).send(JSON.stringify(noteJson(id, note)))
+    }
+    return reply.code(200).type('text/markdown; charset=utf-8').send(note.content)
   }
 
   app.get('/vault', handleVaultGet)

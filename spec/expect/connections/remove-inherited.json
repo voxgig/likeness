@@ -1,0 +1,1 @@
+{"cmd":["sources","remove"],"code":"invalid-argument","data":null,"error":{"message":"connection \"obsidian\" is the default profile's, which \"work\" inherits","remedy":"change it under the default profile, with VOXGIG_STATION_PROFILE unset"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

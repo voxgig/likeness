@@ -1,0 +1,27 @@
+{
+  "likeness": 1,
+  "note": "accounts, by station profile",
+  "profiles": {
+    "work": {
+      "instances": {
+        "joplin": {
+          "account": "office"
+        },
+        "obsidian": {
+          "account": "work-vault"
+        }
+      }
+    },
+    "2026": {},
+    "default": {
+      "instances": {
+        "joplin": {
+          "account": "local"
+        },
+        "obsidian": {
+          "account": "8dc726dfc2eecbf2"
+        }
+      }
+    }
+  }
+}

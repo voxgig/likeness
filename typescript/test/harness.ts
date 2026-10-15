@@ -1,10 +1,13 @@
 
-import { readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { openvault } from '@voxgig/sekreto/plugins/minivault'
 
 import { serialise, stripParityExceptions } from '../src/envelope.js'
-import { run, PORT, type Ctx, type Connection } from '../src/core.js'
+import { run, profileOf, PORT, type Ctx } from '../src/core.js'
+import { loadConfig } from '../src/config.js'
 import type { Call } from '../src/calls.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -12,9 +15,10 @@ export const ROOT = join(here, '..', '..', '..')
 
 export type CorpusConn = {
   instance: string
-  source: string
   account: string
   net?: Record<string, unknown>
+  fixture?: string
+  block?: Record<string, unknown>
 }
 
 export type CliEntry = {
@@ -27,13 +31,31 @@ export type CliEntry = {
     seed: number
     env?: Record<string, string>
     path?: { path: string, port: string, version: string }[]
+    files?: Record<string, string>
+    secrets?: unknown
+    stdin?: string
+    tty?: string[]
+    presents?: Record<string, string>
   }
   out: {
     exit: number
     stdout: string
     stderr?: string
     calls: Call[]
+    prompts?: string[]
+    vault?: VaultState
+    files?: Record<string, string>
+    absent?: string[]
   }
+}
+
+export type VaultState = {
+  file?: string
+  key?: string
+  passphrase: string
+  names: string[]
+  keys?: { key: string, master: boolean, write: boolean, grants: string[] }[]
+  values?: Record<string, string>
 }
 
 export type UnitEntry = {
@@ -56,36 +78,144 @@ export function entries<T> (name: string): T[] {
   return out
 }
 
-export function buildCtx (e: CliEntry): Ctx {
-  const seed = JSON.parse(
-    readFileSync(join(ROOT, 'fixtures', 'sources', e.ctx.fixture, 'seed.json'), 'utf8'))
-  delete seed._doc
+const homes: string[] = []
+process.on('exit', () => { for (const h of homes) rmSync(h, { recursive: true, force: true }) })
 
+// The prompts each run showed, for the entry to compare.
+export const PROMPTS = new WeakMap<Ctx, string[]>()
+
+function seedOf (name: string): Record<string, unknown> {
+  const seed = JSON.parse(readFileSync(join(ROOT, 'fixtures', 'sources', name, 'seed.json'), 'utf8'))
+  delete seed._doc
+  return seed
+}
+
+// A file the entry names: under the home with `~/`, else in the configuration directory.
+export function located (ctx: Ctx, name: string): string {
+  return name.startsWith('~/') ? join(ctx.home as string, name.slice(2)) : join(ctx.dir as string, name)
+}
+
+const CONFIG_FILES = ['station.json', 'likeness.json']
+
+// Each connection becomes a declared station instance, its block the one the
+// entry gives, its account the likeness.json entry beside it, and its seed,
+// its own or the entry's, the SDK's offline transport. Every run gets a home of
+// its own, holding the entry's files; an entry that brings station.json or
+// likeness.json is configured by them alone, read as the argv shell reads them.
+export function buildCtx (e: CliEntry): Ctx {
+  const sdk: Record<string, unknown> = {}
+  const accounts: Record<string, string> = {}
   const fixture: Record<string, unknown> = {}
-  const connections: Connection[] = []
   for (const c of e.ctx.connections) {
-    connections.push({ instance: c.instance, source: c.source, account: c.account })
-    const own = JSON.parse(JSON.stringify(seed))
+    sdk[c.instance] = JSON.parse(JSON.stringify(c.block ?? {}))
+    accounts[c.instance] = c.account
+    const own = seedOf(c.fixture ?? e.ctx.fixture)
     if (undefined !== c.net) own.net = c.net
     fixture[c.instance] = own
   }
 
-  return {
+  const home = mkdtempSync(join(tmpdir(), 'likeness-'))
+  homes.push(home)
+  const dir = join(home, '.config', 'likeness')
+  mkdirSync(dir, { recursive: true })
+  for (const [name, src] of Object.entries(e.ctx.files ?? {})) {
+    const dst = name.startsWith('~/') ? join(home, name.slice(2)) : join(dir, name)
+    mkdirSync(dirname(dst), { recursive: true })
+    copyFileSync(join(ROOT, src), dst)
+  }
+
+  const profile: Record<string, unknown> = { sdk }
+  if (undefined !== e.ctx.secrets) profile.secrets = e.ctx.secrets
+  let station: unknown = { station: 1, profiles: { default: profile } }
+  let read = accounts
+  if (Object.keys(e.ctx.files ?? {}).some(name => CONFIG_FILES.includes(name))) {
+    if (0 < e.ctx.connections.length || undefined !== e.ctx.secrets) {
+      throw new Error(e.id + ': an entry that brings its configuration declares no connections or secrets')
+    }
+    const loaded = loadConfig(join(dir, 'station.json'), profileOf(e.ctx.env))
+    station = loaded.station
+    read = loaded.accounts
+  }
+
+  const presents = e.ctx.presents ?? {}
+  const ctx: Ctx = {
     argv: e.args,
     env: e.ctx.env,
     clock: e.ctx.clock,
     seed: e.ctx.seed,
-    connections,
+    station,
+    accounts: read,
     fixture,
     // Absent stays absent: an entry that declares no PATH is asserting what
     // `which` does when it was told about nothing, which is a different case
     // from being told about an empty list.
     path: e.ctx.path,
+    home,
+    dir,
+    config: join(dir, 'station.json'),
+    stdin: async () => e.ctx.stdin ?? '',
+    // Keyed by host:port, the port written out even where it is the scheme's.
+    presented: async (base: string) => {
+      const url = new URL(base)
+      const at = url.hostname + ':' + ('' === url.port ? '443' : url.port)
+      if (!Object.hasOwn(presents, at)) throw new Error('nothing answers at ' + at)
+      return presents[at]
+    },
+  }
+
+  if (undefined !== e.ctx.tty) {
+    const typed = [...e.ctx.tty]
+    const shown: string[] = []
+    ctx.tty = true
+    ctx.prompt = async (label: string) => { shown.push(label); return typed.shift() }
+    PROMPTS.set(ctx, shown)
+  }
+  return ctx
+}
+
+function vaultFailures (e: CliEntry, ctx: Ctx, fail: (s: string) => void): void {
+  const want = e.out.vault
+  if (undefined === want) return
+  const file = located(ctx, want.file ?? 'likeness.skmv')
+  const vault = openvault({ file, key: want.key ?? 'master', passphrase: want.passphrase })
+  let names: string[]
+  try {
+    names = vault.list()
+  }
+  catch (err) {
+    fail('the vault does not open afterwards: ' + String((err as Error).message))
+    return
+  }
+  if (JSON.stringify(names) !== JSON.stringify(want.names)) {
+    fail('vault names ' + JSON.stringify(names) + ', expected ' + JSON.stringify(want.names))
+  }
+  if (undefined !== want.keys) {
+    const keys = vault.keys().sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+    if (JSON.stringify(keys) !== JSON.stringify(want.keys.map(k =>
+      ({ key: k.key, master: k.master, write: k.write, grants: k.grants })))) {
+      fail('vault keys ' + JSON.stringify(keys) + ', expected ' + JSON.stringify(want.keys))
+    }
+  }
+  for (const [name, value] of Object.entries(want.values ?? {})) {
+    if (vault.get(name) !== value) fail('vault value of ' + name + ' is not the one expected')
   }
 }
 
 function expected (path: string): string {
   return readFileSync(join(ROOT, path), 'utf8')
+}
+
+// The configuration directory afterwards: each named file byte for byte, and
+// the absent ones not there.
+function fileFailures (e: CliEntry, ctx: Ctx, fail: (s: string) => void): void {
+  for (const [name, want] of Object.entries(e.out.files ?? {})) {
+    const at = located(ctx, name)
+    if (!existsSync(at)) fail(name + ' is not there afterwards, and ' + want + ' says what it holds')
+    else if (readFileSync(at, 'utf8') !== expected(want)) fail(name + ' differs from ' + want)
+  }
+  for (const name of e.out.absent ?? []) {
+    if (existsSync(located(ctx, name))) fail(name + ' is there afterwards, and the entry says it is not')
+  }
 }
 
 function checkStdout (e: CliEntry, actual: string, fail: (s: string) => void): void {
@@ -154,7 +284,8 @@ export async function check (e: CliEntry): Promise<string[]> {
   const failures: string[] = []
   const fail = (s: string): void => { failures.push(s) }
 
-  const r = await run(buildCtx(e))
+  const ctx = buildCtx(e)
+  const r = await run(ctx)
 
   if (r.exit !== e.out.exit) fail('exit ' + r.exit + ', expected ' + e.out.exit)
   checkStdout(e, r.stdout, fail)
@@ -168,5 +299,12 @@ export async function check (e: CliEntry): Promise<string[]> {
     fail('calls ' + JSON.stringify(r.calls) + ', expected ' + JSON.stringify(e.out.calls))
   }
 
+  const prompts = PROMPTS.get(ctx) ?? []
+  if (JSON.stringify(prompts) !== JSON.stringify(e.out.prompts ?? [])) {
+    fail('prompts ' + JSON.stringify(prompts) + ', expected ' + JSON.stringify(e.out.prompts ?? []))
+  }
+
+  vaultFailures(e, ctx, fail)
+  fileFailures(e, ctx, fail)
   return failures
 }

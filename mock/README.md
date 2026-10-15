@@ -33,9 +33,15 @@ const port = app.server.address().port
 await app.close()
 ```
 
-`buildServer(opts)` takes `{ store, logger, sources, clockStart, clockStep }`.
-`sources` mounts a subset (`{ sources: ['joplin'] }`). The app is decorated with
-`app.store` and `app.likeness.sources`.
+`buildServer(opts)` takes `{ store, logger, sources, clockStart, clockStep, https, credentials }`.
+`sources` mounts a subset (`{ sources: ['joplin'] }`). `https` (`{ key, cert }`)
+serves TLS with that certificate instead of plain HTTP, which is how a suite
+reaches the Obsidian plugin's HTTPS port with a certificate it pins.
+`credentials` (`{ joplin: 'tok' }`) makes a source accept that token in place of
+its seed's, and the request ring judges `auth` against it: that is how
+`make matrix` sends tokens it made for the run, Joplin's holding characters a
+query must percent-encode. The app is decorated with `app.store` and
+`app.likeness.sources`.
 
 ## Sources
 
@@ -62,7 +68,8 @@ Two prefix notes worth knowing:
 
 Credentials are not invented here — each one is read out of that source's
 `fixtures/sources/<slug>/seed.json` and is restated in `store.js` only so that
-`/__health` and a test harness agree with the seed.
+`/__health` and a test harness agree with the seed. A caller's `credentials`
+replace them for the server it builds.
 
 ## Control plane
 
@@ -105,18 +112,30 @@ The request ring — what a test asserts against when it needs to know *which*
 calls were made, in order, not merely that the end state looks right.
 
 ```json
-[ { "source": "obsidian", "method": "GET", "url": "/obsidian/vault/mydocument.md?id=mydocument.md",
-    "auth": "ok", "status": 200 } ]
+[ { "source": "obsidian", "method": "GET", "url": "/obsidian/vault/welcome.md",
+    "auth": "ok", "status": 200,
+    "headers": { "accept": "application/vnd.olrapi.note+json", "accept-encoding": "gzip, deflate",
+                 "accept-language": "*", "connection": "keep-alive", "content-type": "application/json",
+                 "host": "127.0.0.1:7777", "sec-fetch-mode": "cors",
+                 "user-agent": "Mozilla/5.0 (compatible; ObsidianSDK/1.0)" } } ]
 ```
 
 - `?source=joplin` filters to one source.
 - `DELETE /__requests` clears it without reseeding.
 - It is a **ring**, capped at 500 rows (`makeStore({ requestMax })`); a long soak
   cannot grow it without bound.
+- `headers` are the request's own, lowercased and sorted, **without
+  `authorization` and `cookie`**: whether the credential was right is `auth`,
+  and its value is never recorded.
 - `auth` is `'ok' | 'bad'`, computed by mirroring each source's own credential
   rule. It is *not* redundant with `status`: **Linear answers HTTP 200 to a bad
   credential**, with the failure in the GraphQL `errors` array, so `status` alone
   cannot tell an authenticated call from a rejected one.
+- `graphql`, on a Linear row, is `{ operation, root }`: the operation the
+  document names, and the root fields it selects. The mock dispatches on the
+  name, so a document named `IssueLoad` that selects `attachmentIssue` is answered
+  as a load; only `root` shows which field the client asked for. A body with no
+  document records `null`.
 
 ## Determinism
 
@@ -178,12 +197,12 @@ Assert on the page, or raise `pageSize` in the seed.
 | SDK call | method | path | notes |
 |---|---|---|---|
 | `Tag().list()` | GET | `/tags` | `{"tags":[{name,count}]}`, counts from frontmatter + inline `#tags` |
-| `Vault().list()` | GET | `/vault` | `{"files":[...]}`, directories suffixed `/` |
-| `Vault().load()` | GET | `/vault/{id}?id={id}` | file point: NoteJson with all 8 required keys |
-| `Vault().load()` | GET | `/vault/{id}?id={id}` | directory point: **discriminated only on the decoded id ending in `/`** |
+| `Vault().list()` | GET | `/vault/` | `{"files":[...]}`, directories suffixed `/` |
+| `Vault().load()` | GET | `/vault/{id}` | file point: NoteJson with all 8 required keys when `Accept` is exactly `application/vnd.olrapi.note+json`, else the file's Markdown, as the plugin negotiates |
+| `Vault().load()` | GET | `/vault/{id}` | directory point: **discriminated only on the decoded id ending in `/`** |
 | `Vault().create()` | POST | `/vault/{id}` | appends to an existing note, creates a missing one; `204`, empty body |
 | `Vault().update()` | PUT | `/vault/{id}` | replaces the file, reparses frontmatter; `204`, empty body |
-| `Vault().remove()` | DELETE | `/vault/{id}?id={id}&permanent={true\|false}` | anything but `"true"` trashes rather than deletes |
+| `Vault().remove()` | DELETE | `/vault/{id}?permanent={true\|false}` | anything but `"true"` trashes rather than deletes |
 | `client.direct()` | PATCH | `/vault/{id}` | full `PatchInstruction` support; not on the entity surface |
 
 Path ids are `encodeURIComponent`-encoded **including slashes**, so
@@ -208,6 +227,14 @@ definition declares no `401` or `403` anywhere.
 | `Database().create()` | POST | `/databases` |
 | `Database().load()` | GET | `/databases/{id}` |
 | `Database().update()` | PATCH | `/databases/{id}` |
+
+Every request must carry a `Notion-Version` header, as the real API demands:
+without one the mock answers `400` with code `missing_version`, and with a value
+that is not a `YYYY-MM-DD` date, `400` with `validation_error`. The definition
+declares no such header, so the generated client sends one only when its
+options' `headers` name it — likeness pins it per connection in `station.json`.
+The credential is checked first. The seeded pages carry the `url` every real
+page object has.
 
 Bodies arrive **pretty-printed** (`JSON.stringify(v, null, 2)`) and `PATCH`
 carries `id` in the body even though the schema forbids it — the path id wins.

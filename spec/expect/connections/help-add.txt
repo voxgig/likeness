@@ -1,0 +1,12 @@
+likeness sources add [--account ID] [--base URL] [--fingerprint FP] [--notion-version DATE] [--plain-http] [--secret NAME]
+
+add a connection to --source API, tagged --instance TAG; its token goes to the vault first
+
+  --account ID           the source's own id for the account, which every note's identity derives from
+  --base URL             where the application answers, if not at its usual address (default joplin http://127.0.0.1:41184, obsidian https://127.0.0.1:27124)
+  --fingerprint FP       the certificate to pin, sha256:<hex>, held to the one presented (obsidian only)
+  --notion-version DATE  the API version every request carries (notion only; default 2022-06-28)
+  --plain-http           reach an http base with TLS off (obsidian only)
+  --secret NAME          a token already in the vault, rather than one typed now
+
+global flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME

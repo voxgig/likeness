@@ -1,6 +1,443 @@
 {
   "primary": {
     "unit": {
+      "args": {
+        "set": [
+          {
+            "fn": "parseArgv",
+            "id": "args/flags-anywhere-after-the-command",
+            "in": [
+              "list",
+              "--limit",
+              "2",
+              "--json"
+            ],
+            "out": {
+              "args": [],
+              "command": "list",
+              "flags": {
+                "json": true,
+                "limit": 2
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/equals-form",
+            "in": [
+              "list",
+              "--limit=2"
+            ],
+            "out": {
+              "args": [],
+              "command": "list",
+              "flags": {
+                "limit": 2
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/selector-terms-accumulate",
+            "in": [
+              "list",
+              "title:a",
+              "--json",
+              "tag:b"
+            ],
+            "out": {
+              "args": [
+                "title:a",
+                "tag:b"
+              ],
+              "command": "list",
+              "flags": {
+                "json": true
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/double-dash-ends-flags",
+            "in": [
+              "list",
+              "--json",
+              "--",
+              "-title:x",
+              "--raw"
+            ],
+            "out": {
+              "args": [
+                "-title:x",
+                "--raw"
+              ],
+              "command": "list",
+              "flags": {
+                "json": true
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/negated-boolean",
+            "in": [
+              "list",
+              "--no-raw"
+            ],
+            "out": {
+              "args": [],
+              "command": "list",
+              "flags": {
+                "raw": false
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/repeatable-accumulates-in-order",
+            "in": [
+              "list",
+              "--instance",
+              "joplin$spare",
+              "--instance",
+              "joplin"
+            ],
+            "out": {
+              "args": [],
+              "command": "list",
+              "flags": {
+                "instance": [
+                  "joplin$spare",
+                  "joplin"
+                ]
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/help-flag-first-is-help",
+            "in": [
+              "--help"
+            ],
+            "out": {
+              "args": [],
+              "command": "help",
+              "flags": {}
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/short-help-takes-a-command",
+            "in": [
+              "-h",
+              "list"
+            ],
+            "out": {
+              "args": [
+                "list"
+              ],
+              "command": "help",
+              "flags": {}
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/version-flag-first-is-version",
+            "in": [
+              "--version",
+              "--json"
+            ],
+            "out": {
+              "args": [],
+              "command": "version",
+              "flags": {
+                "json": true
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/a-command-being-built-reads-its-globals",
+            "in": [
+              "search",
+              "anything",
+              "--bogus",
+              "-x",
+              "--json"
+            ],
+            "out": {
+              "args": [],
+              "command": "search",
+              "flags": {
+                "json": true
+              }
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/refs-accumulate",
+            "in": [
+              "get",
+              "joplin:a",
+              "joplin:b"
+            ],
+            "out": {
+              "args": [
+                "joplin:a",
+                "joplin:b"
+              ],
+              "command": "get",
+              "flags": {}
+            }
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/stdin-dash-is-a-positional",
+            "in": [
+              "list",
+              "-"
+            ],
+            "out": {
+              "args": [
+                "-"
+              ],
+              "command": "list",
+              "flags": {}
+            }
+          },
+          {
+            "err": "no command given",
+            "fn": "parseArgv",
+            "id": "args/no-command",
+            "in": []
+          },
+          {
+            "err": "the command comes first, and --json is a flag",
+            "fn": "parseArgv",
+            "id": "args/flag-before-the-command",
+            "in": [
+              "--json",
+              "list"
+            ]
+          },
+          {
+            "err": "no such command: nosuch",
+            "fn": "parseArgv",
+            "id": "args/unknown-command",
+            "in": [
+              "nosuch"
+            ]
+          },
+          {
+            "err": "`list` has no flag --bogus",
+            "fn": "parseArgv",
+            "id": "args/undeclared-flag",
+            "in": [
+              "list",
+              "--bogus"
+            ]
+          },
+          {
+            "err": "`list` has no flag --constructor",
+            "fn": "parseArgv",
+            "id": "args/prototype-name-is-not-a-flag",
+            "in": [
+              "list",
+              "--constructor"
+            ]
+          },
+          {
+            "err": "`list` has no flag --no-limit",
+            "fn": "parseArgv",
+            "id": "args/negating-a-valued-flag",
+            "in": [
+              "list",
+              "--no-limit"
+            ]
+          },
+          {
+            "err": "-title:x begins with - and is not a flag; a positional that begins with - must follow --",
+            "fn": "parseArgv",
+            "id": "args/dash-positional-must-follow-double-dash",
+            "in": [
+              "list",
+              "-title:x"
+            ]
+          },
+          {
+            "err": "--raw takes no value",
+            "fn": "parseArgv",
+            "id": "args/boolean-takes-no-value",
+            "in": [
+              "list",
+              "--raw=yes"
+            ]
+          },
+          {
+            "err": "--limit needs a value",
+            "fn": "parseArgv",
+            "id": "args/value-missing-at-the-end",
+            "in": [
+              "list",
+              "--limit"
+            ]
+          },
+          {
+            "err": "--limit needs a value",
+            "fn": "parseArgv",
+            "id": "args/value-missing-before-a-flag",
+            "in": [
+              "list",
+              "--limit",
+              "--json"
+            ]
+          },
+          {
+            "err": "--limit takes an integer from 1 to 999999999, not \"2.0\"",
+            "fn": "parseArgv",
+            "id": "args/integer-not-coerced-decimal",
+            "in": [
+              "list",
+              "--limit",
+              "2.0"
+            ]
+          },
+          {
+            "err": "--limit takes an integer from 1 to 999999999, not \"0x2\"",
+            "fn": "parseArgv",
+            "id": "args/integer-not-coerced-hex",
+            "in": [
+              "list",
+              "--limit=0x2"
+            ]
+          },
+          {
+            "err": "--limit takes an integer from 1 to 999999999, not \"0\"",
+            "fn": "parseArgv",
+            "id": "args/integer-below-the-range",
+            "in": [
+              "list",
+              "--limit",
+              "0"
+            ]
+          },
+          {
+            "err": "not \"1000000000\"",
+            "fn": "parseArgv",
+            "id": "args/integer-above-the-range",
+            "in": [
+              "list",
+              "--limit",
+              "1000000000"
+            ]
+          },
+          {
+            "err": "not \"99999999999999999999\"",
+            "fn": "parseArgv",
+            "id": "args/integer-beyond-any-host-number",
+            "in": [
+              "list",
+              "--limit",
+              "99999999999999999999"
+            ]
+          },
+          {
+            "err": "--limit was given twice",
+            "fn": "parseArgv",
+            "id": "args/given-twice",
+            "in": [
+              "list",
+              "--limit",
+              "2",
+              "--limit",
+              "3"
+            ]
+          },
+          {
+            "err": "--json was given twice",
+            "fn": "parseArgv",
+            "id": "args/boolean-given-twice",
+            "in": [
+              "list",
+              "--json",
+              "--no-json"
+            ]
+          },
+          {
+            "err": "--instance takes an instance ref (api or api$tag), not \"Joplin\"",
+            "fn": "parseArgv",
+            "id": "args/instance-is-a-ref",
+            "in": [
+              "list",
+              "--instance",
+              "Joplin"
+            ]
+          },
+          {
+            "err": "--sort takes a name ([a-z][a-z0-9-]*), not \"Title\"",
+            "fn": "parseArgv",
+            "id": "args/name-is-lowercase",
+            "in": [
+              "list",
+              "--sort",
+              "Title"
+            ]
+          },
+          {
+            "err": "--config takes a path, not \"\"",
+            "fn": "parseArgv",
+            "id": "args/empty-path",
+            "in": [
+              "list",
+              "--config="
+            ]
+          },
+          {
+            "err": "`get` needs <ref>",
+            "fn": "parseArgv",
+            "id": "args/required-positional-missing",
+            "in": [
+              "get",
+              "--json"
+            ]
+          },
+          {
+            "err": "`version` does not take the argument \"extra\"",
+            "fn": "parseArgv",
+            "id": "args/surplus-positional",
+            "in": [
+              "version",
+              "extra"
+            ]
+          },
+          {
+            "fn": "parseArgv",
+            "id": "args/help-takes-the-words-of-a-command",
+            "in": [
+              "help",
+              "secrets",
+              "set"
+            ],
+            "out": {
+              "args": [
+                "secrets",
+                "set"
+              ],
+              "command": "help",
+              "flags": {}
+            }
+          },
+          {
+            "err": "<command> takes a name ([a-z][a-z0-9-]*), not \"LIST\"",
+            "fn": "parseArgv",
+            "id": "args/help-command-is-a-name",
+            "in": [
+              "help",
+              "LIST"
+            ]
+          }
+        ]
+      },
       "config": {
         "set": [
           {
@@ -49,34 +486,279 @@
             }
           },
           {
-            "err": "is not valid JSON",
-            "fn": "parseStation",
-            "id": "config/station-not-json",
-            "in": "{not json"
+            "fn": "takeConfigOption",
+            "id": "config/before-the-command-is-left",
+            "in": [
+              "--config",
+              "/x",
+              "list"
+            ],
+            "out": {
+              "rest": [
+                "--config",
+                "/x",
+                "list"
+              ]
+            }
           },
           {
-            "fn": "parseStation",
-            "id": "config/station-connections-in-name-order",
-            "in": "{\"sdk\":{\"zed\":{\"api\":\"joplin\",\"account\":\"z\"},\"abe\":{\"api\":\"joplin\",\"org\":\"a\",\"base\":\"http://x\"}}}",
+            "fn": "takeConfigOption",
+            "id": "config/after-double-dash-is-left",
+            "in": [
+              "list",
+              "--",
+              "--config",
+              "/x"
+            ],
+            "out": {
+              "rest": [
+                "list",
+                "--",
+                "--config",
+                "/x"
+              ]
+            }
+          },
+          {
+            "fn": "takeConfigOption",
+            "id": "config/twice-is-left-for-the-grammar",
+            "in": [
+              "list",
+              "--config",
+              "/a",
+              "--config=/b"
+            ],
+            "out": {
+              "rest": [
+                "list",
+                "--config",
+                "/a",
+                "--config=/b"
+              ]
+            }
+          },
+          {
+            "fn": "takeConfigOption",
+            "id": "config/no-value-is-left",
+            "in": [
+              "list",
+              "--config"
+            ],
+            "out": {
+              "rest": [
+                "list",
+                "--config"
+              ]
+            }
+          },
+          {
+            "fn": "takeConfigOption",
+            "id": "config/flag-shaped-value-is-left",
+            "in": [
+              "list",
+              "--config",
+              "--json"
+            ],
+            "out": {
+              "rest": [
+                "list",
+                "--config",
+                "--json"
+              ]
+            }
+          },
+          {
+            "err": "station.json is not valid JSON",
+            "fn": "connections",
+            "id": "config/station-not-json",
+            "in": {
+              "likeness": "{}",
+              "station": "{not json"
+            }
+          },
+          {
+            "err": "station.json: station_config_invalid",
+            "fn": "connections",
+            "id": "config/station-shape-invalid",
+            "in": {
+              "likeness": "{}",
+              "station": "{\"station\":2}"
+            }
+          },
+          {
+            "err": "station.json is not a JSON object",
+            "fn": "connections",
+            "id": "config/station-not-an-object",
+            "in": {
+              "likeness": "{}",
+              "station": "[]"
+            }
+          },
+          {
+            "err": "station.json: station_secret_collision",
+            "fn": "connections",
+            "id": "config/station-refused-for-a-shared-secret",
+            "in": {
+              "likeness": "{}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"notes-a\":{},\"notes$a\":{}}}}}"
+            }
+          },
+          {
+            "err": "likeness.json is not a JSON object",
+            "fn": "connections",
+            "id": "config/likeness-not-an-object",
+            "in": {
+              "likeness": "1",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+            }
+          },
+          {
+            "err": "likeness.json is not valid JSON",
+            "fn": "connections",
+            "id": "config/likeness-not-json",
+            "in": {
+              "likeness": "{not json",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+            }
+          },
+          {
+            "fn": "connections",
+            "id": "config/connections-in-name-order",
+            "in": {
+              "likeness": "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin$zed\":{\"account\":\"z\"},\"joplin\":{\"account\":\"local\"},\"joplin$abe\":{\"account\":\"a\"}}}}}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin$zed\":{},\"joplin\":{},\"joplin$abe\":{\"base\":\"http://x\"}}}}}"
+            },
             "out": [
               {
+                "account": "local",
+                "instance": "joplin",
+                "source": "joplin"
+              },
+              {
                 "account": "a",
-                "base": "http://x",
-                "instance": "abe",
+                "instance": "joplin$abe",
                 "source": "joplin"
               },
               {
                 "account": "z",
-                "instance": "zed",
+                "instance": "joplin$zed",
                 "source": "joplin"
               }
             ]
           },
           {
-            "err": "has no `account` or `org`",
-            "fn": "parseStation",
-            "id": "config/station-without-account",
-            "in": "{\"sdk\":{\"jot\":{\"api\":\"joplin\"}}}"
+            "fn": "connections",
+            "id": "config/inactive-instance-omitted",
+            "in": {
+              "likeness": "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin$on\":{\"account\":\"on\"}}}}}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{\"active\":false},\"joplin$on\":{}}}}}"
+            },
+            "out": [
+              {
+                "account": "on",
+                "instance": "joplin$on",
+                "source": "joplin"
+              }
+            ]
+          },
+          {
+            "err": "instance \"joplin\" has no account in likeness.json under profile \"default\"",
+            "fn": "connections",
+            "id": "config/instance-without-account",
+            "in": {
+              "likeness": "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{}}}}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+            }
+          },
+          {
+            "fn": "connections",
+            "id": "config/account-follows-the-profile",
+            "in": {
+              "likeness": "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":\"home\"}}},\"work\":{\"instances\":{\"joplin\":{\"account\":\"office\"}}}}}",
+              "profile": "work",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}},\"work\":{\"sdk\":{\"joplin\":{\"base\":\"http://127.0.0.1:41185\"}}}}}"
+            },
+            "out": [
+              {
+                "account": "office",
+                "instance": "joplin",
+                "source": "joplin"
+              }
+            ]
+          },
+          {
+            "err": "instance \"joplin\" has no account in likeness.json under profile \"work\"",
+            "fn": "connections",
+            "id": "config/profile-inherits-no-account",
+            "in": {
+              "likeness": "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":\"home\"}}}}}",
+              "profile": "work",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}},\"work\":{}}}"
+            }
+          },
+          {
+            "err": "instance \"joplin\" has no account in likeness.json under profile \"0\"",
+            "fn": "connections",
+            "id": "config/profiles-read-only-as-an-object",
+            "in": {
+              "likeness": "{\"likeness\":1,\"profiles\":[{\"instances\":{\"joplin\":{\"account\":\"zero\"}}}]}",
+              "profile": "0",
+              "station": "{\"station\":1,\"profiles\":{\"0\":{\"sdk\":{\"joplin\":{}}}}}"
+            }
+          },
+          {
+            "err": "station.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/station-nested-past-the-limit",
+            "in": {
+              "likeness": "{}",
+              "station": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"
+            }
+          },
+          {
+            "err": "likeness.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/likeness-nested-past-the-limit",
+            "in": {
+              "likeness": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            }
+          },
+          {
+            "fn": "connections",
+            "id": "config/nested-to-the-limit-is-read",
+            "in": {
+              "likeness": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            },
+            "out": []
+          },
+          {
+            "err": "likeness.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/objects-and-arrays-nest-together",
+            "in": {
+              "likeness": "{\"a\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":0}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            }
+          },
+          {
+            "err": "station.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/nesting-refused-before-the-syntax",
+            "in": {
+              "likeness": "{}",
+              "station": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+            }
+          },
+          {
+            "fn": "connections",
+            "id": "config/brackets-in-a-string-are-not-nesting",
+            "in": {
+              "likeness": "{\"a\":\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            },
+            "out": []
           }
         ]
       },
@@ -158,6 +840,14 @@
               "n": 9007199254740991
             },
             "out": "{\"n\":9007199254740991}\n"
+          },
+          {
+            "err": "integer beyond exact double precision",
+            "fn": "serialise",
+            "id": "envelope/integer-beyond-a-double-is-refused",
+            "in": {
+              "n": 9007199254740992
+            }
           },
           {
             "fn": "serialise",
@@ -262,9 +952,1484 @@
           },
           {
             "fn": "rfc3339",
+            "id": "identity/rfc3339-first-four-digit-year",
+            "in": -62167219200000,
+            "out": "0000-01-01T00:00:00Z"
+          },
+          {
+            "fn": "rfc3339",
+            "id": "identity/rfc3339-last-four-digit-year",
+            "in": 253402300799999,
+            "out": "9999-12-31T23:59:59Z"
+          },
+          {
+            "err": "outside the years 0000 to 9999",
+            "fn": "rfc3339",
+            "id": "identity/rfc3339-before-year-zero",
+            "in": -62167219200001
+          },
+          {
+            "err": "outside the years 0000 to 9999",
+            "fn": "rfc3339",
+            "id": "identity/rfc3339-after-year-9999",
+            "in": 253402300800000
+          },
+          {
+            "fn": "rfc3339",
             "id": "identity/rfc3339-second-precision",
             "in": 1758008460999,
             "out": "2025-09-16T07:41:00Z"
+          }
+        ]
+      },
+      "notion": {
+        "set": [
+          {
+            "fn": "notionVersion",
+            "id": "notion/version-pinned",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "notion-version": "2022-06-28"
+                  }
+                }
+              },
+              "instance": "notion"
+            },
+            "out": {
+              "version": "2022-06-28"
+            }
+          },
+          {
+            "fn": "notionVersion",
+            "id": "notion/version-header-named-in-any-case",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "Notion-Version": "2025-09-03"
+                  }
+                }
+              },
+              "instance": "notion$work"
+            },
+            "out": {
+              "version": "2025-09-03"
+            }
+          },
+          {
+            "fn": "notionVersion",
+            "id": "notion/version-beside-a-base",
+            "in": {
+              "block": {
+                "base": "http://127.0.0.1:7777/notion/v1",
+                "options": {
+                  "headers": {
+                    "notion-version": "2022-06-28"
+                  }
+                }
+              },
+              "instance": "notion"
+            },
+            "out": {
+              "version": "2022-06-28"
+            }
+          },
+          {
+            "err": "pins no Notion-Version",
+            "fn": "notionVersion",
+            "id": "notion/version-missing-is-refused",
+            "in": {
+              "block": {},
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "pins no Notion-Version",
+            "fn": "notionVersion",
+            "id": "notion/version-in-no-header-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {}
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "pins a Notion-Version that is not a date",
+            "fn": "notionVersion",
+            "id": "notion/version-not-a-date-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "notion-version": "latest"
+                  }
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "pins a Notion-Version that is not a date",
+            "fn": "notionVersion",
+            "id": "notion/version-not-text-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "notion-version": 20220628
+                  }
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "pins Notion-Version more than once",
+            "fn": "notionVersion",
+            "id": "notion/version-twice-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "Notion-Version": "2022-06-28",
+                    "notion-version": "2022-06-28"
+                  }
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "has a header likeness does not send: \"x-trace\"",
+            "fn": "notionVersion",
+            "id": "notion/version-beside-another-header-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "notion-version": "2022-06-28",
+                    "x-trace": "1"
+                  }
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "has an option likeness does not read: \"timeout\"",
+            "fn": "notionVersion",
+            "id": "notion/version-beside-another-option-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "notion-version": "2022-06-28"
+                  },
+                  "timeout": 5
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "has options that are not a map",
+            "fn": "notionVersion",
+            "id": "notion/version-options-not-a-map-are-refused",
+            "in": {
+              "block": {
+                "options": [
+                  "headers"
+                ]
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "has headers that are not a map",
+            "fn": "notionVersion",
+            "id": "notion/version-headers-not-a-map-are-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": "notion-version: 2022-06-28"
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-is-the-title-property",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": [
+                  {
+                    "plain_text": "Launch checklist",
+                    "type": "text"
+                  }
+                ],
+                "type": "title"
+              },
+              "Status": {
+                "id": "V%3D%7Ck",
+                "select": {
+                  "name": "Doing"
+                },
+                "type": "select"
+              }
+            },
+            "out": "Launch checklist"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-joins-its-rich-text",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": [
+                  {
+                    "plain_text": "Retention "
+                  },
+                  {
+                    "plain_text": "policy"
+                  }
+                ],
+                "type": "title"
+              }
+            },
+            "out": "Retention policy"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-parts-of-every-kind",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": [
+                  {
+                    "plain_text": "Part "
+                  },
+                  {
+                    "plain_text": 42
+                  },
+                  {
+                    "plain_text": null
+                  },
+                  {
+                    "text": {
+                      "content": "no plain text"
+                    }
+                  },
+                  "bare",
+                  {
+                    "plain_text": {
+                      "x": [
+                        1,
+                        2
+                      ]
+                    }
+                  }
+                ],
+                "type": "title"
+              }
+            },
+            "out": "Part 42bare{\"x\":[1,2]}"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-not-rich-text-is-its-text",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": "A title that is not rich text",
+                "type": "title"
+              }
+            },
+            "out": "A title that is not rich text"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-a-number-is-its-json",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": 7,
+                "type": "title"
+              }
+            },
+            "out": "7"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-null-is-empty",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": null,
+                "type": "title"
+              }
+            },
+            "out": ""
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-with-no-title-property-is-empty",
+            "in": {
+              "Status": {
+                "select": {
+                  "name": "Doing"
+                },
+                "type": "select"
+              }
+            },
+            "out": ""
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-of-no-properties-is-empty",
+            "in": null,
+            "out": ""
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-takes-the-first-by-code-point",
+            "in": {
+              "A": {
+                "title": [
+                  {
+                    "plain_text": "Upper"
+                  }
+                ],
+                "type": "title"
+              },
+              "a": {
+                "title": [
+                  {
+                    "plain_text": "also lower"
+                  }
+                ],
+                "type": "title"
+              },
+              "b": {
+                "title": [
+                  {
+                    "plain_text": "lower"
+                  }
+                ],
+                "type": "title"
+              }
+            },
+            "out": "Upper"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-passes-over-a-property-that-is-not-a-record",
+            "in": {
+              "A": "title",
+              "B": {
+                "title": [
+                  {
+                    "plain_text": "B"
+                  }
+                ],
+                "type": "title"
+              }
+            },
+            "out": "B"
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-a-database",
+            "in": {
+              "database_id": "7b3d0000-0000-4000-8000-000000000001",
+              "type": "database_id"
+            },
+            "out": {
+              "space": "7b3d0000-0000-4000-8000-000000000001"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-a-page",
+            "in": {
+              "page_id": "2a9e0000-0000-4000-8000-000000000001",
+              "type": "page_id"
+            },
+            "out": {
+              "space": "2a9e0000-0000-4000-8000-000000000001"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-a-data-source-is-its-database",
+            "in": {
+              "data_source_id": "d5d5",
+              "database_id": "7b3d",
+              "type": "data_source_id"
+            },
+            "out": {
+              "space": "7b3d"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-the-workspace-is-none",
+            "in": {
+              "type": "workspace",
+              "workspace": true
+            },
+            "out": {}
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-a-block-is-none",
+            "in": {
+              "block_id": "b10c",
+              "type": "block_id"
+            },
+            "out": {}
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-without-a-type-is-the-database-first",
+            "in": {
+              "database_id": "d",
+              "page_id": "p"
+            },
+            "out": {
+              "space": "d"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-without-a-type-is-the-page",
+            "in": {
+              "page_id": "p"
+            },
+            "out": {
+              "space": "p"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-named-but-empty-is-none",
+            "in": {
+              "database_id": "",
+              "type": "database_id"
+            },
+            "out": {}
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-named-but-null-is-none",
+            "in": {
+              "page_id": null,
+              "type": "page_id"
+            },
+            "out": {}
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-not-text-is-its-json",
+            "in": {
+              "database_id": 7,
+              "type": "database_id"
+            },
+            "out": {
+              "space": "7"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-no-parent-is-none",
+            "in": null,
+            "out": {}
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-utc-with-a-fraction",
+            "in": "2026-03-02T09:15:00.000Z",
+            "out": "2026-03-02T09:15:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-with-an-offset",
+            "in": "2026-03-10T13:30:00+05:30",
+            "out": "2026-03-10T08:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-with-a-negative-offset-crosses-midnight",
+            "in": "2026-03-10T23:45:00-02:00",
+            "out": "2026-03-11T01:45:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-with-lower-case-separators",
+            "in": "2026-03-10t08:00:00.5z",
+            "out": "2026-03-10T08:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-fraction-is-dropped-not-rounded",
+            "in": "2026-03-10T08:00:59.999999Z",
+            "out": "2026-03-10T08:00:59Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-on-a-leap-day",
+            "in": "2024-02-29T12:00:00Z",
+            "out": "2024-02-29T12:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-on-a-day-that-does-not-exist-is-the-epoch",
+            "in": "2023-02-29T00:00:00Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-on-a-century-that-is-not-leap-is-the-epoch",
+            "in": "1900-02-29T00:00:00Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-on-a-leap-century",
+            "in": "2000-02-29T00:00:00Z",
+            "out": "2000-02-29T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-without-an-offset-is-the-epoch",
+            "in": "2026-03-10T08:00:00",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-without-seconds-is-the-epoch",
+            "in": "2026-03-10T08:00Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-with-a-space-is-the-epoch",
+            "in": "2026-03-10 08:00:00Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-a-date-alone-is-the-epoch",
+            "in": "2026-03-10",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-hour-24-is-the-epoch",
+            "in": "2026-03-10T24:00:00Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-a-leap-second-is-the-epoch",
+            "in": "2016-12-31T23:59:60Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-an-offset-of-24-hours-is-the-epoch",
+            "in": "2026-03-10T08:00:00+24:00",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-not-a-time-is-the-epoch",
+            "in": "yesterday",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-a-number-is-the-epoch",
+            "in": 1773129600000,
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-null-is-the-epoch",
+            "in": null,
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-at-the-first-instant",
+            "in": "0000-01-01T00:00:00Z",
+            "out": "0000-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-at-the-last-instant",
+            "in": "9999-12-31T23:59:59Z",
+            "out": "9999-12-31T23:59:59Z"
+          },
+          {
+            "err": "outside the years 0000 to 9999",
+            "fn": "notionTime",
+            "id": "notion/time-moved-past-9999-is-refused",
+            "in": "9999-12-31T23:30:00-01:00"
+          },
+          {
+            "err": "outside the years 0000 to 9999",
+            "fn": "notionTime",
+            "id": "notion/time-moved-before-0000-is-refused",
+            "in": "0000-01-01T00:30:00+01:00"
+          },
+          {
+            "fn": "projectNotion",
+            "id": "notion/project-a-page-in-a-database",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "archived": false,
+                "created_time": "2026-03-02T09:15:00.000Z",
+                "id": "2a9e0000-0000-4000-8000-000000000001",
+                "last_edited_time": "2026-09-16T14:20:00.000Z",
+                "object": "page",
+                "parent": {
+                  "database_id": "7b3d0000-0000-4000-8000-000000000001",
+                  "type": "database_id"
+                },
+                "properties": {
+                  "Name": {
+                    "id": "title",
+                    "title": [
+                      {
+                        "plain_text": "Launch checklist",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "title"
+                  },
+                  "Status": {
+                    "id": "V%3D%7Ck",
+                    "select": {
+                      "name": "Doing"
+                    },
+                    "type": "select"
+                  }
+                },
+                "url": "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+              }
+            },
+            "out": {
+              "created": "2026-03-02T09:15:00Z",
+              "id": "2a9e0000-0000-4000-8000-000000000001",
+              "instance": "notion",
+              "lid": "lk_hznpc6cad3dx",
+              "source": "notion",
+              "space": "7b3d0000-0000-4000-8000-000000000001",
+              "title": "Launch checklist",
+              "updated": "2026-09-16T14:20:00Z",
+              "url": "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+            }
+          },
+          {
+            "fn": "projectNotion",
+            "id": "notion/project-a-page-in-the-workspace-has-no-space",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "archived": false,
+                "created_time": "2026-03-02T09:15:00.000Z",
+                "id": "2a9e0000-0000-4000-8000-000000000001",
+                "last_edited_time": "2026-09-16T14:20:00.000Z",
+                "object": "page",
+                "parent": {
+                  "type": "workspace",
+                  "workspace": true
+                },
+                "properties": {
+                  "Name": {
+                    "id": "title",
+                    "title": [
+                      {
+                        "plain_text": "Launch checklist",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "title"
+                  },
+                  "Status": {
+                    "id": "V%3D%7Ck",
+                    "select": {
+                      "name": "Doing"
+                    },
+                    "type": "select"
+                  }
+                },
+                "url": "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+              }
+            },
+            "out": {
+              "created": "2026-03-02T09:15:00Z",
+              "id": "2a9e0000-0000-4000-8000-000000000001",
+              "instance": "notion",
+              "lid": "lk_hznpc6cad3dx",
+              "source": "notion",
+              "title": "Launch checklist",
+              "updated": "2026-09-16T14:20:00Z",
+              "url": "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+            }
+          },
+          {
+            "fn": "projectNotion",
+            "id": "notion/project-nulls",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "created_time": null,
+                "id": "p1",
+                "last_edited_time": null,
+                "parent": null,
+                "properties": null,
+                "url": "https://www.notion.so/p1"
+              }
+            },
+            "out": {
+              "created": "1970-01-01T00:00:00Z",
+              "id": "p1",
+              "instance": "notion",
+              "lid": "lk_jxv4dbshcr7r",
+              "source": "notion",
+              "title": "",
+              "updated": "1970-01-01T00:00:00Z",
+              "url": "https://www.notion.so/p1"
+            }
+          },
+          {
+            "fn": "projectNotion",
+            "id": "notion/project-an-id-that-is-not-text",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "id": 42,
+                "url": "https://www.notion.so/42"
+              }
+            },
+            "out": {
+              "created": "1970-01-01T00:00:00Z",
+              "id": "42",
+              "instance": "notion",
+              "lid": "lk_ygdfkrprgxp1",
+              "source": "notion",
+              "title": "",
+              "updated": "1970-01-01T00:00:00Z",
+              "url": "https://www.notion.so/42"
+            }
+          },
+          {
+            "err": "notion returned a page with no id",
+            "fn": "projectNotion",
+            "id": "notion/project-with-no-id-is-refused-before-its-url",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {}
+            }
+          },
+          {
+            "err": "notion returned a page with no id",
+            "fn": "projectNotion",
+            "id": "notion/project-an-empty-id-is-refused",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "id": "",
+                "url": "https://www.notion.so/x"
+              }
+            }
+          },
+          {
+            "err": "notion returned a page with no http or https url",
+            "fn": "projectNotion",
+            "id": "notion/project-with-no-url-is-refused",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "id": "p1"
+              }
+            }
+          },
+          {
+            "err": "notion returned a page with no http or https url",
+            "fn": "projectNotion",
+            "id": "notion/project-a-url-of-another-scheme-is-refused",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "id": "p1",
+                "url": "notion://www.notion.so/p1"
+              }
+            }
+          },
+          {
+            "err": "notion returned a page that is not a record",
+            "fn": "projectNotion",
+            "id": "notion/project-a-page-that-is-not-a-record-is-refused",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": [
+                "page"
+              ]
+            }
+          },
+          {
+            "err": "whose last_edited_time is outside the years 0000 to 9999",
+            "fn": "projectNotion",
+            "id": "notion/project-a-time-past-9999-is-refused",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "id": "p1",
+                "last_edited_time": "9999-12-31T23:59:59-00:01",
+                "url": "https://www.notion.so/p1"
+              }
+            }
+          }
+        ]
+      },
+      "obsidian": {
+        "set": [
+          {
+            "fn": "obsidianUrl",
+            "id": "obsidian/url-names-the-vault-by-its-account",
+            "in": {
+              "path": "Welcome.md",
+              "vault": "8dc726dfc2eecbf2"
+            },
+            "out": "obsidian://open?vault=8dc726dfc2eecbf2&file=Welcome.md"
+          },
+          {
+            "fn": "obsidianUrl",
+            "id": "obsidian/url-encodes-the-path-separator-and-spaces",
+            "in": {
+              "path": "projects/launch plan.md",
+              "vault": "8dc726dfc2eecbf2"
+            },
+            "out": "obsidian://open?vault=8dc726dfc2eecbf2&file=projects%2Flaunch%20plan.md"
+          },
+          {
+            "fn": "obsidianUrl",
+            "id": "obsidian/url-encodes-everything-but-the-unreserved",
+            "in": {
+              "path": "a+b #c %d &e=f (1) Straße!*'.md",
+              "vault": "My Vault"
+            },
+            "out": "obsidian://open?vault=My%20Vault&file=a%2Bb%20%23c%20%25d%20%26e%3Df%20%281%29%20Stra%C3%9Fe%21%2A%27.md"
+          },
+          {
+            "fn": "obsidianUrl",
+            "id": "obsidian/url-keeps-the-unreserved",
+            "in": {
+              "path": "A-Z_a.z~0-9.md",
+              "vault": "v"
+            },
+            "out": "obsidian://open?vault=v&file=A-Z_a.z~0-9.md"
+          },
+          {
+            "fn": "vaultEntries",
+            "id": "obsidian/entries-in-code-point-order",
+            "in": [
+              "welcome.md",
+              "Daily/",
+              "a b.md",
+              "a/",
+              "a.md",
+              "𝐀.md",
+              "￿.md"
+            ],
+            "out": [
+              "Daily/",
+              "a b.md",
+              "a.md",
+              "a/",
+              "welcome.md",
+              "￿.md",
+              "𝐀.md"
+            ]
+          },
+          {
+            "fn": "vaultEntries",
+            "id": "obsidian/entries-by-first-segment-once",
+            "in": [
+              {
+                "id": "projects/nested/deep note.md"
+              },
+              {
+                "id": "projects/"
+              },
+              "Welcome.md",
+              {
+                "id": "Daily/2026-09-17.md"
+              }
+            ],
+            "out": [
+              "Daily/",
+              "Welcome.md",
+              "projects/"
+            ]
+          },
+          {
+            "err": "names no path below it",
+            "fn": "vaultEntries",
+            "id": "obsidian/entry-that-is-empty-is-refused",
+            "in": [
+              ""
+            ]
+          },
+          {
+            "err": "names no path below it",
+            "fn": "vaultEntries",
+            "id": "obsidian/entry-climbing-out-is-refused",
+            "in": [
+              "../elsewhere/"
+            ]
+          },
+          {
+            "err": "names no path below it",
+            "fn": "vaultEntries",
+            "id": "obsidian/entry-naming-here-is-refused",
+            "in": [
+              "./a.md"
+            ]
+          },
+          {
+            "err": "names no path below it",
+            "fn": "vaultEntries",
+            "id": "obsidian/entry-from-the-root-is-refused",
+            "in": [
+              "/a.md"
+            ]
+          },
+          {
+            "err": "names no path below it",
+            "fn": "vaultEntries",
+            "id": "obsidian/entry-with-an-empty-segment-is-refused",
+            "in": [
+              "a//b.md"
+            ]
+          },
+          {
+            "err": "names no path below it",
+            "fn": "vaultEntries",
+            "id": "obsidian/entry-that-is-not-a-name-is-refused",
+            "in": [
+              7
+            ]
+          },
+          {
+            "err": "names no path below it",
+            "fn": "vaultEntries",
+            "id": "obsidian/entry-record-without-an-id-is-refused",
+            "in": [
+              {
+                "path": "a.md"
+              }
+            ]
+          },
+          {
+            "fn": "vaultWalk",
+            "id": "obsidian/walk-is-depth-first-reading-notes-as-met",
+            "in": {
+              "listings": {
+                "": [
+                  "Welcome.md",
+                  "projects/",
+                  "Daily/",
+                  "logo.png"
+                ],
+                "Daily/": [
+                  "2026-09-17.md"
+                ],
+                "projects/": [
+                  "nested/",
+                  "launch plan.md",
+                  "img.png"
+                ],
+                "projects/nested/": [
+                  "deep note.md"
+                ]
+              }
+            },
+            "out": [
+              {
+                "list": ""
+              },
+              {
+                "list": "Daily/"
+              },
+              {
+                "read": "Daily/2026-09-17.md"
+              },
+              {
+                "read": "Welcome.md"
+              },
+              {
+                "list": "projects/"
+              },
+              {
+                "read": "projects/launch plan.md"
+              },
+              {
+                "list": "projects/nested/"
+              },
+              {
+                "read": "projects/nested/deep note.md"
+              }
+            ]
+          },
+          {
+            "fn": "vaultWalk",
+            "id": "obsidian/walk-passes-over-a-directory-gone",
+            "in": {
+              "listings": {
+                "": [
+                  "gone/",
+                  "a.md"
+                ]
+              }
+            },
+            "out": [
+              {
+                "list": ""
+              },
+              {
+                "read": "a.md"
+              },
+              {
+                "list": "gone/"
+              }
+            ]
+          },
+          {
+            "fn": "vaultWalk",
+            "id": "obsidian/walk-of-an-empty-vault-lists-the-root",
+            "in": {
+              "listings": {}
+            },
+            "out": [
+              {
+                "list": ""
+              }
+            ]
+          },
+          {
+            "fn": "vaultWalk",
+            "id": "obsidian/walk-reads-md-and-nothing-else",
+            "in": {
+              "listings": {
+                "": [
+                  "SHOUT.MD",
+                  "a.md.txt",
+                  "b.markdown",
+                  "c.md"
+                ]
+              }
+            },
+            "out": [
+              {
+                "list": ""
+              },
+              {
+                "read": "c.md"
+              }
+            ]
+          },
+          {
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-pinned-hex-any-case",
+            "in": {
+              "block": {
+                "options": {
+                  "tls": {
+                    "fingerprint": "sha256:5589BA1952F2D11C07D79A381BC58636477FD17EFA2B70710FC99EF2CE994D25"
+                  }
+                }
+              },
+              "instance": "obsidian"
+            },
+            "out": {
+              "pin": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25",
+              "tls": "pinned"
+            }
+          },
+          {
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-pinned-colon-pairs",
+            "in": {
+              "block": {
+                "base": "https://127.0.0.1:27124",
+                "options": {
+                  "tls": {
+                    "fingerprint": "sha256:55:89:ba:19:52:f2:d1:1c:07:d7:9a:38:1b:c5:86:36:47:7f:d1:7e:fa:2b:70:71:0f:c9:9e:f2:ce:99:4d:25"
+                  }
+                }
+              },
+              "instance": "obsidian"
+            },
+            "out": {
+              "pin": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25",
+              "tls": "pinned"
+            }
+          },
+          {
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-plain-http-declared",
+            "in": {
+              "block": {
+                "base": "http://127.0.0.1:27123",
+                "options": {
+                  "tls": false
+                }
+              },
+              "instance": "obsidian$home"
+            },
+            "out": {
+              "tls": "off"
+            }
+          },
+          {
+            "err": "pins no certificate",
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-https-without-a-pin-is-refused",
+            "in": {
+              "block": {},
+              "instance": "obsidian"
+            }
+          },
+          {
+            "err": "is plain HTTP and does not declare it",
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-plain-http-undeclared-is-refused",
+            "in": {
+              "block": {
+                "base": "http://127.0.0.1:27123"
+              },
+              "instance": "obsidian"
+            }
+          },
+          {
+            "err": "turns TLS off on an https base",
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-tls-off-on-https-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "tls": false
+                }
+              },
+              "instance": "obsidian"
+            }
+          },
+          {
+            "err": "pins a certificate on a plain HTTP base",
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-pin-on-plain-http-is-refused",
+            "in": {
+              "block": {
+                "base": "http://127.0.0.1:27123",
+                "options": {
+                  "tls": {
+                    "fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+                  }
+                }
+              },
+              "instance": "obsidian"
+            }
+          },
+          {
+            "err": "pins a fingerprint that is not sha256 and 64 hex digits",
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-malformed-pin-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "tls": {
+                    "fingerprint": "sha1:abc"
+                  }
+                }
+              },
+              "instance": "obsidian"
+            }
+          },
+          {
+            "err": "has a tls option that is neither a pinned fingerprint nor false",
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-tls-with-more-than-a-pin-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "tls": {
+                    "ca": "anything",
+                    "fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+                  }
+                }
+              },
+              "instance": "obsidian"
+            }
+          },
+          {
+            "err": "has a tls option that is neither a pinned fingerprint nor false",
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-tls-true-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "tls": true
+                }
+              },
+              "instance": "obsidian"
+            }
+          },
+          {
+            "err": "has an option likeness does not read: \"timeout\"",
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-unknown-option-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "timeout": 5,
+                  "tls": false
+                }
+              },
+              "instance": "obsidian"
+            }
+          },
+          {
+            "err": "has options that are not a map",
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-options-not-a-map-are-refused",
+            "in": {
+              "block": {
+                "options": [
+                  1
+                ]
+              },
+              "instance": "obsidian"
+            }
+          },
+          {
+            "err": "has a base that is neither https nor http",
+            "fn": "obsidianTransport",
+            "id": "obsidian/transport-base-of-another-scheme-is-refused",
+            "in": {
+              "block": {
+                "base": "ftp://127.0.0.1"
+              },
+              "instance": "obsidian"
+            }
+          },
+          {
+            "fn": "projectObsidian",
+            "id": "obsidian/project-a-nested-note",
+            "in": {
+              "account": "8dc726dfc2eecbf2",
+              "instance": "obsidian",
+              "path": "projects/nested/deep note.md",
+              "raw": {
+                "content": "Body",
+                "stat": {
+                  "ctime": 1772355600000,
+                  "mtime": 1789547400000
+                },
+                "tags": [
+                  "a",
+                  "b"
+                ]
+              }
+            },
+            "out": {
+              "body": "Body",
+              "created": "2026-03-01T09:00:00Z",
+              "id": "projects/nested/deep note.md",
+              "instance": "obsidian",
+              "lid": "lk_0g9w28zgxbsg",
+              "source": "obsidian",
+              "space": "projects/nested",
+              "tags": [
+                "a",
+                "b"
+              ],
+              "title": "deep note",
+              "updated": "2026-09-16T08:30:00Z",
+              "url": "obsidian://open?vault=8dc726dfc2eecbf2&file=projects%2Fnested%2Fdeep%20note.md"
+            }
+          },
+          {
+            "fn": "projectObsidian",
+            "id": "obsidian/project-a-note-at-the-root-has-no-space",
+            "in": {
+              "account": "v1",
+              "instance": "obsidian",
+              "path": "Welcome.md",
+              "raw": {
+                "content": "x",
+                "stat": {
+                  "ctime": 0,
+                  "mtime": 0
+                },
+                "tags": []
+              }
+            },
+            "out": {
+              "body": "x",
+              "created": "1970-01-01T00:00:00Z",
+              "id": "Welcome.md",
+              "instance": "obsidian",
+              "lid": "lk_dz00j92vwpky",
+              "source": "obsidian",
+              "tags": [],
+              "title": "Welcome",
+              "updated": "1970-01-01T00:00:00Z",
+              "url": "obsidian://open?vault=v1&file=Welcome.md"
+            }
+          },
+          {
+            "fn": "projectObsidian",
+            "id": "obsidian/project-awkward-values",
+            "in": {
+              "account": "v1",
+              "instance": "obsidian",
+              "path": "odd/x.md",
+              "raw": {
+                "content": 42,
+                "stat": {
+                  "ctime": "nope",
+                  "mtime": 1.5
+                },
+                "tags": [
+                  "a",
+                  null,
+                  7,
+                  {
+                    "x": [
+                      1,
+                      2
+                    ]
+                  },
+                  "b"
+                ]
+              }
+            },
+            "out": {
+              "body": "42",
+              "created": "1970-01-01T00:00:00Z",
+              "id": "odd/x.md",
+              "instance": "obsidian",
+              "lid": "lk_xyb1ad0ac0gj",
+              "source": "obsidian",
+              "space": "odd",
+              "tags": [
+                "a",
+                "7",
+                "{\"x\":[1,2]}",
+                "b"
+              ],
+              "title": "x",
+              "updated": "1970-01-01T00:00:00Z",
+              "url": "obsidian://open?vault=v1&file=odd%2Fx.md"
+            }
+          },
+          {
+            "fn": "projectObsidian",
+            "id": "obsidian/project-nulls",
+            "in": {
+              "account": "v1",
+              "instance": "obsidian",
+              "path": "odd/nulls.md",
+              "raw": {
+                "content": null,
+                "stat": null,
+                "tags": null
+              }
+            },
+            "out": {
+              "created": "1970-01-01T00:00:00Z",
+              "id": "odd/nulls.md",
+              "instance": "obsidian",
+              "lid": "lk_1vjw01hyhpj8",
+              "source": "obsidian",
+              "space": "odd",
+              "tags": [],
+              "title": "nulls",
+              "updated": "1970-01-01T00:00:00Z",
+              "url": "obsidian://open?vault=v1&file=odd%2Fnulls.md"
+            }
+          },
+          {
+            "fn": "projectObsidian",
+            "id": "obsidian/project-a-single-tag-not-in-a-list",
+            "in": {
+              "account": "v1",
+              "instance": "obsidian",
+              "path": "a.md",
+              "raw": {
+                "tags": "single"
+              }
+            },
+            "out": {
+              "created": "1970-01-01T00:00:00Z",
+              "id": "a.md",
+              "instance": "obsidian",
+              "lid": "lk_4ghpgm9jk5pk",
+              "source": "obsidian",
+              "tags": [
+                "single"
+              ],
+              "title": "a",
+              "updated": "1970-01-01T00:00:00Z",
+              "url": "obsidian://open?vault=v1&file=a.md"
+            }
+          },
+          {
+            "err": "returned a note that is not a record",
+            "fn": "projectObsidian",
+            "id": "obsidian/project-a-note-that-is-not-a-record-is-refused",
+            "in": {
+              "account": "v1",
+              "instance": "obsidian",
+              "path": "a.md",
+              "raw": "text"
+            }
+          },
+          {
+            "err": "whose stat.ctime is outside the years 0000 to 9999",
+            "fn": "projectObsidian",
+            "id": "obsidian/project-a-time-past-9999-is-refused",
+            "in": {
+              "account": "v1",
+              "instance": "obsidian",
+              "path": "a.md",
+              "raw": {
+                "stat": {
+                  "ctime": 253402300800000
+                }
+              }
+            }
           }
         ]
       },
@@ -296,6 +2461,64 @@
               "abc"
             ],
             "out": 0
+          }
+        ]
+      },
+      "pin": {
+        "set": [
+          {
+            "fn": "parsePin",
+            "id": "pin/lower-case-hex-is-the-pin",
+            "in": "sha256:5589BA1952F2D11C07D79A381BC58636477FD17EFA2B70710FC99EF2CE994D25",
+            "out": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          },
+          {
+            "fn": "parsePin",
+            "id": "pin/colon-pairs-are-the-same-pin",
+            "in": "sha256:55:89:BA:19:52:F2:D1:1C:07:D7:9A:38:1B:C5:86:36:47:7F:D1:7E:FA:2B:70:71:0F:C9:9E:F2:CE:99:4D:25",
+            "out": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          },
+          {
+            "err": "not a sha256 certificate fingerprint",
+            "fn": "parsePin",
+            "id": "pin/too-short-is-refused",
+            "in": "sha256:abc"
+          },
+          {
+            "err": "not a sha256 certificate fingerprint",
+            "fn": "parsePin",
+            "id": "pin/no-algorithm-is-refused",
+            "in": "5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          },
+          {
+            "err": "not a sha256 certificate fingerprint",
+            "fn": "parsePin",
+            "id": "pin/the-algorithm-is-lower-case",
+            "in": "SHA256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          },
+          {
+            "err": "not a sha256 certificate fingerprint",
+            "fn": "parsePin",
+            "id": "pin/colons-all-or-none",
+            "in": "sha256:55:895589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d"
+          },
+          {
+            "err": "not a sha256 certificate fingerprint",
+            "fn": "parsePin",
+            "id": "pin/not-text-is-refused",
+            "in": 42
+          },
+          {
+            "fn": "fingerprintOf",
+            "id": "pin/fingerprint-of-nothing",
+            "in": "",
+            "out": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "fn": "fingerprintOf",
+            "id": "pin/fingerprint-of-abc",
+            "in": "616263",
+            "out": "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
           }
         ]
       },
@@ -339,6 +2562,34 @@
               "title": "",
               "updated": "2026-03-10T08:00:00Z",
               "url": "joplin://x-callback-url/openNote?id=n1"
+            }
+          },
+          {
+            "fn": "projectJoplin",
+            "id": "project/small-numbers-as-javascript-writes-them",
+            "in": {
+              "account": "local",
+              "instance": "jot",
+              "raw": {
+                "body": 0.000001,
+                "created_time": 0,
+                "id": "n2",
+                "parent_id": 1e-7,
+                "title": 1.5e-7,
+                "updated_time": 0
+              }
+            },
+            "out": {
+              "body": "0.000001",
+              "created": "1970-01-01T00:00:00Z",
+              "id": "n2",
+              "instance": "jot",
+              "lid": "lk_18xfpffw3qe4",
+              "source": "joplin",
+              "space": "1e-7",
+              "title": "1.5e-7",
+              "updated": "1970-01-01T00:00:00Z",
+              "url": "joplin://x-callback-url/openNote?id=n2"
             }
           }
         ]
@@ -767,6 +3018,65 @@
                 "v": "2000-02-29"
               }
             }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/nesting-64-groups-is-the-most",
+            "in": "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "field": "tag",
+              "op": ":",
+              "t": "cmp",
+              "value": {
+                "k": "word",
+                "v": "a"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/nesting-counts-groups-and-negations-together",
+            "in": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((NOT tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "kid": {
+                "field": "tag",
+                "op": ":",
+                "t": "cmp",
+                "value": {
+                  "k": "word",
+                  "v": "a"
+                }
+              },
+              "t": "not"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/nesting-is-depth-not-count",
+            "in": "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:b))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "kids": [
+                {
+                  "field": "tag",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "a"
+                  }
+                },
+                {
+                  "field": "tag",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "b"
+                  }
+                }
+              ],
+              "t": "and"
+            }
           }
         ]
       },
@@ -969,6 +3279,176 @@
               "offset": 4,
               "token": "<"
             }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-65-groups",
+            "in": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "offset": 64,
+              "token": "("
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-65-negations",
+            "in": "NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT tag:a",
+            "out": {
+              "offset": 256,
+              "token": "NOT"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-64-groups-and-a-negation",
+            "in": "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((-tag:a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "offset": 64,
+              "token": "-"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-refused-before-the-end-is-read",
+            "in": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a",
+            "out": {
+              "offset": 64,
+              "token": "("
+            }
+          }
+        ]
+      },
+      "sources": {
+        "set": [
+          {
+            "fn": "secretName",
+            "id": "sources/secret-untagged",
+            "in": "joplin",
+            "out": "joplin.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-tagged",
+            "in": "joplin$work",
+            "out": "joplin_work.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-hyphen",
+            "in": "notion$docs-eu",
+            "out": "notion_docs_eu.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-a-run-is-one-underscore",
+            "in": "joplin$a--b",
+            "out": "joplin_a_b.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-edges-trimmed",
+            "in": "joplin$-x-",
+            "out": "joplin_x.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-case-folded",
+            "in": "Joplin$Work",
+            "out": "joplin_work.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-an-api-and-a-tag-meet",
+            "in": "notes-a",
+            "out": "notes_a.apikey"
+          },
+          {
+            "fn": "refFor",
+            "id": "sources/ref-untagged",
+            "in": {
+              "source": "joplin"
+            },
+            "out": "joplin"
+          },
+          {
+            "fn": "refFor",
+            "id": "sources/ref-tag",
+            "in": {
+              "instance": "work",
+              "source": "joplin"
+            },
+            "out": "joplin$work"
+          },
+          {
+            "fn": "refFor",
+            "id": "sources/ref-a-tag-is-never-the-api",
+            "in": {
+              "instance": "joplin",
+              "source": "joplin"
+            },
+            "out": "joplin$joplin"
+          },
+          {
+            "fn": "refFor",
+            "id": "sources/ref-given-whole",
+            "in": {
+              "instance": "joplin$2nd",
+              "source": "joplin"
+            },
+            "out": "joplin$2nd"
+          },
+          {
+            "err": "--instance names a connection to another API than --source does",
+            "fn": "refFor",
+            "id": "sources/ref-of-another-api",
+            "in": {
+              "instance": "notion$work",
+              "source": "joplin"
+            }
+          },
+          {
+            "err": "--instance takes a tag of lowercase letters, digits and hyphens",
+            "fn": "refFor",
+            "id": "sources/ref-tag-not-lowercase",
+            "in": {
+              "instance": "Work",
+              "source": "joplin"
+            }
+          },
+          {
+            "err": "--instance takes a tag of lowercase letters, digits and hyphens",
+            "fn": "refFor",
+            "id": "sources/ref-tag-empty",
+            "in": {
+              "instance": "",
+              "source": "joplin"
+            }
+          },
+          {
+            "err": "--instance takes a tag of lowercase letters, digits and hyphens",
+            "fn": "refFor",
+            "id": "sources/ref-tag-empty-after-the-api",
+            "in": {
+              "instance": "joplin$",
+              "source": "joplin"
+            }
+          },
+          {
+            "err": "--instance takes a tag of lowercase letters, digits and hyphens",
+            "fn": "refFor",
+            "id": "sources/ref-tag-holds-a-dollar",
+            "in": {
+              "instance": "joplin$a$b",
+              "source": "joplin"
+            }
+          },
+          {
+            "err": "--source takes a source's name",
+            "fn": "refFor",
+            "id": "sources/ref-source-not-a-name",
+            "in": {
+              "source": "Joplin"
+            }
           }
         ]
       },
@@ -979,6 +3459,416 @@
             "id": "text/case-folding-is-ascii-only",
             "in": "İSTANBUL Straße ΟΔΟΣ ÀÉ ABC xyz",
             "out": "İstanbul straße ΟΔΟΣ ÀÉ abc xyz"
+          }
+        ]
+      },
+      "vault": {
+        "set": [
+          {
+            "fn": "vaultEntry",
+            "id": "vault/default",
+            "in": {
+              "station": null
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/likeness.skmv",
+              "key": "master",
+              "shown": "~/.config/likeness/likeness.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/relative-to-the-configuration",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "../team/v.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/team/v.skmv",
+              "key": "master",
+              "shown": "~/.config/team/v.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/from-home",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "~/v.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/v.skmv",
+              "key": "master",
+              "shown": "~/v.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/from-home-past-a-doubled-slash",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "~//v.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/v.skmv",
+              "key": "master",
+              "shown": "~/v.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/outside-home-is-shown-whole",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "/srv/v.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/srv/v.skmv",
+              "key": "master",
+              "shown": "/srv/v.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/vaultkey",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "kind": "minivault",
+                          "vaultkey": "ci"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/likeness.skmv",
+              "key": "ci",
+              "shown": "~/.config/likeness/likeness.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/flag-over-vaultkey",
+            "in": {
+              "key": "master",
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "kind": "minivault",
+                          "vaultkey": "ci"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/likeness.skmv",
+              "key": "master",
+              "shown": "~/.config/likeness/likeness.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/profile-chain-wins",
+            "in": {
+              "profile": "work",
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "a.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  },
+                  "work": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "b.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/b.skmv",
+              "key": "master",
+              "shown": "~/.config/likeness/b.skmv"
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/profile-without-a-chain",
+            "in": {
+              "profile": "work",
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "a.skmv",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  },
+                  "work": {
+                    "sdk": {}
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/a.skmv",
+              "key": "master",
+              "shown": "~/.config/likeness/a.skmv"
+            }
+          },
+          {
+            "err": "likeness reads secrets from its vault alone, and station.json names the store \"env\"",
+            "fn": "vaultEntry",
+            "id": "vault/env-store-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "kind": "env"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "names the store \"minivault\"",
+            "fn": "vaultEntry",
+            "id": "vault/bare-kind-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        "minivault"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "secrets.providers must name one store, the vault",
+            "fn": "vaultEntry",
+            "id": "vault/empty-chain-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "fn": "vaultEntry",
+            "id": "vault/null-chain-is-no-chain",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": null
+                    }
+                  }
+                }
+              }
+            },
+            "out": {
+              "file": "/home/u/.config/likeness/likeness.skmv",
+              "key": "master",
+              "shown": "~/.config/likeness/likeness.skmv"
+            }
+          },
+          {
+            "err": "the vault entry in station.json does not name its kind",
+            "fn": "vaultEntry",
+            "id": "vault/entry-without-a-kind-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "likeness.skmv"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "a passphrase is never written to a file",
+            "fn": "vaultEntry",
+            "id": "vault/passphrase-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "kind": "minivault",
+                          "passphrase": "p"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "the vault entry in station.json has no key \"iterations\"",
+            "fn": "vaultEntry",
+            "id": "vault/unknown-key-refused",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "iterations": 1,
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "the vault entry's file is not a path",
+            "fn": "vaultEntry",
+            "id": "vault/file-must-be-a-path",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "file": "",
+                          "kind": "minivault"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "err": "the vault entry's vaultkey is not a key name",
+            "fn": "vaultEntry",
+            "id": "vault/vaultkey-must-be-a-name",
+            "in": {
+              "station": {
+                "profiles": {
+                  "default": {
+                    "secrets": {
+                      "providers": [
+                        {
+                          "kind": "minivault",
+                          "vaultkey": "Admin"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
           }
         ]
       }

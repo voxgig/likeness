@@ -15,3 +15,17 @@ typescript/package-lock.json
 
 # Parity comparison output, rebuilt by `make parity` on every run.
 build/
+
+# The Python port's pinned checkouts and virtual environment, which
+# `make py-deps` builds, and what installing the port leaves beside it.
+python/.deps/
+python/.venv/
+python/*.egg-info/
+__pycache__/
+
+# The Ruby port's dependencies, linked by `make rb-deps` to pinned checkouts.
+ruby/vendor/
+
+# The C port's objects, test programs and binary. `make test-c` builds them.
+c/bin/
+c/build/

@@ -203,10 +203,15 @@ export function classify (tok: Tok): Value {
 
 // -- parser -----------------------------------------------------------------
 
+// Each group and each negation opens one level. The token that would open a
+// level past this is refused, so no input can exhaust a port's stack.
+export const MAX_DEPTH = 64
+
 class Parser {
   toks: Tok[]
   pos = 0
   end: number
+  depth = 0
   constructor (toks: Tok[], end: number) { this.toks = toks; this.end = end }
 
   peek (): Tok | undefined { return this.toks[this.pos] }
@@ -216,6 +221,11 @@ class Parser {
   fail (msg: string, tok?: Tok): never {
     if (undefined === tok) throw new SelectorError(msg, this.end, '')
     throw new SelectorError(msg, tok.offset, tok.text)
+  }
+
+  enter (tok: Tok): void {
+    if (MAX_DEPTH <= this.depth) this.fail('nested more than ' + MAX_DEPTH + ' deep', tok)
+    this.depth++
   }
 
   parseOr (): Node {
@@ -250,9 +260,12 @@ class Parser {
   parseNot (): Node {
     const t = this.peek()
     if (isNotKeyword(t) || (undefined !== t && t.kind === 'dash')) {
+      this.enter(t as Tok)
       this.next()
       if (this.atEnd()) this.fail('NOT must be followed by a term')
-      return { t: 'not', kid: this.parseNot() }
+      const kid = this.parseNot()
+      this.depth--
+      return { t: 'not', kid }
     }
     return this.parseAtom()
   }
@@ -262,12 +275,14 @@ class Parser {
     if (undefined === t) this.fail('unexpected end of selector')
 
     if (t.kind === 'lparen') {
+      this.enter(t)
       const inner = this.parseOr()
       const close = this.next()
       if (undefined === close || close.kind !== 'rparen') {
         if (undefined === close) this.fail('unclosed group')
         this.fail('expected )', close)
       }
+      this.depth--
       return inner
     }
     if (t.kind === 'rparen') this.fail('unmatched )', t)

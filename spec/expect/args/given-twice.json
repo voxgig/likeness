@@ -1,0 +1,1 @@
+{"cmd":["list"],"code":"invalid-argument","data":null,"error":{"message":"--limit was given twice","remedy":"give it once"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

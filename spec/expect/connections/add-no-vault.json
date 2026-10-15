@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"secret-backend-unavailable","data":null,"error":{"message":"no vault at ~/.config/likeness/likeness.skmv","remedy":"run `likeness secrets init` to create it, or point station.json at the vault"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

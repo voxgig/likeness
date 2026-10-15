@@ -1,0 +1,12 @@
+{
+  "likeness": 1,
+  "profiles": {
+    "default": {
+      "instances": {
+        "notion": {
+          "account": "acme-workspace"
+        }
+      }
+    }
+  }
+}

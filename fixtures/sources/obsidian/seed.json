@@ -1,0 +1,49 @@
+{
+  "_doc": [
+    "Seed for the Obsidian SDK's offline test mode, handed to ObsidianSDK.test() as",
+    "{entity: {vault: {<path>: <record>}}}. The seed key field of `vault` is `id`, as",
+    "the SDK's own resolver derives it, and the SDK stamps each path onto its record.",
+    "",
+    "The plugin lists one directory at a time, a directory by name with its slash,",
+    "and reads a note as JSON with its content, tags and stat. So a note's record is",
+    "the plugin's note JSON, and a directory's is its listing, `files`. The offline",
+    "transport answers the root listing with every record, which the adapter walks",
+    "by first segment, as the plugin lists. Timestamps are epoch milliseconds."
+  ],
+  "entity": {
+    "vault": {
+      "Welcome.md": {
+        "path": "Welcome.md",
+        "content": "# Welcome\n\nStart here, then read [[projects/launch plan]].\n",
+        "frontmatter": {},
+        "tags": ["start"],
+        "stat": { "ctime": 1772355600000, "mtime": 1789547400000, "size": 56 }
+      },
+      "Untitled.canvas": {},
+      "Daily/": { "files": ["2026-09-17.md"] },
+      "Daily/2026-09-17.md": {
+        "path": "Daily/2026-09-17.md",
+        "content": "Standup. The #retention ceiling came up again.\n",
+        "frontmatter": {},
+        "tags": ["retention"],
+        "stat": { "ctime": 1789632000000, "mtime": 1789636500000, "size": 47 }
+      },
+      "projects/": { "files": ["launch plan.md", "logo.png", "nested/"] },
+      "projects/launch plan.md": {
+        "path": "projects/launch plan.md",
+        "content": "---\ntags: [launch, project]\n---\n# Launch plan\n\nShip it on the 30th.\n",
+        "frontmatter": { "tags": ["launch", "project"] },
+        "tags": ["launch", "project"],
+        "stat": { "ctime": 1777888800000, "mtime": 1789490700000, "size": 71 }
+      },
+      "projects/nested/": { "files": ["deep note.md"] },
+      "projects/nested/deep note.md": {
+        "path": "projects/nested/deep note.md",
+        "content": "Two folders down, and still a note.\n",
+        "frontmatter": {},
+        "tags": [],
+        "stat": { "ctime": 1780315200000, "mtime": 1789024800000, "size": 36 }
+      }
+    }
+  }
+}

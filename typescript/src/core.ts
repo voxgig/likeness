@@ -1,33 +1,62 @@
 
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+import type { Station } from '@voxgig/station'
+
 import { serialise, render, type Envelope } from './envelope.js'
 import { parseSelector, fieldsOf, SelectorError } from './selector.js'
 import { evaluate } from './evaluate.js'
 import { sortNotes, type Note } from './note.js'
 import { Calls, type Call } from './calls.js'
 import { exitFor, LikenessError } from './errors.js'
-import * as joplin from './adapter/joplin.js'
+import { ADAPTERS, type Adapter, type Check } from './adapters.js'
+import { supports, termOf } from './caps.js'
+import { parseArgv, commandDef, commandWords, helpText, helpRows, type Parsed } from './args.js'
+import { vaultEntry, vaultChain, secrets, type VaultEntry, type VaultFlags } from './vault.js'
+import { add, list as sourcesList, remove, rename, type Reply } from './sources.js'
+import type { Fs } from './config.js'
+
+import { profileOf, openStation, withChain, connectionsOf, type Connection } from './station.js'
+
+export { profileOf, openStation, withChain, connectionsOf, type Connection }
 
 export const VERSION = '0.1.0'
 export const PORT = 'ts'
-
-export type Connection = {
-  instance: string
-  source: string
-  account: string
-  apikey?: string
-  base?: string
-}
 
 export type Ctx = {
   argv: string[]
   env?: Record<string, string>
   clock: string
   seed?: number
-  connections: Connection[]
+  /* station.json in station's own grammar, and each instance's account from
+   * likeness.json beside it. The connections are station's declared
+   * instances, so the two cannot disagree. */
+  station?: unknown
+  accounts?: Record<string, string>
   /* Seed maps for the SDKs' offline test mode, by instance. Present in every
    * test and absent in production. */
   fixture?: Record<string, unknown>
   path?: { path: string, port: string, version: string }[]
+  /* A path under home is shown from `~`; a relative vault path is read from
+   * dir, where station.json is. The `sources` group rewrites the file at
+   * config, and likeness.json beside it. */
+  home?: string
+  dir?: string
+  config?: string
+  stdin?: () => Promise<string>
+  /* Stdin is a terminal, so what the environment lacks may be asked for. */
+  tty?: boolean
+  prompt?: (label: string) => Promise<string | undefined>
+  // The fingerprint of the certificate an https base presents.
+  presented?: (base: string) => Promise<string>
+  // The file operations a `sources` write goes through.
+  fs?: Fs
+}
+
+type Session = {
+  conns: Connection[]
+  calls: Calls
+  handle: (c: Connection) => unknown
 }
 
 export type Result = {
@@ -37,7 +66,7 @@ export type Result = {
   calls: Call[]
 }
 
-type Flags = {
+type Flags = VaultFlags & {
   json: boolean
   raw: boolean
   limit?: number
@@ -48,39 +77,23 @@ type Flags = {
   source: string[]
 }
 
-const LIMIT_RE = /^[1-9][0-9]{0,8}$/
-
-function parseFlags (args: string[]): { flags: Flags, rest: string[] } {
-  const flags: Flags = {
-    json: false, raw: false, strict: false, deterministic: false,
-    instance: [], source: [],
+function flagsOf (parsed: Parsed): Flags {
+  const f = parsed.flags
+  return {
+    json: true === f.json,
+    raw: true === f.raw,
+    strict: true === f.strict,
+    deterministic: true === f.deterministic,
+    limit: f.limit as number | undefined,
+    sort: f.sort as string | undefined,
+    instance: (f.instance ?? []) as string[],
+    source: (f.source ?? []) as string[],
+    passphraseEnv: f['passphrase-env'] as string | undefined,
+    newPassphraseEnv: f['new-passphrase-env'] as string | undefined,
+    vaultKey: f['vault-key'] as string | undefined,
+    reveal: true === f.reveal,
+    write: true === f.write,
   }
-  const rest: string[] = []
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i]
-    if (a === '--json') { flags.json = true; continue }
-    if (a === '--raw') { flags.raw = true; continue }
-    if (a === '--strict') { flags.strict = true; continue }
-    if (a === '--deterministic') { flags.deterministic = true; continue }
-    if (a === '--limit') {
-      // VALIDATED against the declared integer syntax, never coerced: a host
-      // number parser takes hex, exponents and decimals, each port's a
-      // different set, and `Number('nope')` is a NaN no comparison catches.
-      const raw = args[++i]
-      if (undefined === raw || !LIMIT_RE.test(raw)) {
-        throw new LikenessError('invalid-selector',
-          '--limit needs a whole number from 1 to 999999999, not "' + (raw ?? '') + '"',
-          'try `--limit 20`')
-      }
-      flags.limit = Number(raw)
-      continue
-    }
-    if (a === '--sort') { flags.sort = args[++i]; continue }
-    if (a === '--instance') { flags.instance.push(args[++i]); continue }
-    if (a === '--source') { flags.source.push(args[++i]); continue }
-    rest.push(a)
-  }
-  return { flags, rest }
 }
 
 function envelope (
@@ -90,7 +103,7 @@ function envelope (
   const env: Envelope = {
     ok: undefined === error,
     code,
-    cmd,
+    cmd: cmd.flatMap(c => c.split(' ')),
     data,
     meta: {
       count: meta.count ?? 0,
@@ -113,23 +126,23 @@ function fails (env: Envelope, message: string, remedy: string): Envelope {
   return env
 }
 
-function selected (ctx: Ctx, flags: Flags): Connection[] {
+function selected (all: Connection[], flags: Flags): Connection[] {
   const unknownInstance = flags.instance.filter(
-    i => !ctx.connections.some(c => c.instance === i))
+    i => !all.some(c => c.instance === i))
   if (0 < unknownInstance.length) {
     throw new LikenessError('no-such-source',
       'no connection named ' + unknownInstance.sort().map(q).join(', '),
       'run `likeness doctor` to see the configured connections')
   }
   const unknownSource = flags.source.filter(
-    src => !ctx.connections.some(c => c.source === src))
+    src => !all.some(c => c.source === src))
   if (0 < unknownSource.length) {
     throw new LikenessError('no-such-source',
       'no connection uses source ' + unknownSource.sort().map(q).join(', '),
       'run `likeness doctor` to see the configured connections')
   }
 
-  let conns = ctx.connections
+  let conns = all
   if (0 < flags.instance.length) conns = conns.filter(c => flags.instance.includes(c.instance))
   if (0 < flags.source.length) conns = conns.filter(c => flags.source.includes(c.source))
   return conns
@@ -137,20 +150,28 @@ function selected (ctx: Ctx, flags: Flags): Connection[] {
 
 function q (s: string): string { return '"' + s + '"' }
 
-const ADAPTERS: Record<string, typeof joplin> = { joplin }
-
-function adapterFor (c: Connection): typeof joplin | undefined {
+function adapterFor (c: Connection): Adapter | undefined {
   return ADAPTERS[c.source]
 }
 
-function optsFor (ctx: Ctx, c: Connection): joplin.JoplinOpts {
-  return {
-    instance: c.instance,
-    account: c.account,
-    seed: ctx.fixture?.[c.instance],
-    apikey: c.apikey,
-    base: c.base,
-  }
+// Decided from the capability data alone, before any call (SPEC 12.3).
+function listable (c: Connection): boolean {
+  return undefined !== adapterFor(c)?.listNotes && supports(c.source, 'note', 'list')
+}
+
+function cannotList (conns: Connection[]): LikenessError {
+  const sources = [...new Set(conns.map(c => c.source))].sort()
+  const detail: Record<string, string> = { entity: 'note', op: 'list' }
+  if (1 === sources.length) detail.source = sources[0]
+  if (1 === conns.length) detail.instance = conns[0].instance
+  const ref = 1 === conns.length
+    ? conns[0].instance + ':<' + termOf(conns[0].source, 'note') + ' id>'
+    : '<instance>:<id>'
+  return new LikenessError('unsupported-capability', sources.join(', ') + ' cannot list notes',
+    conns.every(c => supports(c.source, 'note', 'get'))
+      ? 'get one by its ref instead: `likeness get ' + ref + '`'
+      : 'narrow to a source that can list notes with --source',
+    detail)
 }
 
 /* Fetch from every selected connection, carrying a failure the whole length of
@@ -158,7 +179,7 @@ function optsFor (ctx: Ctx, c: Connection): joplin.JoplinOpts {
  * confident, smaller, wrong answer, which is much worse than a partial one
  * that says so.
  */
-async function gather (ctx: Ctx, conns: Connection[], calls: Calls, withRaw: boolean, strict: boolean):
+async function gather (session: Session, conns: Connection[], withRaw: boolean, strict: boolean):
 Promise<{ notes: Note[], ok: string[], failed: string[], short: string[] }> {
   const notes: Note[] = []
   const ok: string[] = []
@@ -173,14 +194,21 @@ Promise<{ notes: Note[], ok: string[], failed: string[], short: string[] }> {
         'no adapter for source "' + c.source + '" (connection "' + c.instance + '")',
         'drop that connection, or narrow to one that is supported with --source')
     }
+    // Asked nothing, and counted as a connection that did not answer.
+    if (!listable(c) || undefined === adapter.listNotes) {
+      failed.push(c.instance)
+      if (strict) break
+      continue
+    }
     try {
-      const got = await adapter.listNotes(optsFor(ctx, c), calls, withRaw)
+      const got = await adapter.listNotes(session.handle(c), c, withRaw)
       notes.push(...got.notes)
       ok.push(c.instance)
       if (got.more) short.push(c.instance)
     }
     catch (err) {
-      if (err instanceof LikenessError && 'unsupported-capability' === err.code) throw err
+      // A guard's refusal stops the command: it is never an unavailable source.
+      if (err instanceof LikenessError && 4 === exitFor(err.code)) throw err
       failed.push(c.instance)
       // `--strict` HALTS. `fanout-halted` means the fan-out stopped after a
       // member failed; continuing through every remaining connection and only
@@ -195,11 +223,7 @@ Promise<{ notes: Note[], ok: string[], failed: string[], short: string[] }> {
 const UNIVERSAL = ['lid', 'id', 'title', 'url', 'created', 'updated', 'source', 'instance']
 
 function supplies (c: Connection): Set<string> {
-  // ONE adapter in Stage 1. The lookup is by the connection's declared source
-  // rather than by a conditional on its name, so adding the second adapter
-  // adds a row here and changes nothing else.
-  const bySource: Record<string, string[]> = { joplin: joplin.SUPPLIES }
-  return new Set([...UNIVERSAL, ...(bySource[c.source] ?? [])])
+  return new Set([...UNIVERSAL, ...(adapterFor(c)?.SUPPLIES ?? [])])
 }
 
 function unanswerable (conns: Connection[], fields: string[]): string[] {
@@ -209,14 +233,19 @@ function unanswerable (conns: Connection[], fields: string[]): string[] {
 }
 
 
-async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Promise<Envelope> {
-  const conns = selected(ctx, flags)
+async function cmdList (ctx: Ctx, flags: Flags, rest: string[], session: Session): Promise<Envelope> {
+  const conns = selected(session.conns, flags)
   const clockMs = Date.parse(ctx.clock)
 
   let filter = null
-  if (0 < rest.length && '' !== rest[0]) {
-    filter = parseSelector(rest[0])
-    const unsupported = unanswerable(conns, fieldsOf(filter))
+  const selector = rest.join(' ')
+  if ('' !== selector) filter = parseSelector(selector)
+
+  const unlisted = conns.filter(c => undefined !== adapterFor(c) && !listable(c))
+  if (0 < conns.length && unlisted.length === conns.length) throw cannotList(unlisted)
+
+  if (null !== filter) {
+    const unsupported = unanswerable(conns.filter(c => !unlisted.includes(c)), fieldsOf(filter))
     if (0 < unsupported.length) {
       throw new LikenessError('unsupported-capability',
         'no source can answer a question about ' + unsupported.join(', '),
@@ -224,7 +253,7 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): P
     }
   }
 
-  const got = await gather(ctx, conns, calls, flags.raw, flags.strict)
+  const got = await gather(session, conns, flags.raw, flags.strict)
   let notes = got.notes
   if (null !== filter) notes = notes.filter(n => evaluate(filter, n, clockMs))
   notes = sortNotes(notes, flags.sort)
@@ -256,7 +285,7 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): P
     'ok'
 
   const env = envelope(['list'], code, notes, {
-    count: notes.length, truncated, sources: got.ok, incomplete, calls: calls.count(),
+    count: notes.length, truncated, sources: got.ok, incomplete, calls: session.calls.count(),
   })
   if ('fanout-halted' === code) {
     return fails(env,
@@ -276,10 +305,7 @@ async function cmdList (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): P
   return env
 }
 
-async function cmdGet (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Promise<Envelope> {
-  if (0 === rest.length) {
-    throw new LikenessError('invalid-ref', 'get needs a ref', 'try `likeness get plan:CORE-412`')
-  }
+async function cmdGet (flags: Flags, rest: string[], session: Session): Promise<Envelope> {
   const out: Note[] = []
   for (const ref of rest) {
     const idx = ref.indexOf(':')
@@ -293,7 +319,12 @@ async function cmdGet (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Pr
       throw new LikenessError('invalid-ref', 'not a ref: ' + ref + ' (no id after the colon)',
         'a ref is <instance>:<id>, a lid, #n or @alias')
     }
-    const c = ctx.connections.find(x => x.instance === instance)
+    // A dot segment substituted into a route would name another resource.
+    if ('.' === id || '..' === id) {
+      throw new LikenessError('invalid-ref', 'not a ref: ' + ref + ' (an id is never . or ..)',
+        'a ref is <instance>:<id>, a lid, #n or @alias')
+    }
+    const c = session.conns.find(x => x.instance === instance)
     if (undefined === c) {
       throw new LikenessError('no-such-source', 'no connection named "' + instance + '"',
         'run `likeness doctor` to see the configured connections')
@@ -304,7 +335,12 @@ async function cmdGet (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Pr
         'no adapter for source "' + c.source + '" (connection "' + c.instance + '")',
         'this source arrives in a later stage')
     }
-    const note = await adapter.loadNote(optsFor(ctx, c), calls, id, flags.raw)
+    if (undefined === adapter.loadNote || !supports(c.source, 'note', 'get')) {
+      throw new LikenessError('unsupported-capability', c.source + ' cannot get a note',
+        'run `likeness doctor` to see what each connection offers',
+        { source: c.source, instance: c.instance, entity: 'note', op: 'get' })
+    }
+    const note = await adapter.loadNote(session.handle(c), c, id, flags.raw)
     if (null === note) {
       throw new LikenessError('not-found', ref + ' does not exist',
         'check the ref, or run `likeness list` to see what is there')
@@ -312,12 +348,12 @@ async function cmdGet (ctx: Ctx, flags: Flags, rest: string[], calls: Calls): Pr
     out.push(note)
   }
   return envelope(['get'], 'ok', out, {
-    count: out.length, sources: [...new Set(out.map(n => n.instance))].sort(), calls: calls.count(),
+    count: out.length, sources: [...new Set(out.map(n => n.instance))].sort(), calls: session.calls.count(),
   })
 }
 
-async function cmdDoctor (ctx: Ctx, flags: Flags, calls: Calls): Promise<Envelope> {
-  const conns = selected(ctx, flags)
+async function cmdDoctor (name: string, flags: Flags, session: Session): Promise<Envelope> {
+  const conns = selected(session.conns, flags)
   const rows: Record<string, unknown>[] = []
   const failures: string[] = []
   let bad = 0
@@ -334,11 +370,18 @@ async function cmdDoctor (ctx: Ctx, flags: Flags, calls: Calls): Promise<Envelop
       bad++
       continue
     }
-    const r = await adapter.check(optsFor(ctx, c), calls)
+    let r: Check
+    try {
+      r = await adapter.check(session.handle(c))
+    }
+    catch {
+      r = { ok: false, code: 'source-unavailable', detail: 'station could not connect this instance' }
+    }
     const row: Record<string, unknown> = {
       instance: c.instance, source: c.source, check: r.ok ? 'ok' : 'FAIL', detail: r.detail,
     }
     if (!r.ok) { row.code = r.code as string; failures.push(r.code as string); bad++ }
+    if (undefined !== r.remedy) row.remedy = r.remedy
     rows.push(row)
   }
   const codes = [...new Set(failures)].sort((a, b) => {
@@ -346,13 +389,13 @@ async function cmdDoctor (ctx: Ctx, flags: Flags, calls: Calls): Promise<Envelop
     return 0 !== d ? d : (a < b ? -1 : a > b ? 1 : 0)
   })
   const code = 0 === bad ? 'ok' : codes[0]
-  const env = envelope(['doctor'], code, rows, {
-    count: rows.length, sources: conns.map(c => c.instance).sort(), calls: calls.count(),
+  const env = envelope([name], code, rows, {
+    count: rows.length, sources: conns.map(c => c.instance).sort(), calls: session.calls.count(),
   })
   if (0 < bad) {
     return fails(env,
       bad + (1 === bad ? ' connection needs' : ' connections need') + ' attention',
-      'start the application, check the token, and re-run `likeness doctor`')
+      'start the application, check the token, and re-run `likeness ' + name + '`')
   }
   return env
 }
@@ -372,85 +415,175 @@ function cmdWhich (ctx: Ctx): Envelope {
   return envelope(['which'], code, rows, { count: rows.length })
 }
 
-function cmdHelp (): Envelope {
-  const commands = [
-    { command: 'list', takes: '[selector]', does: 'list notes across the configured sources' },
-    { command: 'get', takes: '<ref>...', does: 'fetch one note by <instance>:<id>' },
-    { command: 'doctor', takes: '', does: 'check every configured connection' },
-    { command: 'version', takes: '', does: 'this port and its version' },
-    { command: 'which', takes: '', does: 'every likeness on PATH' },
-    { command: 'help', takes: '', does: 'this' },
-  ]
-  for (const name of Object.keys(STUBS).sort()) {
-    commands.push({ command: name, takes: '', does: STUBS[name] + ' (not implemented yet)' })
+// Help text is rendered from the command table at build time; JSON gets the rows.
+function cmdHelp (args: string[]): { env: Envelope, text: string } {
+  const name = args.join(' ')
+  const text = helpText(name)
+  if (undefined === text) {
+    throw new LikenessError('invalid-argument', 'no such command: ' + name,
+      'run `likeness help` for the command list')
   }
-  return envelope(['help'], 'ok', commands, { count: commands.length })
+  const rows = helpRows().filter(r =>
+    '' === name || r.command === name || r.command.startsWith(name + ' '))
+  return { env: envelope(['help'], 'ok', rows, { count: rows.length }), text }
 }
 
-const STUBS: Record<string, string> = {
-  describe: 'the machine-readable surface document',
-  mcp: 'the tool-protocol server',
-  project: 'project files and composition',
-  search: 'cross-source search',
-  caps: 'the capability matrix, printed',
-  sources: 'connection management',
+function entryOf (ctx: Ctx, flags: Flags): VaultEntry {
+  const home = ctx.home ?? homedir()
+  return vaultEntry(ctx.station, {
+    profile: profileOf(ctx.env),
+    home,
+    dir: ctx.dir ?? join(home, '.config', 'likeness'),
+    key: flags.vaultKey,
+  })
+}
+
+function replied (name: string, got: Reply): { env: Envelope, text?: string } {
+  return { env: envelope([name], got.empty ? 'no-match' : 'ok', got.data, { count: got.count }), text: got.text }
+}
+
+// Every `sources` action but `test`, which runs as doctor does.
+async function cmdSources (ctx: Ctx, parsed: Parsed, flags: Flags, watch: (s: Station) => void):
+Promise<{ env: Envelope, text?: string }> {
+  const name = parsed.command
+  if ('sources list' === name) return replied(name, sourcesList(openConfigured(ctx), ctx.accounts ?? {}))
+  if ('sources add' === name) return replied(name, await add(ctx, parsed.flags, flags, watch))
+  if ('sources remove' === name) return replied(name, remove(ctx, parsed.args[0]))
+  if ('sources rename' === name) return replied(name, rename(ctx, parsed.args[0], parsed.args[1]))
+  throw new Error('no such sources action: ' + name)
+}
+
+async function cmdSecrets (ctx: Ctx, name: string, flags: Flags, args: string[]): Promise<{ env: Envelope, text: string }> {
+  const got = await secrets(name.slice('secrets '.length), args, entryOf(ctx, flags), ctx, flags)
+  const env = envelope([name], got.empty ? 'no-match' : 'ok', got.data, { count: got.count })
+  return { env, text: got.text }
 }
 
 
 export async function run (ctx: Ctx): Promise<Result> {
-  const calls = new Calls()
-  const [name, ...args] = ctx.argv
   const started = Date.now()
 
-  // Parsed before the try, so that a bad flag is still reported through the
-  // envelope rather than thrown out of `run`.
-  let flags: Flags
-  let rest: string[]
+  // The grammar decides first: a refused argument runs nothing at all.
+  let parsed: Parsed
   try {
-    ({ flags, rest } = parseFlags(args))
+    parsed = parseArgv(ctx.argv)
   }
   catch (err) {
-    return finish(ctx, name ?? '', err, calls, started,
-      { json: args.includes('--json'), deterministic: args.includes('--deterministic') })
+    return finish(ctx, commandWords(ctx.argv).join(' '), err, new Calls(null), started,
+      { json: ctx.argv.includes('--json'), deterministic: ctx.argv.includes('--deterministic') })
   }
 
-  const render = (env: Envelope): Result => {
+  const name = parsed.command
+  const flags = flagsOf(parsed)
+  let calls = new Calls(null)
+
+  const render = (env: Envelope, text?: string): Result => {
     // Measured here, once, around the whole command. Zeroed under
     // --deterministic so the declared exception cannot defeat the byte diff.
     env.meta.elapsed_ms = flags.deterministic ? 0 : Date.now() - started
     return {
       exit: exitFor(env.code),
-      stdout: flags.json ? serialise(env) : human(env),
+      stdout: flags.json ? serialise(env) : (text ?? human(env)),
       stderr: flags.json ? '' : narrate(env),
       calls: calls.all(),
     }
   }
 
   try {
-    if (undefined === name || '' === name) {
-      throw new LikenessError('invalid-selector', 'no command given',
-        'try `likeness list`, or `likeness help` for the command list')
-    }
-    if (name === '--help' || name === '-h' || name === 'help') return render(cmdHelp())
-    if (name === 'list') return render(await cmdList(ctx, flags, rest, calls))
-    if (name === 'get') return render(await cmdGet(ctx, flags, rest, calls))
-    if (name === 'doctor') return render(await cmdDoctor(ctx, flags, calls))
-    if (name === 'version') return render(cmdVersion())
-    if (name === 'which') return render(cmdWhich(ctx))
-
-    if (undefined !== STUBS[name]) {
-      // A stub that exists and says it does not work yet, so that neither this
-      // nor packaging is a surprise at the stage that needs it.
+    if (!commandDef(name)?.ready) {
       throw new LikenessError('unsupported-capability',
-        '`' + name + '` is not implemented yet - ' + STUBS[name],
+        '`' + name + '` is not implemented yet - ' + commandDef(name)?.short,
         'it arrives in a later stage; run `likeness help` for what works now')
     }
-    throw new LikenessError('invalid-selector', 'no such command: ' + name,
-      'run `likeness help` for the command list')
+    if ('help' === name) {
+      const { env, text } = cmdHelp(parsed.args)
+      return render(env, text)
+    }
+    if ('version' === name) return render(cmdVersion())
+    if ('which' === name) return render(cmdWhich(ctx))
+    if (name.startsWith('secrets ')) {
+      const { env, text } = await cmdSecrets(ctx, name, flags, parsed.args)
+      return render(env, text)
+    }
+    if (name.startsWith('sources ') && 'sources test' !== name) {
+      const { env, text } = await cmdSources(ctx, parsed, flags, (s) => { calls = new Calls(s) })
+      return render(env, text)
+    }
+
+    const session = await openSession(ctx, flags)
+    calls = session.calls
+    if ('list' === name) return render(await cmdList(ctx, flags, parsed.args, session))
+    if ('get' === name) return render(await cmdGet(flags, parsed.args, session))
+    if ('doctor' === name) return render(await cmdDoctor(name, flags, session))
+    if ('sources test' === name) {
+      return render(await cmdDoctor(name, { ...flags, instance: [...flags.instance, ...parsed.args] }, session))
+    }
+    throw new Error('declared ready and not dispatched: ' + name)
   }
   catch (err) {
-    return render(errorEnvelope(name ?? '', err, calls))
+    return render(errorEnvelope(name, err, calls))
   }
+}
+
+const STATION_REMEDY = 'fix station.json; station validates it against its own shape'
+
+// Any refusal of station's own as it opens on the configuration is the
+// project's, whatever its code: no source has been asked anything yet.
+function openConfigured (ctx: Ctx): Station {
+  try {
+    return openStation(withChain(ctx.station, []), ctx.env)
+  }
+  catch (err) {
+    const code = (err as { code?: unknown })?.code
+    if ('string' === typeof code && code.startsWith('station_')) {
+      throw new LikenessError('invalid-project', String((err as Error).message), STATION_REMEDY)
+    }
+    throw err
+  }
+}
+
+// One station per run: every client is connected through it lazily, and the
+// calls a command made are the requests it observed. A live run with a
+// connection to make opens it on the vault.
+async function openSession (ctx: Ctx, flags: Flags): Promise<Session> {
+  const entry = entryOf(ctx, flags)
+  let station = openConfigured(ctx)
+  const conns = connectionsOf(station, ctx.accounts ?? {}, profileOf(ctx.env))
+  const configs = configured(station, conns)
+  if (undefined === ctx.fixture && 0 < conns.length) {
+    const chain = await vaultChain(ctx, entry, flags)
+    try {
+      station = openStation(withChain(ctx.station, chain), ctx.env)
+    }
+    catch {
+      throw new LikenessError('secret-backend-unavailable', 'station could not open the vault as its secret store',
+        'this port\'s station must read minivault stores; see "Secrets" in the README')
+    }
+  }
+  const handles = new Map<string, unknown>()
+  return {
+    conns,
+    calls: new Calls(station),
+    handle: (c: Connection): unknown => {
+      if (!handles.has(c.instance)) {
+        handles.set(c.instance, (adapterFor(c) as Adapter).connect(
+          station, c, configs.get(c.instance), ctx.fixture?.[c.instance]))
+      }
+      return handles.get(c.instance)
+    },
+  }
+}
+
+// Each connection's block from station.json, read by its own adapter. A block
+// the adapter cannot use refuses the command before any call or prompt.
+function configured (station: Station, conns: Connection[]): Map<string, unknown> {
+  const blocks = new Map(station.instances().map(i => [i.name, i.block as Record<string, unknown>]))
+  const out = new Map<string, unknown>()
+  for (const c of conns) {
+    const configure = adapterFor(c)?.configure
+    if (undefined !== configure) out.set(c.instance, configure(c.instance, blocks.get(c.instance) ?? {}))
+  }
+  return out
 }
 
 function errorEnvelope (name: string, err: unknown, calls: Calls): Envelope {
@@ -463,6 +596,12 @@ function errorEnvelope (name: string, err: unknown, calls: Calls): Envelope {
   if (err instanceof LikenessError) {
     return envelope([name], err.code, null, { calls: calls.count() },
       { message: err.message, remedy: err.remedy, ...err.detail })
+  }
+  if ('station_config_invalid' === (err as { code?: string })?.code) {
+    return envelope([name], 'invalid-project', null, { calls: calls.count() }, {
+      message: String((err as Error).message),
+      remedy: STATION_REMEDY,
+    })
   }
   const anyErr = err as { status?: number, message?: string }
   const code =

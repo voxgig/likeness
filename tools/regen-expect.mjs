@@ -29,7 +29,7 @@ if (!existsSync(DIST)) {
   process.exit(2)
 }
 
-const { buildCtx, entries } = await import(DIST)
+const { buildCtx, entries, located } = await import(DIST)
 const { run } = await import(join(ROOT, 'typescript', 'dist', 'src', 'core.js'))
 const { serialise, stripParityExceptions } = await import(join(ROOT, 'typescript', 'dist', 'src', 'envelope.js'))
 
@@ -37,8 +37,31 @@ const check = process.argv.includes('--check')
 let wrote = 0
 let stale = 0
 
+// A file an entry asserts afterwards is written under spec/ like stdout. One
+// held to a fixture, the configuration it brought, is compared and never written.
+function files (e, ctx) {
+  for (const [name, rel] of Object.entries(e.out.files ?? {})) {
+    const at = located(ctx, name)
+    const text = existsSync(at) ? readFileSync(at, 'utf8') : null
+    const dst = join(ROOT, rel)
+    const have = existsSync(dst) ? readFileSync(dst, 'utf8') : null
+    if (null === text) { console.error(`  MISSING ${name} after ${e.id}`); stale++ }
+    else if (check || !rel.startsWith('spec/')) {
+      if (have !== text) { console.error(`  STALE   ${rel}`); stale++ }
+    }
+    else {
+      mkdirSync(dirname(dst), { recursive: true })
+      writeFileSync(dst, text)
+      console.log(`  wrote   ${rel}`)
+      wrote++
+    }
+  }
+}
+
 for (const e of entries('cli')) {
-  const r = await run(buildCtx(e))
+  const ctx = buildCtx(e)
+  const r = await run(ctx)
+  files(e, ctx)
   const dst = join(ROOT, e.out.stdout)
 
   const text = e.out.stdout.endsWith('.json')
@@ -57,7 +80,7 @@ for (const e of entries('cli')) {
   }
 }
 
-if (check && 0 < stale) {
+if (0 < stale) {
   console.error(`\nregen-expect: ${stale} expectation(s) do not match the canonical port.`)
   process.exit(1)
 }

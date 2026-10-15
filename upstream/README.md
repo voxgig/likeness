@@ -11,12 +11,18 @@ each file is where it was filed.
 
 ## Status, 2026-10-14
 
-Every draft is filed. "Closed" for a `sdkgen` issue means the generator carries
-the fix; an SDK carries it only once regenerated. Joplin was regenerated on
-2026-09-27 and this repository is pinned to that revision (`c762196`); Obsidian
-and Linear carry the fixes at their pins; Notion is still on the generator of
-2026-09-17 and carries every closed defect until
-[notion-sdk#1](https://github.com/voxgig-sdk/notion-sdk/issues/1) regenerates it.
+Every draft is filed. "Closed" for a `sdkgen`
+issue means the generator carries the fix; an SDK carries it only once
+regenerated. Joplin, Obsidian and Notion
+were regenerated with station's feature, loaded only when it initialises, and
+this repository is pinned to those revisions, the heads of open pull requests:
+Joplin at `89b86ca`
+([joplin-sdk#4](https://github.com/voxgig-sdk/joplin-sdk/pull/4)), Obsidian at
+`5e8cd8e` from the plugin's full definition
+([obsidian-sdk#3](https://github.com/voxgig-sdk/obsidian-sdk/pull/3)) and
+Notion at `1e45fc3`, which adds the `rb` target
+([notion-sdk#5](https://github.com/voxgig-sdk/notion-sdk/pull/5)). Linear
+carries the fixes at its pin and is held (SPEC §0 decision 11).
 
 | Draft | Filed as | Status |
 |---|---|---|
@@ -27,9 +33,11 @@ and Linear carry the fixes at their pins; Notion is still on the generator of
 | `issue/05` | [sdkgen#165](https://github.com/voxgig/sdkgen/issues/165) | closed |
 | `issue/07` | [sdkgen#167](https://github.com/voxgig/sdkgen/issues/167) | closed; Linear's offline test mode works in C and Ruby from sdkgen 4.30.2 |
 | `issue/08` | [aontu-lang/aontu#246](https://github.com/aontu-lang/aontu/issues/246) | fixed upstream: on 0.76.0 `explain` accepts a code as it is printed, with or without its `aontu/` prefix |
-| `issue/09` | [notion-sdk#2](https://github.com/voxgig-sdk/notion-sdk/issues/2) | open; the Ruby port cannot reach Notion until it lands |
+| `issue/09` | [notion-sdk#2](https://github.com/voxgig-sdk/notion-sdk/issues/2) | answered by the regeneration in [notion-sdk#5](https://github.com/voxgig-sdk/notion-sdk/pull/5), which generates `rb`; closes when it merges |
 | `issue/10` | [sdkgen#163](https://github.com/voxgig/sdkgen/issues/163) | closed; the Go harness no longer rewrites `json.Number` before seeding |
 | `issue/11` | [sdkgen#164](https://github.com/voxgig/sdkgen/issues/164) | closed |
+| `issue/12` | [sdkgen#418](https://github.com/voxgig/sdkgen/issues/418) | open; the Ruby port's suite excepts the two transcript entries it changes, and fails once they match |
+| `issue/13` | [sdkgen#419](https://github.com/voxgig/sdkgen/issues/419) | open; the Ruby port's wire test that walks a vault from its root is skipped, saying why |
 
 ## Filed directly, 2026-10-14
 
@@ -53,6 +61,25 @@ waits on which.
 | [sdkgen#408](https://github.com/voxgig/sdkgen/issues/408) | `voxgig/sdkgen` | no generated transport can trust a self-signed certificate, so the Obsidian fingerprint pin has nothing to verify it; each port installs the check through the SDK's `utility.fetcher` seam until it lands, and the C port cannot |
 | [aontu#318](https://github.com/aontu-lang/aontu/issues/318) | `aontu-lang/aontu` | `vet --coverage` reads a corpus whose entries are a disjunction of records as having checked nothing (`spec/unit.aontu`: 0 of 519 leaves), so `--strict-coverage` cannot gate this repository yet |
 | [station#23](https://github.com/voxgig/station/issues/23) | `voxgig/station` | station's C port is env-only and does not use sekreto's C port |
+| [station#33](https://github.com/voxgig/station/issues/33) | `voxgig/station` | the ruby, php and perl stations give sekreto no plugins, so none can open a minivault; the Ruby port waits on it for a live token |
+| [station#34](https://github.com/voxgig/station/issues/34) | `voxgig/station` | the published `@voxgig/station` 0.1.0 depends on a sekreto with no minivault; `main` has the newer one, unreleased, so the TypeScript port waits on a release for a live token |
+
+## Filed from Stage 2, 2026-10-15
+
+Found while building the Obsidian and Notion adapters.
+
+| Issue | Repository | What |
+|---|---|---|
+| [notion-sdk#6](https://github.com/voxgig-sdk/notion-sdk/issues/6) | `voxgig-sdk/notion-sdk` | the SDK never sends `Notion-Version`, which the Notion API requires; each adapter pins it in the connection's `options.headers` |
+| [notion-sdk#7](https://github.com/voxgig-sdk/notion-sdk/issues/7) | `voxgig-sdk/notion-sdk` | the definition's `Page` has no `url`, `in_trash` or `public_url`, and its `parent` only `database_id`; the adapter reads them untyped |
+| [obsidian-sdk#4](https://github.com/voxgig-sdk/obsidian-sdk/issues/4) | `voxgig-sdk/obsidian-sdk` | a vault directory's listing point is unreachable (it shares the file point's selector), and offline mode lists the whole vault at once; the adapter walks through the file point and derives directories from seeded paths |
+| [sdkgen#416](https://github.com/voxgig/sdkgen/issues/416) | `voxgig/sdkgen` | a point's response alternatives cannot be chosen per call, so the note JSON form is asked for client-wide |
+| [sdkgen#417](https://github.com/voxgig/sdkgen/issues/417) | `voxgig/sdkgen` | offline mode keys an entity with no path parameter by an optional query parameter, which then appears in the record |
+| [station#49](https://github.com/voxgig/station/issues/49) | `voxgig/station` | `connect()` never applies a declared block's `options`, so likeness reads `instances()` and passes the pinned `Notion-Version` itself |
+| [sdkgen#418](https://github.com/voxgig/sdkgen/issues/418) | `voxgig/sdkgen` | the vendored struct is older than its fixes: the Python and Ruby `escurl` encode `!'()*`, and Go's `Merge` drops a `null` list element; the ports declare the entries this changes as waiting (`issue/12`) |
+| [sdkgen#419](https://github.com/voxgig/sdkgen/issues/419) | `voxgig/sdkgen` | in Python, Ruby and Go a listed item that is not a record arrives with no data, so a live vault cannot be walked from its root (`issue/13`) |
+| [sdkgen#420](https://github.com/voxgig/sdkgen/issues/420) | `voxgig/sdkgen` | a Go operation's error keeps no cause, so the Go pinned transport holds its refusal for the adapter to collect |
+| [station#50](https://github.com/voxgig/station/issues/50) | `voxgig/station` | the Go and Java stations record an `http` event's path decoded, so the Go port's call lists for escaped Obsidian paths differ from every other port's |
 
 ## A correction worth keeping
 
@@ -100,3 +127,5 @@ learns why a workaround in this repository exists.
 | `issue/09-notion-no-ruby-target.md` | `voxgig-sdk/notion-sdk` | **blocker** | no Ruby target, so likeness's Ruby port cannot reach Notion at all |
 | `issue/10-go-netsim-ignores-json-number.md` | `voxgig-sdk/joplin-sdk` (Go target) | major | a `net` option decoded as `json.Number` is silently ignored, so a simulated failure does not happen and the test passes |
 | `issue/11-paging-signal-unreachable.md` | `voxgig-sdk/joplin-sdk` (all four) | major | the paging feature computes `hasMore` and a cursor, and exposes them nowhere a caller can reach, so a consumer cannot follow pages or even detect one |
+| `issue/12-escurl-escapes-what-encodeuricomponent-keeps.md` | `voxgig/sdkgen` | major | the Ruby and Python SDKs percent-encode `!'()*` in a path parameter where TypeScript and Go send them as they are, so the ports' requests differ on the wire |
+| `issue/13-list-drops-items-that-are-not-records.md` | `voxgig/sdkgen` | major | a `list` whose items are not records returns entities with no data in Ruby, Python and Go, so a live Obsidian vault cannot be walked from its root |

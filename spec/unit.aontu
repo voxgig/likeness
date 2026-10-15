@@ -59,6 +59,15 @@ primary: unit: {
     }
 
     {
+      id: "envelope/integer-beyond-a-double-is-refused"
+      # The canonical port parses numbers as doubles, so every port is held to
+      # the integers a double names exactly.
+      fn: "serialise"
+      in: n: 9007199254740992
+      err: "integer beyond exact double precision"
+    }
+
+    {
       id: "envelope/escape-quote-and-backslash"
       fn: "serialise"
       in: s: "a\"b\\c"
@@ -337,6 +346,39 @@ primary: unit: {
       in: "updated>2000-02-29"
       out: { t:"cmp" field:"updated" op:">" value: { k:"date" v:"2000-02-29" } }
     }
+
+    {
+      id: "selector/nesting-64-groups-is-the-most"
+      # Each group and each negation opens one level, and a selector nests at
+      # most 64 deep, so no input can drive a port's parser to exhaust its stack.
+      fn: "parseSelector"
+      in: "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+      out: { t:"cmp" field:"tag" op:":" value: { k:"word" v:"a" } }
+    }
+
+    {
+      id: "selector/nesting-counts-groups-and-negations-together"
+      fn: "parseSelector"
+      in: "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((NOT tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+      out: {
+        t: "not"
+        kid: { t:"cmp" field:"tag" op:":" value: { k:"word" v:"a" } }
+      }
+    }
+
+    {
+      id: "selector/nesting-is-depth-not-count"
+      # A level closes with its group, so groups side by side do not add up.
+      fn: "parseSelector"
+      in: "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:b))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+      out: {
+        t: "and"
+        kids: [
+          { t:"cmp" field:"tag" op:":" value: { k:"word" v:"a" } }
+          { t:"cmp" field:"tag" op:":" value: { k:"word" v:"b" } }
+        ]
+      }
+    }
   ]
 
   # Malformed input. EVERY ONE ASSERTS A BYTE OFFSET: never a stack trace,
@@ -487,6 +529,36 @@ primary: unit: {
       in: "body<3d"
       out: { offset:4 token:"<" }
     }
+
+    {
+      id: "selector-err/nesting-65-groups"
+      # The offending token is the one that would open the level past 64.
+      fn: "parseSelectorError"
+      in: "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+      out: { offset:64 token:"(" }
+    }
+
+    {
+      id: "selector-err/nesting-65-negations"
+      fn: "parseSelectorError"
+      in: "NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT tag:a"
+      out: { offset:256 token:"NOT" }
+    }
+
+    {
+      id: "selector-err/nesting-64-groups-and-a-negation"
+      fn: "parseSelectorError"
+      in: "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((-tag:a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+      out: { offset:64 token:"-" }
+    }
+
+    {
+      id: "selector-err/nesting-refused-before-the-end-is-read"
+      # Refused where the limit is passed, not as the unclosed group it also is.
+      fn: "parseSelectorError"
+      in: "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a"
+      out: { offset:64 token:"(" }
+    }
   ]
 
   # ---------------------------------------------------------------- identity
@@ -537,6 +609,287 @@ primary: unit: {
         updated: "2026-03-10T08:00:00Z"
       }
     }
+
+    {
+      id: "project/small-numbers-as-javascript-writes-them"
+      # Plain digits from 1e-6, the exponent form below it.
+      fn: "projectJoplin"
+      in: {
+        instance: "jot"
+        account: "local"
+        raw: {
+          id: "n2"
+          title: 0.00000015
+          body: 0.000001
+          parent_id: 0.0000001
+          created_time: 0
+          updated_time: 0
+        }
+      }
+      out: {
+        lid: "lk_18xfpffw3qe4"
+        source: "joplin"
+        instance: "jot"
+        id: "n2"
+        title: "1.5e-7"
+        body: "0.000001"
+        space: "1e-7"
+        url: "joplin://x-callback-url/openNote?id=n2"
+        created: "1970-01-01T00:00:00Z"
+        updated: "1970-01-01T00:00:00Z"
+      }
+    }
+  ]
+
+  args: set: [
+    {
+      id: "args/flags-anywhere-after-the-command"
+      fn: "parseArgv"
+      in: ["list" "--limit" "2" "--json"]
+      out: { command:"list" flags: { limit:2 json:true } args: [] }
+    }
+
+    {
+      id: "args/equals-form"
+      fn: "parseArgv"
+      in: ["list" "--limit=2"]
+      out: { command:"list" flags:limit:2 args: [] }
+    }
+
+    {
+      id: "args/selector-terms-accumulate"
+      fn: "parseArgv"
+      in: ["list" "title:a" "--json" "tag:b"]
+      out: { command:"list" flags:json:true args: ["title:a" "tag:b"] }
+    }
+
+    {
+      id: "args/double-dash-ends-flags"
+      fn: "parseArgv"
+      in: ["list" "--json" "--" "-title:x" "--raw"]
+      out: { command:"list" flags:json:true args: ["-title:x" "--raw"] }
+    }
+
+    {
+      id: "args/negated-boolean"
+      fn: "parseArgv"
+      in: ["list" "--no-raw"]
+      out: { command:"list" flags:raw:false args: [] }
+    }
+
+    {
+      id: "args/repeatable-accumulates-in-order"
+      fn: "parseArgv"
+      in: ["list" "--instance" "joplin$spare" "--instance" "joplin"]
+      out: { command:"list" flags:instance: ["joplin$spare" "joplin"] args: [] }
+    }
+
+    {
+      id: "args/help-flag-first-is-help"
+      fn: "parseArgv"
+      in: ["--help"]
+      out: { command:"help" flags: {} args: [] }
+    }
+
+    {
+      id: "args/short-help-takes-a-command"
+      fn: "parseArgv"
+      in: ["-h" "list"]
+      out: { command:"help" flags: {} args: ["list"] }
+    }
+
+    {
+      id: "args/version-flag-first-is-version"
+      fn: "parseArgv"
+      in: ["--version" "--json"]
+      out: { command:"version" flags:json:true args: [] }
+    }
+
+    {
+      id: "args/a-command-being-built-reads-its-globals"
+      fn: "parseArgv"
+      in: ["search" "anything" "--bogus" "-x" "--json"]
+      out: { command:"search" flags:json:true args: [] }
+    }
+
+    {
+      id: "args/refs-accumulate"
+      fn: "parseArgv"
+      in: ["get" "joplin:a" "joplin:b"]
+      out: { command:"get" flags: {} args: ["joplin:a" "joplin:b"] }
+    }
+
+    {
+      id: "args/stdin-dash-is-a-positional"
+      fn: "parseArgv"
+      in: ["list" "-"]
+      out: { command:"list" flags: {} args: ["-"] }
+    }
+
+    { id:"args/no-command" fn:"parseArgv" in: [] err:"no command given" }
+
+    {
+      id: "args/flag-before-the-command"
+      fn: "parseArgv"
+      in: ["--json" "list"]
+      err: "the command comes first, and --json is a flag"
+    }
+
+    {
+      id: "args/unknown-command"
+      fn: "parseArgv"
+      in: ["nosuch"]
+      err: "no such command: nosuch"
+    }
+
+    {
+      id: "args/undeclared-flag"
+      fn: "parseArgv"
+      in: ["list" "--bogus"]
+      err: "`list` has no flag --bogus"
+    }
+
+    {
+      id: "args/prototype-name-is-not-a-flag"
+      fn: "parseArgv"
+      in: ["list" "--constructor"]
+      err: "`list` has no flag --constructor"
+    }
+
+    {
+      id: "args/negating-a-valued-flag"
+      fn: "parseArgv"
+      in: ["list" "--no-limit"]
+      err: "`list` has no flag --no-limit"
+    }
+
+    {
+      id: "args/dash-positional-must-follow-double-dash"
+      fn: "parseArgv"
+      in: ["list" "-title:x"]
+      err: "-title:x begins with - and is not a flag; a positional that begins with - must follow --"
+    }
+
+    {
+      id: "args/boolean-takes-no-value"
+      fn: "parseArgv"
+      in: ["list" "--raw=yes"]
+      err: "--raw takes no value"
+    }
+
+    {
+      id: "args/value-missing-at-the-end"
+      fn: "parseArgv"
+      in: ["list" "--limit"]
+      err: "--limit needs a value"
+    }
+
+    {
+      id: "args/value-missing-before-a-flag"
+      fn: "parseArgv"
+      in: ["list" "--limit" "--json"]
+      err: "--limit needs a value"
+    }
+
+    {
+      id: "args/integer-not-coerced-decimal"
+      fn: "parseArgv"
+      in: ["list" "--limit" "2.0"]
+      err: "--limit takes an integer from 1 to 999999999, not \"2.0\""
+    }
+
+    {
+      id: "args/integer-not-coerced-hex"
+      fn: "parseArgv"
+      in: ["list" "--limit=0x2"]
+      err: "--limit takes an integer from 1 to 999999999, not \"0x2\""
+    }
+
+    {
+      id: "args/integer-below-the-range"
+      fn: "parseArgv"
+      in: ["list" "--limit" "0"]
+      err: "--limit takes an integer from 1 to 999999999, not \"0\""
+    }
+
+    {
+      id: "args/integer-above-the-range"
+      fn: "parseArgv"
+      in: ["list" "--limit" "1000000000"]
+      err: "not \"1000000000\""
+    }
+
+    {
+      id: "args/integer-beyond-any-host-number"
+      fn: "parseArgv"
+      in: ["list" "--limit" "99999999999999999999"]
+      err: "not \"99999999999999999999\""
+    }
+
+    {
+      id: "args/given-twice"
+      fn: "parseArgv"
+      in: ["list" "--limit" "2" "--limit" "3"]
+      err: "--limit was given twice"
+    }
+
+    {
+      id: "args/boolean-given-twice"
+      fn: "parseArgv"
+      in: ["list" "--json" "--no-json"]
+      err: "--json was given twice"
+    }
+
+    {
+      id: "args/instance-is-a-ref"
+      fn: "parseArgv"
+      in: ["list" "--instance" "Joplin"]
+      err: "--instance takes an instance ref (api or api$tag), not \"Joplin\""
+    }
+
+    {
+      id: "args/name-is-lowercase"
+      fn: "parseArgv"
+      in: ["list" "--sort" "Title"]
+      err: "--sort takes a name ([a-z][a-z0-9-]*), not \"Title\""
+    }
+
+    {
+      id: "args/empty-path"
+      fn: "parseArgv"
+      in: ["list" "--config="]
+      err: "--config takes a path, not \"\""
+    }
+
+    {
+      id: "args/required-positional-missing"
+      fn: "parseArgv"
+      in: ["get" "--json"]
+      err: "`get` needs <ref>"
+    }
+
+    {
+      id: "args/surplus-positional"
+      fn: "parseArgv"
+      in: ["version" "extra"]
+      err: "`version` does not take the argument \"extra\""
+    }
+
+    {
+      id: "args/help-takes-the-words-of-a-command"
+      # An action is a group's second word, so help reads every word; words that
+      # name no command are refused when help looks them up.
+      fn: "parseArgv"
+      in: ["help" "secrets" "set"]
+      out: { command:"help" flags: {} args: ["secrets" "set"] }
+    }
+
+    {
+      id: "args/help-command-is-a-name"
+      fn: "parseArgv"
+      in: ["help" "LIST"]
+      err: "<command> takes a name ([a-z][a-z0-9-]*), not \"LIST\""
+    }
   ]
 
   config: set: [
@@ -558,27 +911,426 @@ primary: unit: {
     { id:"config/absent" fn:"takeConfigOption" in: ["list"] out:rest: ["list"] }
 
     {
-      id: "config/station-not-json"
-      fn: "parseStation"
-      in: "{not json"
-      err: "is not valid JSON"
+      id: "config/before-the-command-is-left"
+      fn: "takeConfigOption"
+      in: ["--config" "/x" "list"]
+      out: rest: ["--config" "/x" "list"]
     }
 
     {
-      id: "config/station-connections-in-name-order"
-      fn: "parseStation"
-      in: "{\"sdk\":{\"zed\":{\"api\":\"joplin\",\"account\":\"z\"},\"abe\":{\"api\":\"joplin\",\"org\":\"a\",\"base\":\"http://x\"}}}"
+      id: "config/after-double-dash-is-left"
+      fn: "takeConfigOption"
+      in: ["list" "--" "--config" "/x"]
+      out: rest: ["list" "--" "--config" "/x"]
+    }
+
+    {
+      id: "config/twice-is-left-for-the-grammar"
+      fn: "takeConfigOption"
+      in: ["list" "--config" "/a" "--config=/b"]
+      out: rest: ["list" "--config" "/a" "--config=/b"]
+    }
+
+    {
+      id: "config/no-value-is-left"
+      fn: "takeConfigOption"
+      in: ["list" "--config"]
+      out: rest: ["list" "--config"]
+    }
+
+    {
+      id: "config/flag-shaped-value-is-left"
+      fn: "takeConfigOption"
+      in: ["list" "--config" "--json"]
+      out: rest: ["list" "--config" "--json"]
+    }
+
+    {
+      id: "config/station-not-json"
+      fn: "connections"
+      in: { station:"{not json" likeness:"{}" }
+      err: "station.json is not valid JSON"
+    }
+
+    {
+      id: "config/station-shape-invalid"
+      # Station validates the file against its own shape, in every port.
+      fn: "connections"
+      in: { station:"{\"station\":2}" likeness:"{}" }
+      err: "station.json: station_config_invalid"
+    }
+
+    {
+      id: "config/station-not-an-object"
+      fn: "connections"
+      in: { station:"[]" likeness:"{}" }
+      err: "station.json is not a JSON object"
+    }
+
+    {
+      id: "config/station-refused-for-a-shared-secret"
+      # Any refusal of station's own, not only a shape mismatch, is the file's.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"notes-a\":{},\"notes$a\":{}}}}}"
+        likeness: "{}"
+      }
+      err: "station.json: station_secret_collision"
+    }
+
+    {
+      id: "config/likeness-not-an-object"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+        likeness: "1"
+      }
+      err: "likeness.json is not a JSON object"
+    }
+
+    {
+      id: "config/likeness-not-json"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+        likeness: "{not json"
+      }
+      err: "likeness.json is not valid JSON"
+    }
+
+    {
+      id: "config/connections-in-name-order"
+      # Station's declared instances, in code-point order of the ref: `$` sorts
+      # before every letter, so a tagged instance follows its untagged api.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin$zed\":{},\"joplin\":{},\"joplin$abe\":{\"base\":\"http://x\"}}}}}"
+        likeness: "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin$zed\":{\"account\":\"z\"},\"joplin\":{\"account\":\"local\"},\"joplin$abe\":{\"account\":\"a\"}}}}}"
+      }
       out: [
-        { instance:"abe" source:"joplin" account:"a" base:"http://x" }
-        { instance:"zed" source:"joplin" account:"z" }
+        { instance:"joplin" source:"joplin" account:"local" }
+        { instance:"joplin$abe" source:"joplin" account:"a" }
+        { instance:"joplin$zed" source:"joplin" account:"z" }
       ]
     }
 
     {
-      id: "config/station-without-account"
-      fn: "parseStation"
-      in: "{\"sdk\":{\"jot\":{\"api\":\"joplin\"}}}"
-      err: "has no `account` or `org`"
+      id: "config/inactive-instance-omitted"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{\"active\":false},\"joplin$on\":{}}}}}"
+        likeness: "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin$on\":{\"account\":\"on\"}}}}}"
+      }
+      out: [{ instance:"joplin$on" source:"joplin" account:"on" }]
+    }
+
+    {
+      id: "config/instance-without-account"
+      # Identity may not be derived from the instance ref.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+        likeness: "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{}}}}"
+      }
+      err: "instance \"joplin\" has no account in likeness.json under profile \"default\""
+    }
+
+    {
+      id: "config/account-follows-the-profile"
+      # Profiles declaring one ref against different applications: each
+      # profile's notes take their identity from its own account.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}},\"work\":{\"sdk\":{\"joplin\":{\"base\":\"http://127.0.0.1:41185\"}}}}}"
+        likeness: "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":\"home\"}}},\"work\":{\"instances\":{\"joplin\":{\"account\":\"office\"}}}}}"
+        profile: "work"
+      }
+      out: [{ instance:"joplin" source:"joplin" account:"office" }]
+    }
+
+    {
+      id: "config/profile-inherits-no-account"
+      # Station's profile merge gives the profile its instance; the account is
+      # not merged with it.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}},\"work\":{}}}"
+        likeness: "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":\"home\"}}}}}"
+        profile: "work"
+      }
+      err: "instance \"joplin\" has no account in likeness.json under profile \"work\""
+    }
+
+    {
+      id: "config/profiles-read-only-as-an-object"
+      # An array's indices are not profile names, so a profile named "0" finds
+      # no account in an array of profiles.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"0\":{\"sdk\":{\"joplin\":{}}}}}"
+        likeness: "{\"likeness\":1,\"profiles\":[{\"instances\":{\"joplin\":{\"account\":\"zero\"}}}]}"
+        profile: "0"
+      }
+      err: "instance \"joplin\" has no account in likeness.json under profile \"0\""
+    }
+
+    {
+      id: "config/station-nested-past-the-limit"
+      # Nesting is counted on the text before it is parsed, so every port
+      # refuses at one depth whichever parser it has.
+      fn: "connections"
+      in: {
+        station: "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"
+        likeness: "{}"
+      }
+      err: "station.json is nested more than 64 deep"
+    }
+
+    {
+      id: "config/likeness-nested-past-the-limit"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+        likeness: "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"
+      }
+      err: "likeness.json is nested more than 64 deep"
+    }
+
+    {
+      id: "config/nested-to-the-limit-is-read"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+        likeness: "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"
+      }
+      out: []
+    }
+
+    {
+      id: "config/objects-and-arrays-nest-together"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+        likeness: "{\"a\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":0}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}"
+      }
+      err: "likeness.json is nested more than 64 deep"
+    }
+
+    {
+      id: "config/nesting-refused-before-the-syntax"
+      # The 65th level is refused where it opens, before the text is read on to
+      # its missing close.
+      fn: "connections"
+      in: {
+        station: "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+        likeness: "{}"
+      }
+      err: "station.json is nested more than 64 deep"
+    }
+
+    {
+      id: "config/brackets-in-a-string-are-not-nesting"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+        likeness: "{\"a\":\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"}"
+      }
+      out: []
+    }
+  ]
+
+  # The vault station.json names, resolved for a home of /home/u and a
+  # configuration directory of /home/u/.config/likeness.
+  vault: set: [
+    {
+      id: "vault/default"
+      # No chain named: the vault beside station.json, opened as master.
+      fn: "vaultEntry"
+      in: station: null
+      out: {
+        file: "/home/u/.config/likeness/likeness.skmv"
+        key: "master"
+        shown: "~/.config/likeness/likeness.skmv"
+      }
+    }
+
+    {
+      id: "vault/relative-to-the-configuration"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" file:"../team/v.skmv" }
+      ]
+      out: {
+        file: "/home/u/.config/team/v.skmv"
+        key: "master"
+        shown: "~/.config/team/v.skmv"
+      }
+    }
+
+    {
+      id: "vault/from-home"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" file:"~/v.skmv" }
+      ]
+      out: { file:"/home/u/v.skmv" key:"master" shown:"~/v.skmv" }
+    }
+
+    {
+      id: "vault/from-home-past-a-doubled-slash"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" file:"~//v.skmv" }
+      ]
+      out: { file:"/home/u/v.skmv" key:"master" shown:"~/v.skmv" }
+    }
+
+    {
+      id: "vault/outside-home-is-shown-whole"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" file:"/srv/v.skmv" }
+      ]
+      out: { file:"/srv/v.skmv" key:"master" shown:"/srv/v.skmv" }
+    }
+
+    {
+      id: "vault/vaultkey"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" vaultkey:"ci" }
+      ]
+      out: {
+        file: "/home/u/.config/likeness/likeness.skmv"
+        key: "ci"
+        shown: "~/.config/likeness/likeness.skmv"
+      }
+    }
+
+    {
+      id: "vault/flag-over-vaultkey"
+      fn: "vaultEntry"
+      in: {
+        station: profiles: default: secrets: providers: [
+          { kind:"minivault" vaultkey:"ci" }
+        ]
+        key: "master"
+      }
+      out: {
+        file: "/home/u/.config/likeness/likeness.skmv"
+        key: "master"
+        shown: "~/.config/likeness/likeness.skmv"
+      }
+    }
+
+    {
+      id: "vault/profile-chain-wins"
+      # Chosen the way station chooses: the profile's chain, else default's.
+      fn: "vaultEntry"
+      in: {
+        station: profiles: {
+          default: secrets: providers: [{ kind:"minivault" file:"a.skmv" }]
+          work: secrets: providers: [{ kind:"minivault" file:"b.skmv" }]
+        }
+        profile: "work"
+      }
+      out: {
+        file: "/home/u/.config/likeness/b.skmv"
+        key: "master"
+        shown: "~/.config/likeness/b.skmv"
+      }
+    }
+
+    {
+      id: "vault/profile-without-a-chain"
+      fn: "vaultEntry"
+      in: {
+        station: profiles: {
+          default: secrets: providers: [{ kind:"minivault" file:"a.skmv" }]
+          work: sdk: {}
+        }
+        profile: "work"
+      }
+      out: {
+        file: "/home/u/.config/likeness/a.skmv"
+        key: "master"
+        shown: "~/.config/likeness/a.skmv"
+      }
+    }
+
+    {
+      id: "vault/env-store-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [kind:"env"]
+      err: "likeness reads secrets from its vault alone, and station.json names the store \"env\""
+    }
+
+    {
+      id: "vault/bare-kind-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: ["minivault"]
+      err: "names the store \"minivault\""
+    }
+
+    {
+      id: "vault/empty-chain-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: []
+      err: "secrets.providers must name one store, the vault"
+    }
+
+    {
+      id: "vault/null-chain-is-no-chain"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: null
+      out: {
+        file: "/home/u/.config/likeness/likeness.skmv"
+        key: "master"
+        shown: "~/.config/likeness/likeness.skmv"
+      }
+    }
+
+    {
+      id: "vault/entry-without-a-kind-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [file:"likeness.skmv"]
+      err: "the vault entry in station.json does not name its kind"
+    }
+
+    {
+      id: "vault/passphrase-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" passphrase:"p" }
+      ]
+      err: "a passphrase is never written to a file"
+    }
+
+    {
+      id: "vault/unknown-key-refused"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" iterations:1 }
+      ]
+      err: "the vault entry in station.json has no key \"iterations\""
+    }
+
+    {
+      id: "vault/file-must-be-a-path"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" file:"" }
+      ]
+      err: "the vault entry's file is not a path"
+    }
+
+    {
+      id: "vault/vaultkey-must-be-a-name"
+      fn: "vaultEntry"
+      in: station: profiles: default: secrets: providers: [
+        { kind:"minivault" vaultkey:"Admin" }
+      ]
+      err: "the vault entry's vaultkey is not a key name"
     }
   ]
 
@@ -625,6 +1377,32 @@ primary: unit: {
 
     { id:"identity/rfc3339-epoch" fn:"rfc3339" in:0 out:"1970-01-01T00:00:00Z" }
     {
+      id: "identity/rfc3339-first-four-digit-year"
+      fn: "rfc3339"
+      in: -62167219200000
+      out: "0000-01-01T00:00:00Z"
+    }
+    {
+      id: "identity/rfc3339-last-four-digit-year"
+      fn: "rfc3339"
+      in: 253402300799999
+      out: "9999-12-31T23:59:59Z"
+    }
+    {
+      id: "identity/rfc3339-before-year-zero"
+      # Refused rather than written another way: no year outside 0000-9999 has
+      # an RFC 3339 form.
+      fn: "rfc3339"
+      in: -62167219200001
+      err: "outside the years 0000 to 9999"
+    }
+    {
+      id: "identity/rfc3339-after-year-9999"
+      fn: "rfc3339"
+      in: 253402300800000
+      err: "outside the years 0000 to 9999"
+    }
+    {
       id: "identity/rfc3339-second-precision"
       # Milliseconds are truncated, never rounded: RFC 3339 UTC at second
       # precision is the only timestamp form the envelope carries.
@@ -651,5 +1429,1212 @@ primary: unit: {
     }
 
     { id:"order/equal" fn:"compareCodePoints" in: ["abc" "abc"] out:0 }
+  ]
+
+  # ---------------------------------------------------------------- obsidian
+  obsidian: set: [
+    {
+      id: "obsidian/url-names-the-vault-by-its-account"
+      fn: "obsidianUrl"
+      in: { vault:"8dc726dfc2eecbf2" path:"Welcome.md" }
+      out: "obsidian://open?vault=8dc726dfc2eecbf2&file=Welcome.md"
+    }
+
+    {
+      id: "obsidian/url-encodes-the-path-separator-and-spaces"
+      fn: "obsidianUrl"
+      in: { vault:"8dc726dfc2eecbf2" path:"projects/launch plan.md" }
+      out: "obsidian://open?vault=8dc726dfc2eecbf2&file=projects%2Flaunch%20plan.md"
+    }
+
+    {
+      id: "obsidian/url-encodes-everything-but-the-unreserved"
+      # Only the URI unreserved set passes, unlike encodeURIComponent: `!*'()` are encoded too.
+      fn: "obsidianUrl"
+      in: { vault:"My Vault" path:"a+b #c %d &e=f (1) Straße!*'.md" }
+      out: "obsidian://open?vault=My%20Vault&file=a%2Bb%20%23c%20%25d%20%26e%3Df%20%281%29%20Stra%C3%9Fe%21%2A%27.md"
+    }
+
+    {
+      id: "obsidian/url-keeps-the-unreserved"
+      fn: "obsidianUrl"
+      in: { vault:"v" path:"A-Z_a.z~0-9.md" }
+      out: "obsidian://open?vault=v&file=A-Z_a.z~0-9.md"
+    }
+
+    {
+      id: "obsidian/entries-in-code-point-order"
+      fn: "vaultEntries"
+      in: ["welcome.md" "Daily/" "a b.md" "a/" "a.md" "𝐀.md" "￿.md"]
+      out: ["Daily/" "a b.md" "a.md" "a/" "welcome.md" "￿.md" "𝐀.md"]
+    }
+
+    {
+      id: "obsidian/entries-by-first-segment-once"
+      # The offline transport lists every record by id, nested ones too.
+      fn: "vaultEntries"
+      in: [
+        id: "projects/nested/deep note.md"
+        id: "projects/"
+        "Welcome.md"
+        id: "Daily/2026-09-17.md"
+      ]
+      out: ["Daily/" "Welcome.md" "projects/"]
+    }
+
+    {
+      id: "obsidian/entry-that-is-empty-is-refused"
+      fn: "vaultEntries"
+      in: [""]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-climbing-out-is-refused"
+      fn: "vaultEntries"
+      in: ["../elsewhere/"]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-naming-here-is-refused"
+      fn: "vaultEntries"
+      in: ["./a.md"]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-from-the-root-is-refused"
+      fn: "vaultEntries"
+      in: ["/a.md"]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-with-an-empty-segment-is-refused"
+      fn: "vaultEntries"
+      in: ["a//b.md"]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-that-is-not-a-name-is-refused"
+      fn: "vaultEntries"
+      in: [7]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-record-without-an-id-is-refused"
+      fn: "vaultEntries"
+      in: [path:"a.md"]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/walk-is-depth-first-reading-notes-as-met"
+      # Files that are not notes are passed over without a request.
+      fn: "vaultWalk"
+      in: listings: {
+        "": ["Welcome.md" "projects/" "Daily/" "logo.png"]
+        "projects/": ["nested/" "launch plan.md" "img.png"]
+        "projects/nested/": ["deep note.md"]
+        "Daily/": ["2026-09-17.md"]
+      }
+      out: [
+        list: ""
+        list: "Daily/"
+        read: "Daily/2026-09-17.md"
+        read: "Welcome.md"
+        list: "projects/"
+        read: "projects/launch plan.md"
+        list: "projects/nested/"
+        read: "projects/nested/deep note.md"
+      ]
+    }
+
+    {
+      id: "obsidian/walk-passes-over-a-directory-gone"
+      fn: "vaultWalk"
+      in: listings: "": ["gone/" "a.md"]
+      out: [list:"" read:"a.md" list:"gone/"]
+    }
+
+    {
+      id: "obsidian/walk-of-an-empty-vault-lists-the-root"
+      fn: "vaultWalk"
+      in: listings: {}
+      out: [list:""]
+    }
+
+    {
+      id: "obsidian/walk-reads-md-and-nothing-else"
+      fn: "vaultWalk"
+      in: listings: "": ["SHOUT.MD" "a.md.txt" "b.markdown" "c.md"]
+      out: [list:"" read:"c.md"]
+    }
+
+    {
+      id: "obsidian/transport-pinned-hex-any-case"
+      fn: "obsidianTransport"
+      in: {
+        instance: "obsidian"
+        block: options: tls: fingerprint: "sha256:5589BA1952F2D11C07D79A381BC58636477FD17EFA2B70710FC99EF2CE994D25"
+      }
+      out: {
+        tls: "pinned"
+        pin: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      }
+    }
+
+    {
+      id: "obsidian/transport-pinned-colon-pairs"
+      fn: "obsidianTransport"
+      in: {
+        instance: "obsidian"
+        block: {
+          base: "https://127.0.0.1:27124"
+          options: tls: fingerprint: "sha256:55:89:ba:19:52:f2:d1:1c:07:d7:9a:38:1b:c5:86:36:47:7f:d1:7e:fa:2b:70:71:0f:c9:9e:f2:ce:99:4d:25"
+        }
+      }
+      out: {
+        tls: "pinned"
+        pin: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      }
+    }
+
+    {
+      id: "obsidian/transport-plain-http-declared"
+      fn: "obsidianTransport"
+      in: {
+        instance: "obsidian$home"
+        block: { base:"http://127.0.0.1:27123" options:tls:false }
+      }
+      out: tls: "off"
+    }
+
+    {
+      id: "obsidian/transport-https-without-a-pin-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block: {} }
+      err: "pins no certificate"
+    }
+
+    {
+      id: "obsidian/transport-plain-http-undeclared-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:base:"http://127.0.0.1:27123" }
+      err: "is plain HTTP and does not declare it"
+    }
+
+    {
+      id: "obsidian/transport-tls-off-on-https-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:options:tls:false }
+      err: "turns TLS off on an https base"
+    }
+
+    {
+      id: "obsidian/transport-pin-on-plain-http-is-refused"
+      fn: "obsidianTransport"
+      in: {
+        instance: "obsidian"
+        block: {
+          base: "http://127.0.0.1:27123"
+          options: tls: fingerprint: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+      err: "pins a certificate on a plain HTTP base"
+    }
+
+    {
+      id: "obsidian/transport-malformed-pin-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:options:tls:fingerprint:"sha1:abc" }
+      err: "pins a fingerprint that is not sha256 and 64 hex digits"
+    }
+
+    {
+      id: "obsidian/transport-tls-with-more-than-a-pin-is-refused"
+      fn: "obsidianTransport"
+      in: {
+        instance: "obsidian"
+        block: options: tls: {
+          fingerprint: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          ca: "anything"
+        }
+      }
+      err: "has a tls option that is neither a pinned fingerprint nor false"
+    }
+
+    {
+      id: "obsidian/transport-tls-true-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:options:tls:true }
+      err: "has a tls option that is neither a pinned fingerprint nor false"
+    }
+
+    {
+      id: "obsidian/transport-unknown-option-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:options: { tls:false timeout:5 } }
+      err: "has an option likeness does not read: \"timeout\""
+    }
+
+    {
+      id: "obsidian/transport-options-not-a-map-are-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:options: [1] }
+      err: "has options that are not a map"
+    }
+
+    {
+      id: "obsidian/transport-base-of-another-scheme-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:base:"ftp://127.0.0.1" }
+      err: "has a base that is neither https nor http"
+    }
+
+    {
+      id: "obsidian/project-a-nested-note"
+      fn: "projectObsidian"
+      in: {
+        raw: {
+          content: "Body"
+          tags: ["a" "b"]
+          stat: { ctime:1772355600000 mtime:1789547400000 }
+        }
+        path: "projects/nested/deep note.md"
+        instance: "obsidian"
+        account: "8dc726dfc2eecbf2"
+      }
+      out: {
+        lid: "lk_0g9w28zgxbsg"
+        source: "obsidian"
+        instance: "obsidian"
+        id: "projects/nested/deep note.md"
+        title: "deep note"
+        space: "projects/nested"
+        body: "Body"
+        tags: ["a" "b"]
+        url: "obsidian://open?vault=8dc726dfc2eecbf2&file=projects%2Fnested%2Fdeep%20note.md"
+        created: "2026-03-01T09:00:00Z"
+        updated: "2026-09-16T08:30:00Z"
+      }
+    }
+
+    {
+      id: "obsidian/project-a-note-at-the-root-has-no-space"
+      fn: "projectObsidian"
+      in: {
+        raw: { content:"x" tags: [] stat: { ctime:0 mtime:0 } }
+        path: "Welcome.md"
+        instance: "obsidian"
+        account: "v1"
+      }
+      out: {
+        lid: "lk_dz00j92vwpky"
+        source: "obsidian"
+        instance: "obsidian"
+        id: "Welcome.md"
+        title: "Welcome"
+        body: "x"
+        tags: []
+        url: "obsidian://open?vault=v1&file=Welcome.md"
+        created: "1970-01-01T00:00:00Z"
+        updated: "1970-01-01T00:00:00Z"
+      }
+    }
+
+    {
+      id: "obsidian/project-awkward-values"
+      # A non-string is its canonical text, a null tag is dropped, and a
+      # timestamp that is not an integral number is the epoch.
+      fn: "projectObsidian"
+      in: {
+        raw: {
+          content: 42
+          tags: ["a" null 7 x: [1 2] "b"]
+          stat: { ctime:"nope" mtime:1.5 }
+        }
+        path: "odd/x.md"
+        instance: "obsidian"
+        account: "v1"
+      }
+      out: {
+        lid: "lk_xyb1ad0ac0gj"
+        source: "obsidian"
+        instance: "obsidian"
+        id: "odd/x.md"
+        title: "x"
+        space: "odd"
+        body: "42"
+        tags: ["a" "7" "{\"x\":[1,2]}" "b"]
+        url: "obsidian://open?vault=v1&file=odd%2Fx.md"
+        created: "1970-01-01T00:00:00Z"
+        updated: "1970-01-01T00:00:00Z"
+      }
+    }
+
+    {
+      id: "obsidian/project-nulls"
+      # Tags were fetched, so none is `[]`; a null body is absent.
+      fn: "projectObsidian"
+      in: {
+        raw: { content:null tags:null stat:null }
+        path: "odd/nulls.md"
+        instance: "obsidian"
+        account: "v1"
+      }
+      out: {
+        lid: "lk_1vjw01hyhpj8"
+        source: "obsidian"
+        instance: "obsidian"
+        id: "odd/nulls.md"
+        title: "nulls"
+        space: "odd"
+        tags: []
+        url: "obsidian://open?vault=v1&file=odd%2Fnulls.md"
+        created: "1970-01-01T00:00:00Z"
+        updated: "1970-01-01T00:00:00Z"
+      }
+    }
+
+    {
+      id: "obsidian/project-a-single-tag-not-in-a-list"
+      fn: "projectObsidian"
+      in: { raw:tags:"single" path:"a.md" instance:"obsidian" account:"v1" }
+      out: {
+        lid: "lk_4ghpgm9jk5pk"
+        source: "obsidian"
+        instance: "obsidian"
+        id: "a.md"
+        title: "a"
+        tags: ["single"]
+        url: "obsidian://open?vault=v1&file=a.md"
+        created: "1970-01-01T00:00:00Z"
+        updated: "1970-01-01T00:00:00Z"
+      }
+    }
+
+    {
+      id: "obsidian/project-a-note-that-is-not-a-record-is-refused"
+      fn: "projectObsidian"
+      in: { raw:"text" path:"a.md" instance:"obsidian" account:"v1" }
+      err: "returned a note that is not a record"
+    }
+
+    {
+      id: "obsidian/project-a-time-past-9999-is-refused"
+      fn: "projectObsidian"
+      in: {
+        raw: stat: ctime: 253402300800000
+        path: "a.md"
+        instance: "obsidian"
+        account: "v1"
+      }
+      err: "whose stat.ctime is outside the years 0000 to 9999"
+    }
+  ]
+
+  # --------------------------------------------------------------------- pin
+  pin: set: [
+    {
+      id: "pin/lower-case-hex-is-the-pin"
+      fn: "parsePin"
+      in: "sha256:5589BA1952F2D11C07D79A381BC58636477FD17EFA2B70710FC99EF2CE994D25"
+      out: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+    }
+
+    {
+      id: "pin/colon-pairs-are-the-same-pin"
+      fn: "parsePin"
+      in: "sha256:55:89:BA:19:52:F2:D1:1C:07:D7:9A:38:1B:C5:86:36:47:7F:D1:7E:FA:2B:70:71:0F:C9:9E:F2:CE:99:4D:25"
+      out: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+    }
+
+    {
+      id: "pin/too-short-is-refused"
+      fn: "parsePin"
+      in: "sha256:abc"
+      err: "not a sha256 certificate fingerprint"
+    }
+
+    {
+      id: "pin/no-algorithm-is-refused"
+      fn: "parsePin"
+      in: "5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      err: "not a sha256 certificate fingerprint"
+    }
+
+    {
+      id: "pin/the-algorithm-is-lower-case"
+      fn: "parsePin"
+      in: "SHA256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      err: "not a sha256 certificate fingerprint"
+    }
+
+    {
+      id: "pin/colons-all-or-none"
+      fn: "parsePin"
+      in: "sha256:55:895589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d"
+      err: "not a sha256 certificate fingerprint"
+    }
+
+    {
+      id: "pin/not-text-is-refused"
+      fn: "parsePin"
+      in: 42
+      err: "not a sha256 certificate fingerprint"
+    }
+
+    {
+      id: "pin/fingerprint-of-nothing"
+      # The SHA-256 of the certificate's DER bytes, given here in hex.
+      fn: "fingerprintOf"
+      in: ""
+      out: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+
+    {
+      id: "pin/fingerprint-of-abc"
+      fn: "fingerprintOf"
+      in: "616263"
+      out: "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+  ]
+
+  notion: set: [
+    {
+      id: "notion/version-pinned"
+      fn: "notionVersion"
+      in: {
+        instance: "notion"
+        block: options: headers: "notion-version": "2022-06-28"
+      }
+      out: version: "2022-06-28"
+    }
+
+    {
+      id: "notion/version-header-named-in-any-case"
+      fn: "notionVersion"
+      in: {
+        instance: "notion$work"
+        block: options: headers: "Notion-Version": "2025-09-03"
+      }
+      out: version: "2025-09-03"
+    }
+
+    {
+      id: "notion/version-beside-a-base"
+      fn: "notionVersion"
+      in: {
+        instance: "notion"
+        block: {
+          base: "http://127.0.0.1:7777/notion/v1"
+          options: headers: "notion-version": "2022-06-28"
+        }
+      }
+      out: version: "2022-06-28"
+    }
+
+    {
+      id: "notion/version-missing-is-refused"
+      fn: "notionVersion"
+      in: { instance:"notion" block: {} }
+      err: "pins no Notion-Version"
+    }
+
+    {
+      id: "notion/version-in-no-header-is-refused"
+      fn: "notionVersion"
+      in: { instance:"notion" block:options:headers: {} }
+      err: "pins no Notion-Version"
+    }
+
+    {
+      id: "notion/version-not-a-date-is-refused"
+      fn: "notionVersion"
+      in: { instance:"notion" block:options:headers:"notion-version":"latest" }
+      err: "pins a Notion-Version that is not a date"
+    }
+
+    {
+      id: "notion/version-not-text-is-refused"
+      fn: "notionVersion"
+      in: { instance:"notion" block:options:headers:"notion-version":20220628 }
+      err: "pins a Notion-Version that is not a date"
+    }
+
+    {
+      id: "notion/version-twice-is-refused"
+      fn: "notionVersion"
+      in: {
+        instance: "notion"
+        block: options: headers: {
+          "Notion-Version": "2022-06-28"
+          "notion-version": "2022-06-28"
+        }
+      }
+      err: "pins Notion-Version more than once"
+    }
+
+    {
+      id: "notion/version-beside-another-header-is-refused"
+      fn: "notionVersion"
+      in: {
+        instance: "notion"
+        block: options: headers: { "notion-version":"2022-06-28" "x-trace":"1" }
+      }
+      err: "has a header likeness does not send: \"x-trace\""
+    }
+
+    {
+      id: "notion/version-beside-another-option-is-refused"
+      fn: "notionVersion"
+      in: {
+        instance: "notion"
+        block: options: { headers:"notion-version":"2022-06-28" timeout:5 }
+      }
+      err: "has an option likeness does not read: \"timeout\""
+    }
+
+    {
+      id: "notion/version-options-not-a-map-are-refused"
+      fn: "notionVersion"
+      in: { instance:"notion" block:options: ["headers"] }
+      err: "has options that are not a map"
+    }
+
+    {
+      id: "notion/version-headers-not-a-map-are-refused"
+      fn: "notionVersion"
+      in: {
+        instance: "notion"
+        block: options: headers: "notion-version: 2022-06-28"
+      }
+      err: "has headers that are not a map"
+    }
+
+    {
+      id: "notion/title-is-the-title-property"
+      fn: "notionTitle"
+      in: {
+        Status: { id:"V%3D%7Ck" type:"select" select:name:"Doing" }
+        Name: {
+          id: "title"
+          type: "title"
+          title: [{ type:"text" plain_text:"Launch checklist" }]
+        }
+      }
+      out: "Launch checklist"
+    }
+
+    {
+      id: "notion/title-joins-its-rich-text"
+      fn: "notionTitle"
+      in: Name: {
+        id: "title"
+        type: "title"
+        title: [plain_text:"Retention " plain_text:"policy"]
+      }
+      out: "Retention policy"
+    }
+
+    {
+      id: "notion/title-parts-of-every-kind"
+      fn: "notionTitle"
+      in: Name: {
+        id: "title"
+        type: "title"
+        title: [
+          plain_text: "Part "
+          plain_text: 42
+          plain_text: null
+          text: content: "no plain text"
+          "bare"
+          plain_text: x: [1 2]
+        ]
+      }
+      out: "Part 42bare{\"x\":[1,2]}"
+    }
+
+    {
+      id: "notion/title-not-rich-text-is-its-text"
+      fn: "notionTitle"
+      in: Name: {
+        id: "title"
+        type: "title"
+        title: "A title that is not rich text"
+      }
+      out: "A title that is not rich text"
+    }
+
+    {
+      id: "notion/title-a-number-is-its-json"
+      fn: "notionTitle"
+      in: Name: { id:"title" type:"title" title:7 }
+      out: "7"
+    }
+
+    {
+      id: "notion/title-null-is-empty"
+      fn: "notionTitle"
+      in: Name: { id:"title" type:"title" title:null }
+      out: ""
+    }
+
+    {
+      id: "notion/title-with-no-title-property-is-empty"
+      fn: "notionTitle"
+      in: Status: { type:"select" select:name:"Doing" }
+      out: ""
+    }
+
+    {
+      id: "notion/title-of-no-properties-is-empty"
+      fn: "notionTitle"
+      in: null
+      out: ""
+    }
+
+    {
+      id: "notion/title-takes-the-first-by-code-point"
+      fn: "notionTitle"
+      in: {
+        b: { type:"title" title: [plain_text:"lower"] }
+        A: { type:"title" title: [plain_text:"Upper"] }
+        a: { type:"title" title: [plain_text:"also lower"] }
+      }
+      out: "Upper"
+    }
+
+    {
+      id: "notion/title-passes-over-a-property-that-is-not-a-record"
+      fn: "notionTitle"
+      in: { A:"title" B: { type:"title" title: [plain_text:"B"] } }
+      out: "B"
+    }
+
+    {
+      id: "notion/space-of-a-database"
+      fn: "notionSpace"
+      in: {
+        type: "database_id"
+        database_id: "7b3d0000-0000-4000-8000-000000000001"
+      }
+      out: space: "7b3d0000-0000-4000-8000-000000000001"
+    }
+
+    {
+      id: "notion/space-of-a-page"
+      fn: "notionSpace"
+      in: { type:"page_id" page_id:"2a9e0000-0000-4000-8000-000000000001" }
+      out: space: "2a9e0000-0000-4000-8000-000000000001"
+    }
+
+    {
+      id: "notion/space-of-a-data-source-is-its-database"
+      fn: "notionSpace"
+      in: { type:"data_source_id" data_source_id:"d5d5" database_id:"7b3d" }
+      out: space: "7b3d"
+    }
+
+    {
+      id: "notion/space-of-the-workspace-is-none"
+      fn: "notionSpace"
+      in: { type:"workspace" workspace:true }
+      out: {}
+    }
+
+    {
+      id: "notion/space-of-a-block-is-none"
+      fn: "notionSpace"
+      in: { type:"block_id" block_id:"b10c" }
+      out: {}
+    }
+
+    {
+      id: "notion/space-without-a-type-is-the-database-first"
+      fn: "notionSpace"
+      in: { page_id:"p" database_id:"d" }
+      out: space: "d"
+    }
+
+    {
+      id: "notion/space-without-a-type-is-the-page"
+      fn: "notionSpace"
+      in: page_id: "p"
+      out: space: "p"
+    }
+
+    {
+      id: "notion/space-named-but-empty-is-none"
+      fn: "notionSpace"
+      in: { type:"database_id" database_id:"" }
+      out: {}
+    }
+
+    {
+      id: "notion/space-named-but-null-is-none"
+      fn: "notionSpace"
+      in: { type:"page_id" page_id:null }
+      out: {}
+    }
+
+    {
+      id: "notion/space-not-text-is-its-json"
+      fn: "notionSpace"
+      in: { type:"database_id" database_id:7 }
+      out: space: "7"
+    }
+
+    { id:"notion/space-of-no-parent-is-none" fn:"notionSpace" in:null out: {} }
+
+    {
+      id: "notion/time-utc-with-a-fraction"
+      fn: "notionTime"
+      in: "2026-03-02T09:15:00.000Z"
+      out: "2026-03-02T09:15:00Z"
+    }
+
+    {
+      id: "notion/time-with-an-offset"
+      fn: "notionTime"
+      in: "2026-03-10T13:30:00+05:30"
+      out: "2026-03-10T08:00:00Z"
+    }
+
+    {
+      id: "notion/time-with-a-negative-offset-crosses-midnight"
+      fn: "notionTime"
+      in: "2026-03-10T23:45:00-02:00"
+      out: "2026-03-11T01:45:00Z"
+    }
+
+    {
+      id: "notion/time-with-lower-case-separators"
+      fn: "notionTime"
+      in: "2026-03-10t08:00:00.5z"
+      out: "2026-03-10T08:00:00Z"
+    }
+
+    {
+      id: "notion/time-fraction-is-dropped-not-rounded"
+      fn: "notionTime"
+      in: "2026-03-10T08:00:59.999999Z"
+      out: "2026-03-10T08:00:59Z"
+    }
+
+    {
+      id: "notion/time-on-a-leap-day"
+      fn: "notionTime"
+      in: "2024-02-29T12:00:00Z"
+      out: "2024-02-29T12:00:00Z"
+    }
+
+    {
+      id: "notion/time-on-a-day-that-does-not-exist-is-the-epoch"
+      fn: "notionTime"
+      in: "2023-02-29T00:00:00Z"
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-on-a-century-that-is-not-leap-is-the-epoch"
+      fn: "notionTime"
+      in: "1900-02-29T00:00:00Z"
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-on-a-leap-century"
+      fn: "notionTime"
+      in: "2000-02-29T00:00:00Z"
+      out: "2000-02-29T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-without-an-offset-is-the-epoch"
+      fn: "notionTime"
+      in: "2026-03-10T08:00:00"
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-without-seconds-is-the-epoch"
+      fn: "notionTime"
+      in: "2026-03-10T08:00Z"
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-with-a-space-is-the-epoch"
+      fn: "notionTime"
+      in: "2026-03-10 08:00:00Z"
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-a-date-alone-is-the-epoch"
+      fn: "notionTime"
+      in: "2026-03-10"
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-hour-24-is-the-epoch"
+      fn: "notionTime"
+      in: "2026-03-10T24:00:00Z"
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-a-leap-second-is-the-epoch"
+      fn: "notionTime"
+      in: "2016-12-31T23:59:60Z"
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-an-offset-of-24-hours-is-the-epoch"
+      fn: "notionTime"
+      in: "2026-03-10T08:00:00+24:00"
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-not-a-time-is-the-epoch"
+      fn: "notionTime"
+      in: "yesterday"
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-a-number-is-the-epoch"
+      fn: "notionTime"
+      in: 1773129600000
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-null-is-the-epoch"
+      fn: "notionTime"
+      in: null
+      out: "1970-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-at-the-first-instant"
+      fn: "notionTime"
+      in: "0000-01-01T00:00:00Z"
+      out: "0000-01-01T00:00:00Z"
+    }
+
+    {
+      id: "notion/time-at-the-last-instant"
+      fn: "notionTime"
+      in: "9999-12-31T23:59:59Z"
+      out: "9999-12-31T23:59:59Z"
+    }
+
+    {
+      id: "notion/time-moved-past-9999-is-refused"
+      fn: "notionTime"
+      in: "9999-12-31T23:30:00-01:00"
+      err: "outside the years 0000 to 9999"
+    }
+
+    {
+      id: "notion/time-moved-before-0000-is-refused"
+      fn: "notionTime"
+      in: "0000-01-01T00:30:00+01:00"
+      err: "outside the years 0000 to 9999"
+    }
+
+    {
+      id: "notion/project-a-page-in-a-database"
+      fn: "projectNotion"
+      in: {
+        raw: {
+          object: "page"
+          id: "2a9e0000-0000-4000-8000-000000000001"
+          created_time: "2026-03-02T09:15:00.000Z"
+          last_edited_time: "2026-09-16T14:20:00.000Z"
+          parent: {
+            type: "database_id"
+            database_id: "7b3d0000-0000-4000-8000-000000000001"
+          }
+          archived: false
+          properties: {
+            Status: { id:"V%3D%7Ck" type:"select" select:name:"Doing" }
+            Name: {
+              id: "title"
+              type: "title"
+              title: [{ type:"text" plain_text:"Launch checklist" }]
+            }
+          }
+          url: "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+        }
+        instance: "notion"
+        account: "acme-workspace"
+      }
+      out: {
+        lid: "lk_hznpc6cad3dx"
+        source: "notion"
+        instance: "notion"
+        id: "2a9e0000-0000-4000-8000-000000000001"
+        title: "Launch checklist"
+        url: "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+        created: "2026-03-02T09:15:00Z"
+        updated: "2026-09-16T14:20:00Z"
+        space: "7b3d0000-0000-4000-8000-000000000001"
+      }
+    }
+
+    {
+      id: "notion/project-a-page-in-the-workspace-has-no-space"
+      fn: "projectNotion"
+      in: {
+        raw: {
+          object: "page"
+          id: "2a9e0000-0000-4000-8000-000000000001"
+          created_time: "2026-03-02T09:15:00.000Z"
+          last_edited_time: "2026-09-16T14:20:00.000Z"
+          parent: { type:"workspace" workspace:true }
+          archived: false
+          properties: {
+            Status: { id:"V%3D%7Ck" type:"select" select:name:"Doing" }
+            Name: {
+              id: "title"
+              type: "title"
+              title: [{ type:"text" plain_text:"Launch checklist" }]
+            }
+          }
+          url: "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+        }
+        instance: "notion"
+        account: "acme-workspace"
+      }
+      out: {
+        lid: "lk_hznpc6cad3dx"
+        source: "notion"
+        instance: "notion"
+        id: "2a9e0000-0000-4000-8000-000000000001"
+        title: "Launch checklist"
+        url: "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+        created: "2026-03-02T09:15:00Z"
+        updated: "2026-09-16T14:20:00Z"
+      }
+    }
+
+    {
+      id: "notion/project-nulls"
+      fn: "projectNotion"
+      in: {
+        raw: {
+          id: "p1"
+          url: "https://www.notion.so/p1"
+          created_time: null
+          last_edited_time: null
+          parent: null
+          properties: null
+        }
+        instance: "notion"
+        account: "acme-workspace"
+      }
+      out: {
+        lid: "lk_jxv4dbshcr7r"
+        source: "notion"
+        instance: "notion"
+        id: "p1"
+        title: ""
+        url: "https://www.notion.so/p1"
+        created: "1970-01-01T00:00:00Z"
+        updated: "1970-01-01T00:00:00Z"
+      }
+    }
+
+    {
+      id: "notion/project-an-id-that-is-not-text"
+      fn: "projectNotion"
+      in: {
+        raw: { id:42 url:"https://www.notion.so/42" }
+        instance: "notion"
+        account: "acme-workspace"
+      }
+      out: {
+        lid: "lk_ygdfkrprgxp1"
+        source: "notion"
+        instance: "notion"
+        id: "42"
+        title: ""
+        url: "https://www.notion.so/42"
+        created: "1970-01-01T00:00:00Z"
+        updated: "1970-01-01T00:00:00Z"
+      }
+    }
+
+    {
+      id: "notion/project-with-no-id-is-refused-before-its-url"
+      fn: "projectNotion"
+      in: { raw: {} instance:"notion" account:"acme-workspace" }
+      err: "notion returned a page with no id"
+    }
+
+    {
+      id: "notion/project-an-empty-id-is-refused"
+      fn: "projectNotion"
+      in: {
+        raw: { id:"" url:"https://www.notion.so/x" }
+        instance: "notion"
+        account: "acme-workspace"
+      }
+      err: "notion returned a page with no id"
+    }
+
+    {
+      id: "notion/project-with-no-url-is-refused"
+      fn: "projectNotion"
+      in: { raw:id:"p1" instance:"notion" account:"acme-workspace" }
+      err: "notion returned a page with no http or https url"
+    }
+
+    {
+      id: "notion/project-a-url-of-another-scheme-is-refused"
+      fn: "projectNotion"
+      in: {
+        raw: { id:"p1" url:"notion://www.notion.so/p1" }
+        instance: "notion"
+        account: "acme-workspace"
+      }
+      err: "notion returned a page with no http or https url"
+    }
+
+    {
+      id: "notion/project-a-page-that-is-not-a-record-is-refused"
+      fn: "projectNotion"
+      in: { raw: ["page"] instance:"notion" account:"acme-workspace" }
+      err: "notion returned a page that is not a record"
+    }
+
+    {
+      id: "notion/project-a-time-past-9999-is-refused"
+      fn: "projectNotion"
+      in: {
+        raw: {
+          id: "p1"
+          url: "https://www.notion.so/p1"
+          last_edited_time: "9999-12-31T23:59:59-00:01"
+        }
+        instance: "notion"
+        account: "acme-workspace"
+      }
+      err: "whose last_edited_time is outside the years 0000 to 9999"
+    }
+  ]
+
+  # The names `sources add` derives: station's secret name for a ref, and the
+  # ref written from --source and --instance.
+  sources: set: [
+    {
+      id: "sources/secret-untagged"
+      fn: "secretName"
+      in: "joplin"
+      out: "joplin.apikey"
+    }
+    {
+      id: "sources/secret-tagged"
+      fn: "secretName"
+      in: "joplin$work"
+      out: "joplin_work.apikey"
+    }
+    {
+      id: "sources/secret-hyphen"
+      fn: "secretName"
+      in: "notion$docs-eu"
+      out: "notion_docs_eu.apikey"
+    }
+    {
+      id: "sources/secret-a-run-is-one-underscore"
+      fn: "secretName"
+      in: "joplin$a--b"
+      out: "joplin_a_b.apikey"
+    }
+    {
+      id: "sources/secret-edges-trimmed"
+      fn: "secretName"
+      in: "joplin$-x-"
+      out: "joplin_x.apikey"
+    }
+    {
+      id: "sources/secret-case-folded"
+      fn: "secretName"
+      in: "Joplin$Work"
+      out: "joplin_work.apikey"
+    }
+    {
+      id: "sources/secret-an-api-and-a-tag-meet"
+      # Why station refuses `notes-a` beside `notes$a`: both derive one name.
+      fn: "secretName"
+      in: "notes-a"
+      out: "notes_a.apikey"
+    }
+    { id:"sources/ref-untagged" fn:"refFor" in:source:"joplin" out:"joplin" }
+    {
+      id: "sources/ref-tag"
+      fn: "refFor"
+      in: { source:"joplin" instance:"work" }
+      out: "joplin$work"
+    }
+    {
+      id: "sources/ref-a-tag-is-never-the-api"
+      # A `$`-less value is a tag, whatever it spells.
+      fn: "refFor"
+      in: { source:"joplin" instance:"joplin" }
+      out: "joplin$joplin"
+    }
+    {
+      id: "sources/ref-given-whole"
+      fn: "refFor"
+      in: { source:"joplin" instance:"joplin$2nd" }
+      out: "joplin$2nd"
+    }
+    {
+      id: "sources/ref-of-another-api"
+      fn: "refFor"
+      in: { source:"joplin" instance:"notion$work" }
+      err: "--instance names a connection to another API than --source does"
+    }
+    {
+      id: "sources/ref-tag-not-lowercase"
+      fn: "refFor"
+      in: { source:"joplin" instance:"Work" }
+      err: "--instance takes a tag of lowercase letters, digits and hyphens"
+    }
+    {
+      id: "sources/ref-tag-empty"
+      fn: "refFor"
+      in: { source:"joplin" instance:"" }
+      err: "--instance takes a tag of lowercase letters, digits and hyphens"
+    }
+    {
+      id: "sources/ref-tag-empty-after-the-api"
+      fn: "refFor"
+      in: { source:"joplin" instance:"joplin$" }
+      err: "--instance takes a tag of lowercase letters, digits and hyphens"
+    }
+    {
+      id: "sources/ref-tag-holds-a-dollar"
+      fn: "refFor"
+      in: { source:"joplin" instance:"joplin$a$b" }
+      err: "--instance takes a tag of lowercase letters, digits and hyphens"
+    }
+    {
+      id: "sources/ref-source-not-a-name"
+      fn: "refFor"
+      in: source: "Joplin"
+      err: "--source takes a source's name"
+    }
   ]
 }

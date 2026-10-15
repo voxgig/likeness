@@ -1,0 +1,1 @@
+{"cmd":["sources","rename"],"code":"instance-exists","data":null,"error":{"message":"a connection named \"joplin\" is already configured","remedy":"choose another ref, or remove that one first with `likeness sources remove joplin`"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

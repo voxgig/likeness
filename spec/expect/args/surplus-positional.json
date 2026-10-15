@@ -1,0 +1,1 @@
+{"cmd":["version"],"code":"invalid-argument","data":null,"error":{"message":"`version` does not take the argument \"extra\"","remedy":"run `likeness help version` for its arguments"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

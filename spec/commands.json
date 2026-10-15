@@ -1,0 +1,664 @@
+{
+  "command": {
+    "archive": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "archive notes, reversibly",
+      "writes": true
+    },
+    "caps": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "the capability matrix",
+      "writes": false
+    },
+    "describe": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "the whole surface, for agents",
+      "writes": false
+    },
+    "doctor": {
+      "arg": [],
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "no-such-source",
+        "unsupported-capability",
+        "source-unavailable",
+        "auth-failed",
+        "rate-limited",
+        "vault-locked",
+        "secret-backend-unavailable",
+        "certificate-rejected"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "check every selected connection",
+      "writes": false
+    },
+    "edit": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "change a note",
+      "writes": true
+    },
+    "get": {
+      "arg": [
+        {
+          "name": "ref",
+          "repeat": true,
+          "required": true,
+          "short": "<instance>:<id>",
+          "type": "ref"
+        }
+      ],
+      "exits": [
+        "ok",
+        "not-found",
+        "invalid-argument",
+        "invalid-ref",
+        "invalid-project",
+        "no-such-source",
+        "unsupported-capability",
+        "source-unavailable",
+        "auth-failed",
+        "rate-limited",
+        "vault-locked",
+        "secret-backend-unavailable",
+        "certificate-rejected"
+      ],
+      "flag": {
+        "raw": {
+          "short": "carry the source's own record",
+          "type": "boolean"
+        }
+      },
+      "ready": true,
+      "short": "notes by ref",
+      "writes": false
+    },
+    "help": {
+      "arg": [
+        {
+          "name": "command",
+          "repeat": true,
+          "required": false,
+          "short": "the command to describe, as its words",
+          "type": "name"
+        }
+      ],
+      "exits": [
+        "ok",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "the command list, or one command's help",
+      "writes": false
+    },
+    "link": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "link two notes",
+      "writes": true
+    },
+    "list": {
+      "arg": [
+        {
+          "name": "selector",
+          "repeat": true,
+          "required": false,
+          "short": "the selector's terms, joined with spaces",
+          "type": "selector"
+        }
+      ],
+      "exits": [
+        "ok",
+        "no-match",
+        "partial",
+        "fanout-halted",
+        "invalid-argument",
+        "invalid-selector",
+        "invalid-project",
+        "no-such-source",
+        "unsupported-capability",
+        "source-unavailable",
+        "auth-failed",
+        "rate-limited",
+        "vault-locked",
+        "secret-backend-unavailable",
+        "certificate-rejected"
+      ],
+      "flag": {
+        "limit": {
+          "max": 999999999,
+          "min": 1,
+          "short": "at most N notes",
+          "type": "integer",
+          "value": "N"
+        },
+        "raw": {
+          "short": "carry each source's own record",
+          "type": "boolean"
+        },
+        "sort": {
+          "short": "order the notes by KEY",
+          "type": "name",
+          "value": "KEY"
+        }
+      },
+      "ready": true,
+      "short": "notes matching a selector, across the selected connections",
+      "writes": false
+    },
+    "move": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "move notes to another space",
+      "writes": true
+    },
+    "new": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "create a note",
+      "writes": true
+    },
+    "open": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "open a note in its own application",
+      "writes": false
+    },
+    "rm": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "delete one note, irreversibly",
+      "writes": true
+    },
+    "search": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "cross-source search",
+      "writes": false
+    },
+    "secrets get": {
+      "arg": [
+        {
+          "name": "name",
+          "required": true,
+          "short": "the secret's name",
+          "type": "secret"
+        }
+      ],
+      "echo": false,
+      "exits": [
+        "ok",
+        "not-found",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "secret-backend-unavailable"
+      ],
+      "flag": {
+        "reveal": {
+          "short": "print the value",
+          "type": "boolean"
+        }
+      },
+      "ready": true,
+      "short": "whether a secret is set, and with --reveal its value",
+      "writes": false
+    },
+    "secrets grant": {
+      "arg": [
+        {
+          "name": "key",
+          "required": true,
+          "short": "the new key's name",
+          "type": "name"
+        },
+        {
+          "name": "name",
+          "repeat": true,
+          "required": true,
+          "short": "a secret the key may read",
+          "type": "secret"
+        }
+      ],
+      "echo": false,
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "vault-exists",
+        "secret-backend-unavailable"
+      ],
+      "flag": {
+        "new-passphrase-env": {
+          "short": "read its passphrase from VAR, not LIKENESS_NEW_PASSPHRASE",
+          "type": "envvar",
+          "value": "VAR"
+        },
+        "write": {
+          "short": "it may also overwrite those secrets",
+          "type": "boolean"
+        }
+      },
+      "ready": true,
+      "short": "mint a restricted key that reads the named secrets",
+      "writes": true
+    },
+    "secrets init": {
+      "arg": [],
+      "echo": false,
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "vault-exists",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "create the vault station.json names, with its master key",
+      "writes": true
+    },
+    "secrets keys": {
+      "arg": [],
+      "echo": false,
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "every key in the vault, and what it may do",
+      "writes": false
+    },
+    "secrets list": {
+      "arg": [],
+      "echo": false,
+      "exits": [
+        "ok",
+        "no-match",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "the names this key can read",
+      "writes": false
+    },
+    "secrets remove": {
+      "arg": [
+        {
+          "name": "name",
+          "required": true,
+          "short": "the secret's name",
+          "type": "secret"
+        }
+      ],
+      "echo": false,
+      "exits": [
+        "ok",
+        "not-found",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "drop a secret",
+      "writes": true
+    },
+    "secrets revoke": {
+      "arg": [
+        {
+          "name": "key",
+          "required": true,
+          "short": "the key's name",
+          "type": "name"
+        }
+      ],
+      "echo": false,
+      "exits": [
+        "ok",
+        "not-found",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "drop a restricted key",
+      "writes": true
+    },
+    "secrets rotate": {
+      "arg": [],
+      "echo": false,
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "a new root key for every secret; every other key is dropped",
+      "writes": true
+    },
+    "secrets set": {
+      "arg": [
+        {
+          "name": "name",
+          "required": true,
+          "short": "the secret's name",
+          "type": "secret"
+        },
+        {
+          "name": "from",
+          "required": false,
+          "short": "read the value from stdin",
+          "type": "stdin"
+        }
+      ],
+      "echo": false,
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "vault-locked",
+        "vault-denied",
+        "secret-backend-unavailable"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "store a secret, its value read from a terminal or from stdin",
+      "writes": true
+    },
+    "sources add": {
+      "arg": [],
+      "echo": false,
+      "exits": [
+        "ok",
+        "not-found",
+        "invalid-argument",
+        "invalid-project",
+        "no-such-source",
+        "unsupported-capability",
+        "instance-exists",
+        "source-unavailable",
+        "auth-failed",
+        "rate-limited",
+        "certificate-rejected",
+        "vault-locked",
+        "vault-denied",
+        "vault-exists",
+        "secret-backend-unavailable"
+      ],
+      "flag": {
+        "account": {
+          "short": "the source's own id for the account, which every note's identity derives from",
+          "type": "string",
+          "value": "ID"
+        },
+        "base": {
+          "short": "where the application answers, if not at its usual address",
+          "type": "string",
+          "value": "URL"
+        },
+        "fingerprint": {
+          "short": "the certificate to pin, sha256:<hex>, held to the one presented",
+          "type": "string",
+          "value": "FP"
+        },
+        "notion-version": {
+          "short": "the API version every request carries",
+          "type": "string",
+          "value": "DATE"
+        },
+        "plain-http": {
+          "short": "reach an http base with TLS off",
+          "type": "boolean"
+        },
+        "secret": {
+          "short": "a token already in the vault, rather than one typed now",
+          "type": "secret",
+          "value": "NAME"
+        }
+      },
+      "ready": true,
+      "short": "add a connection to --source API, tagged --instance TAG; its token goes to the vault first",
+      "writes": true
+    },
+    "sources list": {
+      "arg": [],
+      "exits": [
+        "ok",
+        "no-match",
+        "invalid-argument",
+        "invalid-project"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "every connection of the active profile: ref, source, base, account and secret name",
+      "writes": false
+    },
+    "sources remove": {
+      "arg": [
+        {
+          "name": "ref",
+          "required": true,
+          "short": "the connection, as api or api$tag",
+          "type": "instance"
+        }
+      ],
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "no-such-source"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "remove a connection and its account; the vault keeps its token",
+      "writes": true
+    },
+    "sources rename": {
+      "arg": [
+        {
+          "name": "ref",
+          "required": true,
+          "short": "the connection",
+          "type": "instance"
+        },
+        {
+          "name": "new-ref",
+          "required": true,
+          "short": "its new ref, of the same API",
+          "type": "instance"
+        }
+      ],
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "no-such-source",
+        "instance-exists"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "give a connection a new ref, its account and its token with it",
+      "writes": true
+    },
+    "sources test": {
+      "arg": [
+        {
+          "name": "ref",
+          "repeat": true,
+          "required": false,
+          "short": "a connection to check",
+          "type": "instance"
+        }
+      ],
+      "exits": [
+        "ok",
+        "invalid-argument",
+        "invalid-project",
+        "no-such-source",
+        "unsupported-capability",
+        "source-unavailable",
+        "auth-failed",
+        "rate-limited",
+        "vault-locked",
+        "secret-backend-unavailable",
+        "certificate-rejected"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "check the named connections, or every one, as doctor does",
+      "writes": false
+    },
+    "tag": {
+      "arg": [],
+      "exits": [
+        "unsupported-capability",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": false,
+      "short": "add or remove tags",
+      "writes": true
+    },
+    "version": {
+      "arg": [],
+      "exits": [
+        "ok",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "this port and its version",
+      "writes": false
+    },
+    "which": {
+      "arg": [],
+      "exits": [
+        "ok",
+        "no-match",
+        "invalid-argument"
+      ],
+      "flag": {},
+      "ready": true,
+      "short": "every likeness on PATH: path, port, version",
+      "writes": false
+    }
+  },
+  "global": {
+    "config": {
+      "short": "read station.json from PATH",
+      "type": "path",
+      "value": "PATH"
+    },
+    "deterministic": {
+      "short": "zero the fields that vary from run to run",
+      "type": "boolean"
+    },
+    "instance": {
+      "repeat": true,
+      "short": "only this connection",
+      "type": "instance",
+      "value": "REF"
+    },
+    "json": {
+      "short": "print the envelope as one line of JSON",
+      "type": "boolean"
+    },
+    "passphrase-env": {
+      "short": "read the vault passphrase from VAR, not LIKENESS_PASSPHRASE",
+      "type": "envvar",
+      "value": "VAR"
+    },
+    "source": {
+      "repeat": true,
+      "short": "only the connections to this API",
+      "type": "name",
+      "value": "API"
+    },
+    "strict": {
+      "short": "stop at the first connection that fails",
+      "type": "boolean"
+    },
+    "vault-key": {
+      "short": "open the vault as the key NAME, not master",
+      "type": "name",
+      "value": "NAME"
+    }
+  }
+}

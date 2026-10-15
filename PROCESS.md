@@ -36,9 +36,11 @@ surprises you, and before changing the thing you assume produced it.
 | `make spec-check` | a data file that violates its shape — with a path, an expected, an actual, and both source lines |
 | `make spec-check` red cases | a gate that has stopped gating. `spec/example/likeness-broken.aontu` **must fail**; if it passes, the build fails |
 | `make spec-agree` | an empty or misspelled registry root, a capability row that does not match the registry, a source no port can reach, and a registry entity or operation the cloned SDK model does not declare. It needs the clones `make sdk` creates, and its self-test falsifies a capability to prove it goes red |
-| `make spec-fresh` | a compiled JSON file — under `spec/`, or an embedded copy under `typescript/src/spec/` or `go/spec/` — that no longer matches its `.aontu` source |
+| `make spec-fresh` | a compiled JSON file — under `spec/`, or an embedded copy under `typescript/src/spec/`, `go/spec/`, `python/likeness/spec/`, `ruby/lib/likeness/spec/` or in `c/src/spec_embed.c` — that no longer matches its `.aontu` source |
 | `make spec-fmt` | formatting drift, so a diff is about meaning |
 | `make spec-hash` | a pin per schema file, for the AGENTS.md stanza and for release notes |
+| `make guards` | a source's name as a string literal in a port's shipped code outside the capability data and that source's adapter (SPEC §11.5, §12.3) — the first line of `if (source == "notion")`, which the capability matrix replaces — and certificate verification turned off in any spelling, anywhere (SPEC §18), which is how a self-signed certificate gets "fixed" without being pinned. It reads string literals and patterns, not meaning, so a branch on a constant still needs review. `tools/check-guards.json` excuses a finding by its exact line, with a reason, and fails on an excuse that no longer matches; its self-test plants a breach of each rule |
+| `make matrix` | a port that cannot do over the wire what its corpus says it does offline: each port's own CLI binary, through its station-bound SDK and a vault the run makes, against `mock/` (§5). A red cell names its upstream issue in `tools/matrix-waiting.json` and is held to what that issue predicts; its self-test plants faults and requires each to go red |
 
 ---
 
@@ -58,7 +60,7 @@ file that begins `@"./def/source.aontu"` puts the shape's declarations on the
 back `incomplete` (exit 3) rather than `valid`. This is the single most
 confusing failure in the toolchain and it looks like a schema bug. (The
 `incomplete` comes from `disjunct_no_gen` on the shapes' disjunctive
-definitions — `Ident`, `Port`, `Exit`, `Method`, `Semver`; a shape without
+definitions — `Ident`, `InstanceRef`, `Port`, `Exit`, `Method`, `Semver`; a shape without
 one imports clean. The rule holds; its symptom is not universal.)
 
 **Use `type(...)` for structures and `hide(...)` for enumerations.** Both keep a
@@ -146,6 +148,32 @@ HTTP client.** Doing so would put the project's own claim in doubt, since the
 point of likeness is that generated SDKs can carry a real application in five
 languages.
 
+Every client is bound through [voxgig/station](https://github.com/voxgig/station),
+which is what likeness exists to demonstrate: `station.json` declares the
+instances, station resolves their secrets, and the calls a command reports in
+`meta.calls` and the corpus are the requests station observed at the transport.
+Station's Go module cannot be required outside a go workspace yet
+([voxgig/station#27](https://github.com/voxgig/station/issues/27)), so
+`go/go.mod` maps its unresolvable versions to real revisions with `replace`
+lines; move them with the station pin. station, sekreto and plugin are not
+published as gems at all, so the Ruby port loads them from checkouts at the
+revisions `ruby/libs.json` pins: `make rb-libs` clones them, and `make rb-deps`
+refuses one off its pin or dirty, exactly as `sdk-check` does for an SDK.
+
+Station's Python library, and the sekreto and plugin libraries under it, are on
+no package index, and station reads its configuration shape from its own
+checkout at run time, so a pip install from git cannot stand in for one.
+`python/deps.json` pins each by commit sha; `make py-deps` clones them into
+`python/.deps`, holds them at the pin and clean as `make sdk-check` holds the
+SDK clones, and builds `python/.venv` over them and the SDK clones. Move
+station's pin with the others.
+
+**The one third-party run-time dependency any port takes** is the Python SDK's
+live transport, `requests`, which the SDK imports on its first live call
+([sdkgen#402](https://github.com/voxgig/sdkgen/issues/402)). It is a declared
+exception in `python/requirements.txt`, no port module imports it — a test
+holds that — and it goes when the SDK's transport is the standard library's.
+
 `spec/sources.aontu` is the registry: which SDK, at which revision, with the exact
 dependency line per language.
 
@@ -187,11 +215,12 @@ stamps the map key onto the record's own identifier field.
 
 **That field is derived, not fixed.** The SDK works it out from the entity's
 route, so it is declared per source in `spec/sources.aontu` under `test.idfield`
-rather than assumed. For all four sources it derives to `id` — verified by
-running each SDK's own resolver over its own config, not by reading the routes,
-which is a distinction worth keeping: the Obsidian vault route is
-`/vault/{filename}` and its seeding key is still `id`. Check the declaration
-before writing a seed for a new entity. A seed written against the wrong field
+rather than assumed. For every entity likeness reads it derives to `id` —
+verified by running each SDK's own resolver over its own config, not by reading
+the routes, which is a distinction worth keeping: the Obsidian vault route is
+`/vault/{filename}` and its seeding key is still `id`, while Obsidian's `active`
+entity, which has no path parameter, derives to its `permanent` query parameter.
+Check the declaration before writing a seed for a new entity. A seed written against the wrong field
 is silently never found, and the test fails in a way that looks like a logic
 bug.
 
@@ -214,15 +243,50 @@ features: `debug`, `idempotency`, `metrics`, `paging`, `ratelimit`, `retry`,
 `test` and `timeout`. netsim is the `net:` option of `test`. Any plan that
 speaks of "the netsim feature" is describing something that does not exist.
 
-### Ruby cannot reach Notion at all
+### Ruby reaches Notion from the station-feature regeneration
 
-Separately from the divergences below: **notion-sdk ships no `rb` target.** It
-has `js` where the other three have `rb`, and there is no gemspec anywhere in
-the repository. So likeness's Ruby port has no Notion SDK to depend on, and no
-offline test mode for Notion either, because there is nothing to construct.
+Until `notion-sdk@1e45fc3`, **notion-sdk shipped no `rb` target**: it had `js`
+where the other three have `rb`, so the Ruby port had no Notion SDK to depend
+on. That was `upstream/issue/09`. The regeneration that adds station's feature
+([notion-sdk#5](https://github.com/voxgig-sdk/notion-sdk/pull/5)) generates an
+`rb` target as well, and this repository is pinned to it, so `make spec-agree`
+no longer warns. A missing target is still reported as a warning on every run,
+for any source, rather than found during a port's stage.
 
-`make spec-agree` reports this as a warning on every run rather than letting it
-be found during the Ruby stage. It is filed as `upstream/issue/09`.
+### Three Ruby SDKs share one process
+
+A generated Ruby SDK declares its names at the top level
+([sdkgen#404](https://github.com/voxgig/sdkgen/issues/404)), so each SDK the
+Ruby port loads after the first redefines what the others declared, and Ruby
+warns on stderr before any command runs. At the pins, nothing redefined changes
+what a command does. All three SDKs vendor the same `VoxgigStruct`, byte for
+byte. Obsidian's typed models `Tag` and `TagListMatch` replace Joplin's, and no
+SDK and no adapter builds a typed model. `TagEntity` would be reopened by
+whichever `Tag` facade ran second, and no adapter calls one. The entities the
+adapters read, `NoteEntity`, `PageEntity` and `VaultEntity`, are each one SDK's
+alone.
+
+`ruby/lib/likeness/sdk.rb` loads each SDK, refuses one whose `VoxgigStruct`
+differs from the copy already loaded, since every SDK would run whichever loaded
+last, and drops only the warnings for those inert redefinitions.
+`ruby/test/sdks_test.rb` holds each claim, so a re-pin that breaks one fails
+there and not at a user's terminal.
+
+### What the Ruby SDKs send differently
+
+Two differences from the TypeScript SDKs reach the wire, both in sdkgen's
+templates:
+
+- The vendored `VoxgigStruct.escurl` percent-encodes `!'()*`, which
+  `encodeURIComponent` keeps, so a vault path holding one is spelled differently
+  in a call (`upstream/issue/12`). The transcript entries
+  `obsidian/list-odd-values` and `obsidian/list-odd-raw` differ in their `calls`
+  alone; `ruby/test/harness.rb` names them, and fails once they match.
+- A `list` builds an entity only for an item that is a record, so the plugin's
+  root listing, which names its entries as text, comes back as entities with no
+  data (`upstream/issue/13`). The offline transport lists records, so the corpus
+  is unaffected; a live vault cannot be walked from its root, and the wire
+  suite's walk is skipped, saying so.
 
 ### The feature is not yet identical across the ports
 
@@ -233,23 +297,28 @@ constrains where the offline mode can be relied on:
 
 | Behaviour | TS | Go | Py | Rb | C |
 |---|---|---|---|---|---|
-| multi-segment response envelope (`body.data.x.y`) | yes | yes | yes | **no** | **no** |
-| `update` whose id matches nothing | **404** | 200, clobbers a record | 200, clobbers the first | 200, clobbers the first | 200, clobbers the first |
-| `update` merge depth | **deep** | shallow | shallow | shallow | shallow |
-| stamps `id` from the seed map key | yes | yes | yes | **no** | yes |
+| multi-segment response envelope (`body.data.x.y`) | yes | yes | yes | to recheck | **no** |
+| `update` whose id matches nothing | **404** | 200, clobbers a record | 200, clobbers the first | **404** | 200, clobbers the first |
+| `update` merge depth | **deep** | shallow | shallow | **deep** | shallow |
+| stamps `id` from the seed map key | yes | yes | yes | yes | yes |
 | required query params also matched | yes | yes | yes | **no** | **no** |
 
+The Rb `update` and `id` rows were rechecked by running joplin-sdk's Ruby
+client at its pin, which sdkgen 4.34.6 generated. That generation's Ruby
+feature also builds a multi-segment envelope, but linear-sdk's pin is an older
+generation, so the envelope row, the one that decides Linear, is to recheck.
+
 **The consequence that changes plans: Linear cannot be tested offline in the
-Ruby or C ports.** Every Linear operation unwraps a multi-segment envelope —
-`body.data.issue`, `body.data.issueCreate.issue` — and those two ports
-synthesise only a single segment. So until `issue/07` is resolved, the Ruby and
-C ports reach Linear through `mock/` instead. That is a declared exception with
-a named cause, not a port quietly growing its own mock.
+C port, and in Ruby that is to recheck.** Every Linear operation unwraps a
+multi-segment envelope — `body.data.issue`, `body.data.issueCreate.issue` — and
+C synthesises only a single segment. So until `issue/07` is resolved, the Ruby
+and C ports reach Linear through `mock/` instead. That is a declared exception
+with a named cause, not a port quietly growing its own mock.
 
 **And treat an `update` against an unseeded id as undefined behaviour** in every
-port. It is a 404 in TypeScript and a silent clobber of an unrelated record in
-the other four, which is the failure a mock exists to prevent. Seed what you
-update.
+port. It is a 404 in TypeScript and Ruby and a silent clobber of an unrelated
+record in the other three, which is the failure a mock exists to prevent. Seed
+what you update.
 
 ### Where the mock server still earns its place
 
@@ -263,9 +332,57 @@ redundant with the SDKs' offline mode, and the two have different jobs:
 | Proving the generated client's real wire behaviour — headers, encoding, status codes, GraphQL error envelopes | `mock/` |
 | Exercising auth failure, pagination headers, and vendor quirks the in-memory mock does not model | `mock/` |
 | Linear, in the Ruby and C ports, until `upstream/issue/07` is fixed | `mock/` |
+| The source × port matrix: each port's own CLI reaching each source through station | `mock/`, served from `tools/matrix.mjs` |
 
 The rule: **if a test asserts on likeness's behaviour, it uses the SDK's test
 mode; if it asserts on the wire, it uses `mock/`.**
+
+### The matrix: the live path, from every port
+
+The corpora run offline. `make matrix` runs the other half, the path a user's
+command takes: the vault, station's secret chain, station's credential
+placement and the generated transport, from each port's own CLI binary to a
+server. For each port and source, `tools/matrix.mjs` writes a home holding a
+`station.json` that declares the one instance against `mock/`, a
+`likeness.json`, and a minivault that `tools/make-vault.mjs` makes. The vault
+holds a token made for the run, and the mock is told to accept it. Obsidian is
+served over HTTPS with a certificate made for the run and pinned. The CLI then
+runs `doctor`, `list` where the source can list, and `get`, as a user runs
+them, with the passphrase in `LIKENESS_PASSPHRASE`. Obsidian also runs `doctor`
+against a pin of another certificate.
+
+`tools/matrix.json` says what a working port answers: each command's code, and
+the requests the mock receives, in order. A command passes only if:
+
+- its call count, which every port reads from station's own events, equals what
+  the mock's own log received, request for request;
+- each request has the method, path, decoded query, status and headers listed,
+  and the mock accepted its credential;
+- Joplin's token is in `token`, strictly percent-encoded, and is never station's
+  placeholder;
+- a Linear document selects the root field listed;
+- no secret the run made appears in any byte the CLI printed;
+- its answer equals the canonical port's, or, where that port waits, the answer
+  of the first port that gives one.
+
+So a hand-written path cannot turn a cell green. A request the mock received
+that station did not count went around station, and calls station counted that
+the mock never received are answers from somewhere other than the source.
+`--explain`, whose trace is output too, is not declared yet; once it is, the
+matrix refuses to run until it sweeps that trace as well.
+
+A red cell is declared in `tools/matrix-waiting.json`, naming the upstream
+issue it waits on and a prediction the tool defines: what the command answers
+and what the mock receives while the issue stands. It is held to that the way
+the corpus waiting lists are. A declared cell that passes fails the matrix
+until it is taken out. One that fails any other way fails it too, and the
+report names a cause declared `behind` it when the cell now matches that cause
+instead. To see what a re-pin would change before making it, run one port from
+another build:
+
+```sh
+node tools/matrix.mjs --bin ts=/path/to/a/build/bin/likeness.js
+```
 
 ---
 
