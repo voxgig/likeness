@@ -69,7 +69,20 @@ jobs:
       - name: Build the Python port's dependencies
         run: make py-deps
 
-      # The schema and its data, every port against both corpora, the
+      # The schema and its data, every port against both corpora (the C port
+      # against the unit corpus and the transcript entries it answers), the
       # cross-port byte comparison, and the comparison's own self-test.
       - name: make check
         run: make check
+
+      # The C suite again, rebuilt with AddressSanitizer and UBSan and then run
+      # under Valgrind, every spawned binary included: SPEC 18 holds the C port
+      # to a clean run under both. gcc is on the image; Valgrind is not.
+      - name: The C port under AddressSanitizer and UBSan
+        run: make test-c-asan
+
+      - name: Install Valgrind
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends valgrind
+
+      - name: The C port under Valgrind
+        run: make test-c-valgrind

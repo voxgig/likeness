@@ -31,7 +31,8 @@ spec/
 `make spec-build` compiles the data files to `spec/*.json`. It also writes
 `errors.json`, `caps.json`, `commands.json` and `help.json` into
 `typescript/src/spec/`, `go/spec/`, `python/likeness/spec/` and
-`ruby/lib/likeness/spec/`, where each port's build embeds them (the Python
+`ruby/lib/likeness/spec/`, and the same bytes as string literals into
+`c/src/spec_embed.c`, where each port's build embeds them (the Python
 package carries them as package data), so an
 installed port reads no specification file from disk and needs no checkout.
 `make spec-fresh` fails if any copy is stale; none of them is edited by hand.
@@ -48,6 +49,17 @@ and stand in for a terminal with the answers typed at its prompts. It then
 asserts the prompts shown and, for a vault command, what the vault holds
 afterwards as one key reads it. The vault's bytes are never compared: they change
 on every write.
+
+The TypeScript and Go ports run both corpora in full, and `make parity` compares
+their transcript output byte for byte. The C port runs the unit corpus but for
+`connections`, which waits on station's C library reading `station.json`
+([station#23](https://github.com/voxgig/station/issues/23)), and the 37 transcript
+entries whose answer needs no source: `help`, `version`, `which`, a command not
+ready yet, and every command line the grammar refuses. The other transcript entries
+wait on a live transport in the C SDK ([sdkgen#403](https://github.com/voxgig/sdkgen/issues/403)),
+two C SDKs in one program ([sdkgen#405](https://github.com/voxgig/sdkgen/issues/405))
+and station#23; its harness reports each as skipped and checks that the port refuses
+it naming all three. Until those land, `make parity` does not include C.
 
 ## What is exercised, and what is not
 
