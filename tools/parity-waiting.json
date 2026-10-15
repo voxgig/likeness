@@ -1,0 +1,15 @@
+{
+  "_doc": [
+    "Answers tools/parity.mjs sets aside, by port and corpus entry, because the port",
+    "waits on an upstream fix, named in the reason. Only the stdout comparison is set",
+    "aside: exit and stderr are still compared, and an answer that agrees again fails",
+    "the comparison until its entry is taken out of here."
+  ],
+  "waiting": [
+    {
+      "port": "go",
+      "entry": "obsidian/list-odd-raw",
+      "reason": "voxgig/sdkgen#418: the struct library the Go SDKs vendor drops a null list element in merge, so the record the SDK hands back has lost the null in its raw tags"
+    }
+  ]
+}

@@ -115,11 +115,10 @@ func fmtCalls(cs []Call) string {
 
 // -- the transcript harness -------------------------------------------------
 
-func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
+// seedOf reads one fixture's seed with numbers kept exact, as the corpus is.
+func seedOf(t *testing.T, root, name string) map[string]any {
 	t.Helper()
-	ectx, _ := e["ctx"].(map[string]any)
-
-	f, err := os.Open(filepath.Join(root, "fixtures", "sources", str(ectx, "fixture"), "seed.json"))
+	f, err := os.Open(filepath.Join(root, "fixtures", "sources", name, "seed.json"))
 	if nil != err {
 		t.Fatal(err)
 	}
@@ -131,6 +130,12 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 		t.Fatal(err)
 	}
 	delete(seed, "_doc")
+	return seed
+}
+
+func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
+	t.Helper()
+	ectx, _ := e["ctx"].(map[string]any)
 
 	ctx := Ctx{
 		Argv:    strs(e["args"]),
@@ -161,7 +166,7 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 
 	// Each connection becomes a declared station instance, its block the one
 	// the entry gives, its account the likeness.json entry beside it, and its
-	// seed the SDK's offline transport.
+	// seed, its own or the entry's, the SDK's offline transport.
 	sdk := map[string]any{}
 	ctx.Accounts = map[string]string{}
 	conns, _ := ectx["connections"].([]any)
@@ -171,7 +176,11 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 		block, _ := cm["block"].(map[string]any)
 		sdk[inst] = cloneMap(block)
 		ctx.Accounts[inst] = str(cm, "account")
-		own := cloneMap(seed)
+		fixture := str(cm, "fixture")
+		if "" == fixture {
+			fixture = str(ectx, "fixture")
+		}
+		own := seedOf(t, root, fixture)
 		if net, ok := cm["net"]; ok {
 			own["net"] = net
 		}
@@ -305,7 +314,9 @@ func cloneMap(m map[string]any) map[string]any {
 	return out
 }
 
-func checkStdout(t *testing.T, root, path, actual string, fail func(string)) {
+// checkStdout compares stdout with the expectation at path, as predict
+// rewrites it where one is given.
+func checkStdout(t *testing.T, root, path, actual string, predict func(string) string, fail func(string)) {
 	t.Helper()
 	// A MISSING EXPECTATION IS A FAILURE, NOT AN EMPTY COMPARISON. Reported
 	// rather than fatal, so that a meta-test can drive this path and see it
@@ -316,6 +327,9 @@ func checkStdout(t *testing.T, root, path, actual string, fail func(string)) {
 		return
 	}
 	want := string(raw)
+	if nil != predict {
+		want = predict(want)
+	}
 
 	if !strings.HasSuffix(path, ".json") {
 		if actual != want {
@@ -417,6 +431,12 @@ func sameCalls(want, got []Call) bool {
 
 func Check(t *testing.T, root string, e map[string]any) []string {
 	t.Helper()
+	return checkWith(t, root, e, nil)
+}
+
+// checkWith is Check with the expected stdout as predict rewrites it.
+func checkWith(t *testing.T, root string, e map[string]any, predict func(string) string) []string {
+	t.Helper()
 	failures := []string{}
 	fail := func(s string) { failures = append(failures, s) }
 
@@ -428,7 +448,7 @@ func Check(t *testing.T, root string, e map[string]any) []string {
 		fail(fmt.Sprintf("exit %d, expected %d", r.Exit, want))
 	}
 
-	checkStdout(t, root, str(out, "stdout"), r.Stdout, fail)
+	checkStdout(t, root, str(out, "stdout"), r.Stdout, predict, fail)
 
 	wantErr := ""
 	if s, ok := out["stderr"].(string); ok {

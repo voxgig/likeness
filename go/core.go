@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	joplin "github.com/voxgig-sdk/joplin-sdk/go"
 	"github.com/voxgig/station/go/station"
 )
 
@@ -215,8 +214,6 @@ func (c Ctx) selected(f flags) ([]Connection, error) {
 	return out, nil
 }
 
-func hasAdapter(c Connection) bool { return joplinSource == c.Source }
-
 func contains(ss []string, s string) bool {
 	for _, x := range ss {
 		if x == s {
@@ -226,21 +223,22 @@ func contains(ss []string, s string) bool {
 	return false
 }
 
-// session is one run's station, its connections and the clients bound
-// through it, each constructed on first use.
+// session is one run's station, its connections, what each one's adapter read
+// from its block, and the handle each adapter made, on first use.
 type session struct {
 	st      *station.Station
 	conns   []Connection
 	calls   *Calls
-	clients map[string]*joplin.JoplinSDK
+	configs map[string]any
+	handles map[string]any
 	fixture map[string]map[string]any
 }
 
 // Station refuses a binding by panicking with its own error type; that is one
 // connection failing, which the caller reports, so it comes back as an error.
-func (s *session) client(conn Connection) (cl *joplin.JoplinSDK, err error) {
-	if cl, ok := s.clients[conn.Instance]; ok {
-		return cl, nil
+func (s *session) handle(conn Connection) (h any, err error) {
+	if h, ok := s.handles[conn.Instance]; ok {
+		return h, nil
 	}
 	defer func() {
 		if r := recover(); nil != r {
@@ -248,12 +246,41 @@ func (s *session) client(conn Connection) (cl *joplin.JoplinSDK, err error) {
 			if !ok {
 				panic(r)
 			}
-			cl, err = nil, se
+			h, err = nil, se
 		}
 	}()
-	cl = joplinConnect(s.st, conn.Instance, s.fixture[conn.Instance])
-	s.clients[conn.Instance] = cl
-	return cl, nil
+	a, _ := adapterFor(conn)
+	h = a.connect(s.st, conn, s.configs[conn.Instance], s.fixture[conn.Instance])
+	s.handles[conn.Instance] = h
+	return h, nil
+}
+
+// configured reads each connection's block in station.json through its own
+// adapter. A block the adapter cannot use refuses the command before any call
+// or prompt.
+func configured(st *station.Station, conns []Connection) (map[string]any, error) {
+	blocks := map[string]map[string]any{}
+	for _, inst := range st.Instances() {
+		blocks[inst.Name] = inst.Block
+	}
+	out := map[string]any{}
+	for _, c := range conns {
+		a, _ := adapterFor(c)
+		cf, ok := a.(configurer)
+		if !ok {
+			continue
+		}
+		block := blocks[c.Instance]
+		if nil == block {
+			block = map[string]any{}
+		}
+		config, err := cf.configure(c.Instance, block)
+		if nil != err {
+			return nil, err
+		}
+		out[c.Instance] = config
+	}
+	return out, nil
 }
 
 func profileOf(env map[string]string) string {
@@ -357,7 +384,7 @@ func openConfigured(c Ctx) (*station.Station, error) {
 // it lazily, and the calls a command made are the requests it observed. A live
 // run with a connection to make opens it on the vault.
 func openSession(c Ctx, f flags) (*session, error) {
-	s := &session{calls: NewCalls(nil), clients: map[string]*joplin.JoplinSDK{}, fixture: c.Fixture}
+	s := &session{calls: NewCalls(nil), handles: map[string]any{}, fixture: c.Fixture}
 	entry, err := entryOf(c, f)
 	if nil != err {
 		return s, err
@@ -368,6 +395,9 @@ func openSession(c Ctx, f flags) (*session, error) {
 	}
 	conns, err := connectionsOf(st, c.Accounts, profileOf(c.Env))
 	if nil != err {
+		return s, err
+	}
+	if s.configs, err = configured(st, conns); nil != err {
 		return s, err
 	}
 	if nil == c.Fixture && 0 < len(conns) {
@@ -392,16 +422,14 @@ var universalFields = []string{
 }
 
 func supplies(conn Connection) map[string]bool {
-	// ONE adapter in Stage 1. The lookup is by the connection's declared
-	// source rather than by a conditional on its name, so adding the second
-	// adapter adds a row here and changes nothing else.
-	bySource := map[string][]string{joplinSource: JoplinSupplies}
 	out := map[string]bool{}
 	for _, f := range universalFields {
 		out[f] = true
 	}
-	for _, f := range bySource[conn.Source] {
-		out[f] = true
+	if a, ok := adapterFor(conn); ok {
+		for _, f := range a.supplies() {
+			out[f] = true
+		}
 	}
 	return out
 }
@@ -432,10 +460,47 @@ func unanswerable(conns []Connection, fields []string) []string {
 	return out
 }
 
-func gather(c Ctx, conns []Connection, calls *Calls, withRaw, strict bool) (
+// listable is decided from the capability data alone, before any call.
+func listable(c Connection) bool {
+	a, _ := adapterFor(c)
+	_, ok := a.(lister)
+	return ok && supports(c.Source, "note", "list")
+}
+
+func cannotList(conns []Connection) *LikenessError {
+	seen := map[string]bool{}
+	sources := []string{}
+	everyGets := true
+	for _, c := range conns {
+		if !seen[c.Source] {
+			seen[c.Source] = true
+			sources = append(sources, c.Source)
+		}
+		everyGets = everyGets && supports(c.Source, "note", "get")
+	}
+	sort.Strings(sources)
+	detail := map[string]string{"entity": "note", "op": "list"}
+	if 1 == len(sources) {
+		detail["source"] = sources[0]
+	}
+	ref := "<instance>:<id>"
+	if 1 == len(conns) {
+		detail["instance"] = conns[0].Instance
+		ref = conns[0].Instance + ":<" + termOf(conns[0].Source, "note") + " id>"
+	}
+	remedy := "narrow to a source that can list notes with --source"
+	if everyGets {
+		remedy = "get one by its ref instead: `likeness get " + ref + "`"
+	}
+	return &LikenessError{Code: "unsupported-capability",
+		Msg: strings.Join(sources, ", ") + " cannot list notes", Remedy: remedy, Detail: detail}
+}
+
+func gather(c Ctx, conns []Connection, withRaw, strict bool) (
 	notes []Note, ok []string, failed []string, short []string, err error) {
 	for _, conn := range conns {
-		if !hasAdapter(conn) {
+		a, has := adapterFor(conn)
+		if !has {
 			// A source with no adapter is refused BEFORE the network, not sent
 			// through whichever adapter happened to be linked in.
 			return nil, nil, nil, nil, &LikenessError{
@@ -444,13 +509,27 @@ func gather(c Ctx, conns []Connection, calls *Calls, withRaw, strict bool) (
 				Remedy: "drop that connection, or narrow to one that is supported with --source",
 			}
 		}
-		cl, lerr := c.sess.client(conn)
+		// Asked nothing, and counted as a connection that did not answer.
+		lst, can := a.(lister)
+		if !can || !listable(conn) {
+			failed = append(failed, conn.Instance)
+			if strict {
+				break
+			}
+			continue
+		}
+		h, lerr := c.sess.handle(conn)
 		var rows []Note
 		var more bool
 		if nil == lerr {
-			rows, more, lerr = JoplinList(cl, conn, withRaw)
+			rows, more, lerr = lst.listNotes(h, conn, withRaw)
 		}
 		if nil != lerr {
+			// A guard's refusal stops the command: it is never an unavailable source.
+			var le *LikenessError
+			if errors.As(lerr, &le) && 4 == ExitFor(le.Code) {
+				return nil, nil, nil, nil, le
+			}
 			failed = append(failed, conn.Instance)
 			// `--strict` HALTS. `fanout-halted` means the fan-out stopped after
 			// a member failed; continuing through every remaining connection
@@ -489,7 +568,21 @@ func cmdList(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 			return nil, err
 		}
 		filter = n
-		if bad := unanswerable(conns, FieldsOf(filter)); 0 < len(bad) {
+	}
+
+	asked := []Connection{}
+	for _, conn := range conns {
+		if _, has := adapterFor(conn); has && !listable(conn) {
+			continue
+		}
+		asked = append(asked, conn)
+	}
+	if 0 < len(conns) && 0 == len(asked) {
+		return nil, cannotList(conns)
+	}
+
+	if nil != filter {
+		if bad := unanswerable(asked, FieldsOf(filter)); 0 < len(bad) {
 			return nil, &LikenessError{
 				Code:   "unsupported-capability",
 				Msg:    "no source can answer a question about " + strings.Join(bad, ", "),
@@ -498,7 +591,7 @@ func cmdList(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 		}
 	}
 
-	notes, okSources, failed, short, gerr := gather(c, conns, calls, f.raw, f.strict)
+	notes, okSources, failed, short, gerr := gather(c, conns, f.raw, f.strict)
 	if nil != gerr {
 		return nil, gerr
 	}
@@ -602,16 +695,23 @@ func cmdGet(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 			return nil, &LikenessError{"no-such-source", "no connection named \"" + instance + "\"",
 				"run `likeness doctor` to see the configured connections", nil}
 		}
-		if !hasAdapter(*conn) {
+		a, has := adapterFor(*conn)
+		if !has {
 			return nil, &LikenessError{"unsupported-capability",
 				"no adapter for source \"" + conn.Source + "\" (connection \"" + conn.Instance + "\")",
 				"this source arrives in a later stage", nil}
 		}
-		cl, err := c.sess.client(*conn)
+		ld, can := a.(loader)
+		if !can || !supports(conn.Source, "note", "get") {
+			return nil, &LikenessError{"unsupported-capability", conn.Source + " cannot get a note",
+				"run `likeness doctor` to see what each connection offers",
+				map[string]string{"source": conn.Source, "instance": conn.Instance, "entity": "note", "op": "get"}}
+		}
+		h, err := c.sess.handle(*conn)
 		if nil != err {
 			return nil, err
 		}
-		note, err := JoplinLoad(cl, *conn, id, f.raw)
+		note, err := ld.loadNote(h, *conn, id, f.raw)
 		if nil != err {
 			return nil, err
 		}
@@ -647,7 +747,8 @@ func cmdDoctor(c Ctx, f flags, calls *Calls) (*envelope, error) {
 	failures := []string{}
 	instances := []string{}
 	for _, conn := range conns {
-		if !hasAdapter(conn) {
+		a, has := adapterFor(conn)
+		if !has {
 			// `doctor` REPORTS rather than refuses: naming the unsupported
 			// source is exactly the diagnosis the command exists to give.
 			rows = append(rows, map[string]any{
@@ -658,18 +759,21 @@ func cmdDoctor(c Ctx, f flags, calls *Calls) (*envelope, error) {
 			instances = append(instances, conn.Instance)
 			continue
 		}
-		ok, code, detail := false, "source-unavailable", "station could not connect this instance"
-		if cl, cerr := c.sess.client(conn); nil == cerr {
-			ok, code, detail = JoplinCheck(cl)
+		r := checkResult{Code: "source-unavailable", Detail: "station could not connect this instance"}
+		if h, herr := c.sess.handle(conn); nil == herr {
+			r = a.check(h)
 		}
 		row := map[string]any{
-			"instance": conn.Instance, "source": conn.Source, "detail": detail,
+			"instance": conn.Instance, "source": conn.Source, "detail": r.Detail,
 			"check": "ok",
 		}
-		if !ok {
+		if !r.OK {
 			row["check"] = "FAIL"
-			row["code"] = code
-			failures = append(failures, code)
+			row["code"] = r.Code
+			failures = append(failures, r.Code)
+		}
+		if "" != r.Remedy {
+			row["remedy"] = r.Remedy
 		}
 		rows = append(rows, row)
 		instances = append(instances, conn.Instance)

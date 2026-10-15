@@ -4,6 +4,8 @@ go 1.23.0
 
 require (
 	github.com/voxgig-sdk/joplin-sdk/go v0.0.0
+	github.com/voxgig-sdk/notion-sdk/go v0.0.0
+	github.com/voxgig-sdk/obsidian-sdk/go v0.0.0
 	github.com/voxgig/sekreto/go v0.0.0
 	github.com/voxgig/station/go v0.0.1
 	golang.org/x/term v0.33.0
@@ -21,6 +23,10 @@ require (
 // points. The same relative layout serves the TypeScript port's `file:`
 // dependency, so one `make sdk` satisfies both.
 replace github.com/voxgig-sdk/joplin-sdk/go => ../../voxgig-sdk/joplin-sdk/go
+
+replace github.com/voxgig-sdk/notion-sdk/go => ../../voxgig-sdk/notion-sdk/go
+
+replace github.com/voxgig-sdk/obsidian-sdk/go => ../../voxgig-sdk/obsidian-sdk/go
 
 // station's Go module has no tag, and requires placeholder versions of its own
 // dependencies that only its workspace resolves (voxgig/station#27). Each is

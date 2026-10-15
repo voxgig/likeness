@@ -2,7 +2,6 @@ package likeness
 
 import (
 	joplin "github.com/voxgig-sdk/joplin-sdk/go"
-	jcore "github.com/voxgig-sdk/joplin-sdk/go/core"
 	"github.com/voxgig/station/go/station"
 )
 
@@ -12,29 +11,19 @@ var JoplinSupplies = []string{
 	"source", "instance", "space", "title", "body", "created", "updated",
 }
 
-// joplinConnect binds a client to station under its instance ref. A seed puts
-// the SDK's offline test transport underneath station.
-func joplinConnect(st *station.Station, instance string, seed map[string]any) *joplin.JoplinSDK {
-	opts := st.OptionsFor(instance, nil)
+type joplinAdapter struct{}
+
+func (joplinAdapter) source() string     { return joplinSource }
+func (joplinAdapter) supplies() []string { return JoplinSupplies }
+
+// connect binds a client to station under its instance ref. A seed puts the
+// SDK's offline test transport underneath station.
+func (joplinAdapter) connect(st *station.Station, conn Connection, _ any, seed map[string]any) any {
+	opts := st.OptionsFor(conn.Instance, nil)
 	if nil != seed {
 		return joplin.TestSDK(seed, opts)
 	}
 	return joplin.NewJoplinSDK(opts)
-}
-
-// statusOf digs the HTTP status out of the SDK's error, whose Result is a
-// cleaned plain-data copy, rather than matching on the message text, which
-// differs between ports and between revisions.
-func statusOf(err error) int {
-	je, ok := err.(*jcore.JoplinError)
-	if !ok {
-		return 0
-	}
-	r, _ := je.Result.(map[string]any)
-	if n, ok := num(r["status"]); ok {
-		return int(n)
-	}
-	return 0
 }
 
 // textOf renders a non-string value as its canonical JSON text.
@@ -62,7 +51,7 @@ func msval(m map[string]any, k string) int64 {
 	return 0
 }
 
-func stamp(raw map[string]any, field string) (string, error) {
+func (joplinAdapter) stamp(raw map[string]any, field string) (string, error) {
 	s, err := Rfc3339(msval(raw, field))
 	if nil != err {
 		return "", &LikenessError{
@@ -74,7 +63,7 @@ func stamp(raw map[string]any, field string) (string, error) {
 	return s, nil
 }
 
-func projectNote(raw map[string]any, instance, account string, withRaw bool) (Note, error) {
+func (a joplinAdapter) project(raw map[string]any, instance, account string, withRaw bool) (Note, error) {
 	id := ""
 	if v, ok := present(raw, "id"); ok {
 		id = textOf(v)
@@ -88,11 +77,11 @@ func projectNote(raw map[string]any, instance, account string, withRaw bool) (No
 			Remedy: "this is a bug in the source or its SDK; run with --raw to capture the payload",
 		}
 	}
-	created, err := stamp(raw, "created_time")
+	created, err := a.stamp(raw, "created_time")
 	if nil != err {
 		return Note{}, err
 	}
-	updated, err := stamp(raw, "updated_time")
+	updated, err := a.stamp(raw, "updated_time")
 	if nil != err {
 		return Note{}, err
 	}
@@ -127,13 +116,7 @@ func projectNote(raw map[string]any, instance, account string, withRaw bool) (No
 }
 
 func entData(v any) map[string]any {
-	type dataer interface{ Data(...any) any }
-	if d, ok := v.(dataer); ok {
-		if m, ok := d.Data().(map[string]any); ok {
-			return m
-		}
-	}
-	if m, ok := v.(map[string]any); ok {
+	if m, ok := dataOf(v).(map[string]any); ok {
 		return m
 	}
 	return map[string]any{}
@@ -143,15 +126,15 @@ func entData(v any) map[string]any {
 // `fields`; the client declares `field`, which Joplin ignores (sdkgen#406).
 const joplinFields = "id,parent_id,title,body,created_time,updated_time"
 
-func JoplinList(client *joplin.JoplinSDK, conn Connection, withRaw bool) ([]Note, bool, error) {
-	found, err := client.Note(nil).List(map[string]any{"fields": joplinFields}, nil)
+func (a joplinAdapter) listNotes(h any, conn Connection, withRaw bool) ([]Note, bool, error) {
+	found, err := h.(*joplin.JoplinSDK).Note(nil).List(map[string]any{"fields": joplinFields}, nil)
 	if nil != err {
 		return nil, false, err
 	}
 	rows, _ := found.([]any)
 	out := make([]Note, 0, len(rows))
 	for _, r := range rows {
-		n, err := projectNote(entData(r), conn.Instance, conn.Account, withRaw)
+		n, err := a.project(entData(r), conn.Instance, conn.Account, withRaw)
 		if nil != err {
 			return nil, false, err
 		}
@@ -161,10 +144,10 @@ func JoplinList(client *joplin.JoplinSDK, conn Connection, withRaw bool) ([]Note
 	return out, 0 < limit && limit <= len(rows), nil
 }
 
-func JoplinLoad(client *joplin.JoplinSDK, conn Connection, id string, withRaw bool) (*Note, error) {
-	ent, err := client.Note(nil).Load(map[string]any{"id": id, "fields": joplinFields}, nil)
+func (a joplinAdapter) loadNote(h any, conn Connection, id string, withRaw bool) (*Note, error) {
+	ent, err := h.(*joplin.JoplinSDK).Note(nil).Load(map[string]any{"id": id, "fields": joplinFields}, nil)
 	if nil != err {
-		if 404 == statusOf(err) {
+		if notFound(err) {
 			return nil, nil
 		}
 		return nil, err
@@ -173,26 +156,26 @@ func JoplinLoad(client *joplin.JoplinSDK, conn Connection, id string, withRaw bo
 	if _, ok := row["id"]; !ok {
 		return nil, nil
 	}
-	n, err := projectNote(row, conn.Instance, conn.Account, withRaw)
+	n, err := a.project(row, conn.Instance, conn.Account, withRaw)
 	if nil != err {
 		return nil, err
 	}
 	return &n, nil
 }
 
-// JoplinCheck reports reachability for `doctor`, telling apart the failure
-// modes a user experiences as one, because the remedy differs for each.
-func JoplinCheck(client *joplin.JoplinSDK) (ok bool, code, detail string) {
-	_, err := client.Note(nil).List(map[string]any{"fields": joplinFields}, nil)
+// check reports reachability for `doctor`, telling apart the failure modes a
+// user experiences as one, because the remedy differs for each.
+func (joplinAdapter) check(h any) checkResult {
+	_, err := h.(*joplin.JoplinSDK).Note(nil).List(map[string]any{"fields": joplinFields}, nil)
 	if nil == err {
-		return true, "", "ok"
+		return checkResult{OK: true, Detail: "ok"}
 	}
 	if s := statusOf(err); 401 == s || 403 == s {
-		return false, "auth-failed", "the token was rejected"
+		return checkResult{Code: "auth-failed", Detail: "the token was rejected"}
 	}
 	// Throttling has its own retryable code: "did not answer" sends the user to start a running app.
 	if 429 == statusOf(err) {
-		return false, "rate-limited", "the source is rate limiting this client"
+		return checkResult{Code: "rate-limited", Detail: "the source is rate limiting this client"}
 	}
-	return false, "source-unavailable", "the application did not answer"
+	return checkResult{Code: "source-unavailable", Detail: "the application did not answer"}
 }
