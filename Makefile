@@ -51,6 +51,9 @@ help:
 	@echo '  sdk-check     fail if a clone is missing or off its pin'
 	@echo '  test-ts       build and run the TypeScript port against both corpora'
 	@echo '  test-go       build and run the Go port against both corpora'
+	@echo '  test-c        build and run the C port: the unit corpus and what it answers'
+	@echo '  test-c-asan   the C suite under AddressSanitizer and UBSan'
+	@echo '  test-c-valgrind  the C suite under Valgrind'
 	@echo '  parity        the ports produce the same bytes, and each names itself'
 	@echo '  check         spec, every port, and the parity comparison'
 	@echo '  expect        REGENERATE the committed expectations - read the diff'
@@ -64,7 +67,7 @@ spec: spec-fmt spec-check spec-fresh spec-agree
 
 # Everything. What CI runs, and what a change should run before it is pushed.
 .PHONY: check
-check: comments spec test-ts test-go parity
+check: comments spec test-ts test-go test-c parity
 
 
 .PHONY: spec-build
@@ -103,6 +106,21 @@ test-ts: sdk-check mock-deps ts-deps
 .PHONY: test-go
 test-go: sdk-check mock-deps
 	@cd go && gofmt -l . | (! grep .) && go vet ./... && go test ./...
+
+
+# The C port reads no SDK and no clone. Until the C SDK has a live transport,
+# its SDKs link into one program and station's C library reads the vault, it
+# runs the unit corpus and the transcript entries that need no source, and
+# `parity` does not include it.
+.PHONY: test-c test-c-asan test-c-valgrind
+test-c:
+	@$(MAKE) --no-print-directory -C c test
+
+test-c-asan:
+	@$(MAKE) --no-print-directory -C c asan
+
+test-c-valgrind:
+	@$(MAKE) --no-print-directory -C c valgrind
 
 
 # The cross-port byte comparison. Each port's suite writes its RAW transcript

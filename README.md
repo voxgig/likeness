@@ -18,14 +18,15 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 135 entries, run by both ports |
-| `spec/cli.aontu` — the transcript corpus | 138 whole commands, run by both ports |
+| `spec/unit.aontu` — the pure-function corpus | 143 entries, run by the TypeScript and Go ports, and by C but for the nine of `connections` |
+| `spec/cli.aontu` — the transcript corpus | 138 whole commands, run by the TypeScript and Go ports; C answers the 37 that need no source |
 | `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
-| The parity comparison | `make parity`: the ports agree, each names itself, and the comparison is proved to go red |
+| `c/` — the fifth port, C99 and POSIX with no dependency | every pure function of the unit corpus; `version`, `help` and `which`; every other command refused as `unsupported-capability`, naming what it waits on: a live transport in the C SDK ([sdkgen#403](https://github.com/voxgig/sdkgen/issues/403)), two C SDKs in one program ([sdkgen#405](https://github.com/voxgig/sdkgen/issues/405)) and station's C library reading the vault ([station#23](https://github.com/voxgig/station/issues/23)) |
+| The parity comparison | `make parity`: the TypeScript and Go ports agree, each names itself, and the comparison is proved to go red. It runs the transcript corpus, so C joins it when its transcript cells do |
 | `mock/` — a Fastify server emulating all four sources on one port | working, smoke-tested |
 | `replica/` — a local SQLite copy reached through a generated SDK | designed; schema and search verified, SDK not generated |
-| Python, Ruby and C | not started |
+| Python and Ruby | not started |
 
 In the staging plan's terms (SPEC §20) this is **Stage 0 and Stage 1** complete — the ground
 truth and the two-port walking skeleton. Stage 2 is the primary loop: all four sources, Python
@@ -35,7 +36,7 @@ and Ruby, and writes.
 
 ```sh
 make sdk         # clone the generated SDKs at their pinned revisions
-make check       # the schema, both ports, both corpora and the parity comparison
+make check       # the schema, every port, both corpora and the parity comparison
 make mock        # run the source mock server on 127.0.0.1:7777
 ```
 
