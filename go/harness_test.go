@@ -115,11 +115,10 @@ func fmtCalls(cs []Call) string {
 
 // -- the transcript harness -------------------------------------------------
 
-func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
+// seedOf reads one fixture's seed with numbers kept exact, as the corpus is.
+func seedOf(t *testing.T, root, name string) map[string]any {
 	t.Helper()
-	ectx, _ := e["ctx"].(map[string]any)
-
-	f, err := os.Open(filepath.Join(root, "fixtures", "sources", str(ectx, "fixture"), "seed.json"))
+	f, err := os.Open(filepath.Join(root, "fixtures", "sources", name, "seed.json"))
 	if nil != err {
 		t.Fatal(err)
 	}
@@ -131,6 +130,12 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 		t.Fatal(err)
 	}
 	delete(seed, "_doc")
+	return seed
+}
+
+func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
+	t.Helper()
+	ectx, _ := e["ctx"].(map[string]any)
 
 	ctx := Ctx{
 		Argv:    strs(e["args"]),
@@ -161,7 +166,7 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 
 	// Each connection becomes a declared station instance, its block the one
 	// the entry gives, its account the likeness.json entry beside it, and its
-	// seed the SDK's offline transport.
+	// seed, its own or the entry's, the SDK's offline transport.
 	sdk := map[string]any{}
 	ctx.Accounts = map[string]string{}
 	conns, _ := ectx["connections"].([]any)
@@ -171,7 +176,11 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 		block, _ := cm["block"].(map[string]any)
 		sdk[inst] = cloneMap(block)
 		ctx.Accounts[inst] = str(cm, "account")
-		own := cloneMap(seed)
+		fixture := str(cm, "fixture")
+		if "" == fixture {
+			fixture = str(ectx, "fixture")
+		}
+		own := seedOf(t, root, fixture)
 		if net, ok := cm["net"]; ok {
 			own["net"] = net
 		}

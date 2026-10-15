@@ -105,7 +105,7 @@ func TestWire(t *testing.T) {
 
 	t.Run("list asks for the fields the shape needs, and gets real timestamps back", func(t *testing.T) {
 		clearRequests(t, root)
-		notes, _, err := JoplinList(client(), conn, false)
+		notes, _, err := joplinAdapter{}.listNotes(client(), conn, false)
 		if nil != err {
 			t.Fatal(err)
 		}
@@ -141,7 +141,7 @@ func TestWire(t *testing.T) {
 			if "id parent_id title" != strings.Join(keys, " ") {
 				t.Fatalf("default fields: %v", keys)
 			}
-			n, err := projectNote(m, "jot", "local", false)
+			n, err := joplinAdapter{}.project(m, "jot", "local", false)
 			if nil != err {
 				t.Fatal(err)
 			}
@@ -153,16 +153,15 @@ func TestWire(t *testing.T) {
 
 	t.Run("load and check ask for the fields too", func(t *testing.T) {
 		clearRequests(t, root)
-		n, err := JoplinLoad(client(), conn, "a0e50000000000000000000000000001", false)
+		n, err := joplinAdapter{}.loadNote(client(), conn, "a0e50000000000000000000000000001", false)
 		if nil != err || nil == n {
 			t.Fatalf("load: %v %v", n, err)
 		}
 		if nil == n.Body || epoch == n.Created {
 			t.Fatalf("load projected to the epoch or lost its body: %+v", n)
 		}
-		ok, code, detail := JoplinCheck(client())
-		if !ok {
-			t.Fatalf("check: %s %s", code, detail)
+		if r := (joplinAdapter{}).check(client()); !r.OK {
+			t.Fatalf("check: %s %s", r.Code, r.Detail)
 		}
 		if sent := fieldsSent(t, root); 2 != len(sent) || joplinFields != sent[0] || joplinFields != sent[1] {
 			t.Fatalf("fields sent: %q", sent)

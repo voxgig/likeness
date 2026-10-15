@@ -109,7 +109,7 @@ func unitRegistry() map[string]unitFn {
 		"projectJoplin": func(t *testing.T, in any) (any, error) {
 			m := in.(map[string]any)
 			raw, _ := m["raw"].(map[string]any)
-			n, err := projectNote(raw, str(m, "instance"), str(m, "account"), false)
+			n, err := joplinAdapter{}.project(raw, str(m, "instance"), str(m, "account"), false)
 			if nil != err {
 				return nil, err
 			}

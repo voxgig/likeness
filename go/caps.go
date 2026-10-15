@@ -18,10 +18,18 @@ type SourceLimit struct {
 	VersionToken bool   `json:"version_token"`
 }
 
+type EntityCaps struct {
+	Kind string         `json:"kind"`
+	SDK  string         `json:"sdk"`
+	Term string         `json:"term"`
+	Op   map[string]any `json:"op"`
+}
+
 // SourceCaps is one source's row.
 type SourceCaps struct {
-	Name  string      `json:"name"`
-	Limit SourceLimit `json:"limit"`
+	Name   string                `json:"name"`
+	Limit  SourceLimit           `json:"limit"`
+	Entity map[string]EntityCaps `json:"entity"`
 }
 
 var (
@@ -55,4 +63,22 @@ func PageMax(source string) int {
 		return 0
 	}
 	return c[source].Limit.PageMax
+}
+
+// An operation is refused where it is false or absent, and offered otherwise.
+func supports(source, entity, op string) bool {
+	c, err := Caps()
+	if nil != err {
+		return false
+	}
+	v, ok := c[source].Entity[entity].Op[op]
+	return ok && false != v
+}
+
+func termOf(source, entity string) string {
+	c, _ := Caps()
+	if e, ok := c[source].Entity[entity]; ok && "" != e.Term {
+		return e.Term
+	}
+	return entity
 }

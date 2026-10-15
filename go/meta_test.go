@@ -269,9 +269,9 @@ func TestMetaNetOptionsReachTheSdk(t *testing.T) {
 		"entity": map[string]any{"note": map[string]any{"x1": map[string]any{"id": "x1"}}},
 		"net":    mustDecode(t, `{"failTimes":1,"failStatus":401}`),
 	}
-	ok, code, _ := JoplinCheck(joplin.TestSDK(seed, nil))
-	if ok || "auth-failed" != code {
-		t.Fatalf("net.failStatus did not reach the SDK: ok=%v code=%q", ok, code)
+	r := joplinAdapter{}.check(joplin.TestSDK(seed, nil))
+	if r.OK || "auth-failed" != r.Code {
+		t.Fatalf("net.failStatus did not reach the SDK: ok=%v code=%q", r.OK, r.Code)
 	}
 }
 
