@@ -66,10 +66,8 @@ there. The vault's bytes are never compared: they change on every write.
 
 The TypeScript, Go, Python and Ruby ports run both corpora in full, and `make
 parity` compares their transcript output byte for byte; C runs the `sources`
-group's two pure functions, `secretName` and `refFor`. The Go, Python, Ruby and C
-ports run them on [omni](https://github.com/voxgig/omni)'s runner, each at a pinned
-revision, and the TypeScript port follows once omni's npm release carries the same
-capabilities. Each corpus's `OMNI` header names what it needs: `fn`, for a unit
+group's two pure functions, `secretName` and `refFor`. Every port runs them on
+[omni](https://github.com/voxgig/omni)'s runner, each at a pinned revision. Each corpus's `OMNI` header names what it needs: `fn`, for a unit
 entry naming the function it calls, and `ctxargs`, for a transcript entry carrying
 both its argv and its context. Each group is one run that reports every entry that
 fails, and each port keeps only the subject: the home, fixtures, clock, stdin,

@@ -4,9 +4,13 @@ import assert from 'node:assert'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
-import { check, entries, ROOT, type CliEntry } from './harness.js'
+import { CLI_OMNI, cliRunner, corpus, entries, resolved, ROOT, type CliEntry } from './harness.js'
 
 const all = entries<CliEntry>('cli')
+
+// Entries this port cannot answer yet, each with the upstream cause it waits on
+// and the entry as that cause predicts this port answers it.
+const WAITING: Record<string, [string, (e: CliEntry) => CliEntry]> = {}
 
 test('the transcript corpus is not empty', () => {
   assert.ok(0 < all.length, 'spec/cli.json has no entries - did `make spec-build` run?')
@@ -40,9 +44,33 @@ test('no expectation file is unreferenced', () => {
   assert.deepStrictEqual(orphans, [], 'expectation files no entry refers to')
 })
 
-for (const e of all) {
-  test('cli ' + e.id, async () => {
-    const failures = await check(e)
-    assert.deepStrictEqual(failures, [], e.id + ':\n  ' + failures.join('\n  '))
+test('every entry waiting upstream is in the corpus', () => {
+  const ids = new Set(all.map(e => e.id))
+  assert.deepStrictEqual(Object.keys(WAITING).filter(id => !ids.has(id)).sort(), [])
+})
+
+const SPEC = corpus('cli')
+
+function group (name: string, set: CliEntry[]) {
+  return { OMNI: CLI_OMNI, cli: { [name]: { set: set.map(e => resolved(e)) } } }
+}
+
+for (const name of Object.keys(SPEC).sort()) {
+  test('cli ' + name, async () => {
+    const set = SPEC[name].set as CliEntry[]
+    const ids = new Set(set.map(e => e.id))
+    const wait = Object.fromEntries(Object.entries(WAITING)
+      .filter(([id]) => ids.has(id)).map(([id, [cause]]) => [id, { cause }]))
+    const spec = group(name, set)
+    await (await cliRunner(spec)).runsetflags(spec.cli[name], { null: false, all: true, wait })
+  })
+}
+
+// A wait holds an entry only while it fails; this holds it to failing for its
+// declared cause alone, so the declaration cannot hide a second difference.
+if (0 < Object.keys(WAITING).length) {
+  test('cli waiting entries differ only as their cause predicts', async () => {
+    const spec = group('predicted', all.filter(e => Object.hasOwn(WAITING, e.id)).map(e => WAITING[e.id][1](e)))
+    await (await cliRunner(spec)).runsetflags(spec.cli.predicted, { null: false, all: true })
   })
 }

@@ -19,7 +19,7 @@ The reasoned specification lives in
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
 | `spec/unit.aontu` — the pure-function corpus | 292 entries, run by every port, C included but for the eighteen of `connections` |
-| `spec/cli.aontu` — the transcript corpus | 259 whole commands, run by the TypeScript, Go, Python and Ruby ports, all but TypeScript on [omni](https://github.com/voxgig/omni)'s runner. Where a port's SDK or station still differs upstream, it declares the entry waiting, held to its cause: two Obsidian entries in Python and Ruby ([sdkgen#418](https://github.com/voxgig/sdkgen/issues/418)), eight in Go ([station#50](https://github.com/voxgig/station/issues/50), sdkgen#418). C answers the 43 that need no source |
+| `spec/cli.aontu` — the transcript corpus | 259 whole commands, run by the TypeScript, Go, Python and Ruby ports on [omni](https://github.com/voxgig/omni)'s runner. Where a port's SDK or station still differs upstream, it declares the entry waiting, held to its cause: two Obsidian entries in Python and Ruby ([sdkgen#418](https://github.com/voxgig/sdkgen/issues/418)), eight in Go ([station#50](https://github.com/voxgig/station/issues/50), sdkgen#418). C answers the 43 that need no source |
 | `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `sources`, `help`, `version`, `which`, over Joplin and Obsidian, and Notion by `get`, since its SDK lists no pages; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
 | `python/` — the third port | the same again, through station's Python library |

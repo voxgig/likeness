@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert'
 import { readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 
 import { check, entries, buildCtx, stdoutFailures, ROOT, type CliEntry } from './harness.js'
 import { run } from '../src/core.js'
@@ -17,6 +18,23 @@ function entry (id: string): CliEntry {
   return JSON.parse(JSON.stringify(e)) as CliEntry
 }
 
+type Result = Record<string, any>
+
+// The expected and actual results of omni's one result mismatch.
+function sides (failures: string[]): [Result, Result] {
+  assert.ok(1 === failures.length && failures[0].split('\n')[0].includes('result mismatch'), JSON.stringify(failures))
+  const lines = Object.fromEntries(failures[0].split('\n').slice(1).map(ln =>
+    [ln.slice(2, ln.indexOf(':')), ln.slice(ln.indexOf(':') + 1).trim()]))
+  return [JSON.parse(lines.expected), JSON.parse(lines.actual)]
+}
+
+// The fields the expected and actual results disagree on.
+function differs (failures: string[]): string[] {
+  const [want, got] = sides(failures)
+  return [...new Set([...Object.keys(want), ...Object.keys(got)])]
+    .filter(k => !isDeepStrictEqual(want[k], got[k])).sort()
+}
+
 /* The control. If this ever fails, every test below is meaningless, because a
  * harness that reports failures for a correct entry proves nothing by
  * reporting them for a broken one.
@@ -28,8 +46,7 @@ test('meta: the unmutated entry passes', async () => {
 test('meta: a wrong exit code is reported', async () => {
   const e = entry('list/all')
   e.out.exit = 3
-  const f = await check(e)
-  assert.ok(f.some(x => x.startsWith('exit ')), 'no exit failure in ' + JSON.stringify(f))
+  assert.deepStrictEqual(differs(await check(e)), ['exit'])
 })
 
 test('meta: stdout differing by ONE BYTE is reported', async () => {
@@ -45,8 +62,7 @@ test('meta: stdout differing by ONE BYTE is reported', async () => {
   writeFileSync(tmp, text)
   try {
     e.out.stdout = tmpRel
-    const f = await check(e)
-    assert.ok(f.some(x => x.startsWith('stdout differs')), 'no stdout failure in ' + JSON.stringify(f))
+    assert.deepStrictEqual(differs(await check(e)), ['stdout'])
   }
   finally { unlinkSync(tmp) }
 })
@@ -55,8 +71,7 @@ test('meta: a vault left holding the wrong names is reported', async () => {
   const e = entry('secrets/remove')
   assert.ok(undefined !== e.out.vault, 'secrets/remove asserts no vault state')
   e.out.vault.names = ['joplin.apikey', 'notion.apikey']
-  const f = await check(e)
-  assert.ok(f.some(x => x.startsWith('vault names ')), 'no vault failure in ' + JSON.stringify(f))
+  assert.deepStrictEqual(differs(await check(e)), ['vault'])
 })
 
 test('meta: a vault value that differs is reported', async () => {
@@ -64,42 +79,40 @@ test('meta: a vault value that differs is reported', async () => {
   assert.ok(undefined !== e.out.vault?.values, 'secrets/set-from-stdin asserts no values')
   e.out.vault.values = { 'joplin.apikey': 'rotated-token\n' }
   const f = await check(e)
-  assert.ok(f.some(x => x.startsWith('vault value of ')), 'no value failure in ' + JSON.stringify(f))
+  const [want, got] = sides(f)
+  assert.deepStrictEqual(differs(f), ['vault'])
+  assert.deepStrictEqual(got.vault.names, want.vault.names)
+  assert.notDeepStrictEqual(got.vault.values, want.vault.values)
 })
 
 test('meta: a prompt that was not expected is reported', async () => {
   const e = entry('secrets/passphrase-typed')
   e.out.prompts = []
-  const f = await check(e)
-  assert.ok(f.some(x => x.startsWith('prompts ')), 'no prompt failure in ' + JSON.stringify(f))
+  assert.deepStrictEqual(differs(await check(e)), ['prompts'])
 })
 
 test('meta: a MISSING call is reported', async () => {
   const e = entry('list/all')
   e.out.calls = []
-  const f = await check(e)
-  assert.ok(f.some(x => x.startsWith('calls ')), 'no calls failure in ' + JSON.stringify(f))
+  assert.deepStrictEqual(differs(await check(e)), ['calls'])
 })
 
 test('meta: an EXTRA call is reported', async () => {
   const e = entry('list/all')
   e.out.calls = [...e.out.calls, { instance: 'joplin', method: 'GET', path: '/notes' }]
-  const f = await check(e)
-  assert.ok(f.some(x => x.startsWith('calls ')), 'no calls failure in ' + JSON.stringify(f))
+  assert.deepStrictEqual(differs(await check(e)), ['calls'])
 })
 
 test('meta: a call with the right count but the wrong path is reported', async () => {
   const e = entry('list/all')
   e.out.calls = [{ instance: 'joplin', method: 'GET', path: '/folders' }]
-  const f = await check(e)
-  assert.ok(f.some(x => x.startsWith('calls ')), 'no calls failure in ' + JSON.stringify(f))
+  assert.deepStrictEqual(differs(await check(e)), ['calls'])
 })
 
 test('meta: unexpected stderr is reported', async () => {
   const e = entry('list/all')
   e.out.stderr = 'something the command never printed\n'
-  const f = await check(e)
-  assert.ok(f.some(x => x.startsWith('stderr ')), 'no stderr failure in ' + JSON.stringify(f))
+  assert.deepStrictEqual(differs(await check(e)), ['stderr'])
 })
 
 test('meta: a missing expectation file is an error, not a pass', async () => {
@@ -114,8 +127,7 @@ test('meta: every failure is reported, not just the first', async () => {
   e.out.exit = 3
   e.out.calls = []
   e.out.stderr = 'no\n'
-  const f = await check(e)
-  assert.equal(f.length, 3, 'expected three failures, got ' + JSON.stringify(f))
+  assert.deepStrictEqual(differs(await check(e)), ['calls', 'exit', 'stderr'])
 })
 
 /* The bytes are the contract. These feed the stdout check output no port
@@ -161,19 +173,25 @@ test('meta: a written file that differs is reported', async () => {
   const e = entry('connections/add-joplin')
   e.out.files = { ...e.out.files, 'station.json': 'fixtures/config/several/station.json' }
   const f = await check(e)
-  assert.ok(f.some(x => x.startsWith('station.json differs')), 'no file failure in ' + JSON.stringify(f))
+  const [want, got] = sides(f)
+  assert.deepStrictEqual(differs(f), ['files'])
+  assert.notDeepStrictEqual(got.files['station.json'], want.files['station.json'])
 })
 
 test('meta: a file the entry says is not there, written, is reported', async () => {
   const e = entry('connections/add-joplin')
   e.out.absent = ['likeness.json']
   const f = await check(e)
-  assert.ok(f.some(x => x.startsWith('likeness.json is there afterwards')), 'no absence failure in ' + JSON.stringify(f))
+  const [want, got] = sides(f)
+  assert.deepStrictEqual(differs(f), ['absent'])
+  assert.ok(want.absent.includes('likeness.json') && !got.absent.includes('likeness.json'), JSON.stringify(got))
 })
 
 test('meta: a file the entry names, never written, is reported', async () => {
   const e = entry('connections/add-joplin-needs-an-account')
   e.out.files = { 'station.json': 'spec/written/connections/add-joplin/station.json' }
   const f = await check(e)
-  assert.ok(f.some(x => x.startsWith('station.json is not there afterwards')), 'no missing-file failure in ' + JSON.stringify(f))
+  const [want, got] = sides(f)
+  assert.deepStrictEqual(differs(f), ['files'])
+  assert.ok(null !== want.files['station.json'] && null === got.files['station.json'], JSON.stringify(got.files))
 })
