@@ -18,14 +18,14 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 275 entries, run by every port, C included but for the eighteen of `connections` |
-| `spec/cli.aontu` — the transcript corpus | 183 whole commands, run by the TypeScript, Go, Python and Ruby ports. Where a port's SDK or station still differs upstream, it declares the entry waiting, held to its cause: two Obsidian entries in Python and Ruby ([sdkgen#418](https://github.com/voxgig/sdkgen/issues/418)), eight in Go ([station#50](https://github.com/voxgig/station/issues/50), sdkgen#418). C answers the 37 that need no source |
-| `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`, over Joplin and Obsidian, and Notion by `get`, since its SDK lists no pages; offline through the real generated SDK |
-| `go/` — the second port | the same, passing the same corpora and the same committed bytes |
+| `spec/unit.aontu` — the pure-function corpus | 292 entries, run by every port, C included but for the eighteen of `connections`. The seventeen of `secretName` and `refFor`, which `sources add` brought, pass in TypeScript and C and wait to be ported to Go, Python and Ruby |
+| `spec/cli.aontu` — the transcript corpus | 258 whole commands, run by the TypeScript, Go, Python and Ruby ports. Where a port's SDK or station still differs upstream, it declares the entry waiting, held to its cause: two Obsidian entries in Python and Ruby ([sdkgen#418](https://github.com/voxgig/sdkgen/issues/418)), eight in Go ([station#50](https://github.com/voxgig/station/issues/50), sdkgen#418). The 75 entries of the `sources` group pass in TypeScript; Go, Python and Ruby pass the six that the grammar and help answer, and the rest wait to be ported. C answers the 43 that need no source |
+| `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `sources`, `help`, `version`, `which`, over Joplin and Obsidian, and Notion by `get`, since its SDK lists no pages; offline through the real generated SDK |
+| `go/` — the second port | the same but `sources`, which waits to be ported, as it does in Python and Ruby; every other entry of both corpora passes, with the same committed bytes |
 | `python/` — the third port | the same again, through station's Python library |
 | `ruby/` — the Ruby port | the same again, on station's Ruby library and the three SDKs' `rb` gems, loaded together with their constant collisions ([sdkgen#404](https://github.com/voxgig/sdkgen/issues/404)) proved inert for what likeness uses |
 | `c/` — the fifth port, C99 and POSIX with no dependency | every pure function of the unit corpus; `version`, `help` and `which`; every other command refused as `unsupported-capability`, naming what it waits on: a live transport in the C SDK ([sdkgen#403](https://github.com/voxgig/sdkgen/issues/403)), two C SDKs in one program ([sdkgen#405](https://github.com/voxgig/sdkgen/issues/405)) and station's C library reading the vault ([station#23](https://github.com/voxgig/station/issues/23)) |
-| The parity comparison | `make parity`: the TypeScript, Go, Python and Ruby ports agree on every entry but one answer declared waiting in `tools/parity-waiting.json`, each names itself, and the comparison is proved to go red, a stale declaration included. It runs the transcript corpus, so C joins it when its transcript cells do |
+| The parity comparison | `make parity`: the TypeScript, Go, Python and Ruby ports agree on every entry but one answer declared waiting in `tools/parity-waiting.json` and the `sources` group's until it is ported, each names itself, and the comparison is proved to go red, a stale declaration included. It runs the transcript corpus, so C joins it when its transcript cells do |
 | The source × port matrix | `make matrix`: each port's own CLI binary reaches each source through its station-bound SDK, its token in a vault the run makes, against `mock/`. Go and Python reach Notion. Every other cell is red, naming in `tools/matrix-waiting.json` the upstream issue it waits on, and is held to what that issue predicts: station's vault in TypeScript ([station#34](https://github.com/voxgig/station/issues/34)) and Ruby ([station#33](https://github.com/voxgig/station/issues/33)), Joplin's query token ([station#25](https://github.com/voxgig/station/issues/25)), Linear ([sdkgen#400](https://github.com/voxgig/sdkgen/issues/400)), C's three, and Go's and Python's walk of an Obsidian vault from its root ([sdkgen#419](https://github.com/voxgig/sdkgen/issues/419)). It runs in `make check`, and CI writes its table to the run's summary |
 | `mock/` — a Fastify server emulating all four sources on one port | working, smoke-tested |
 | `replica/` — a local SQLite copy reached through a generated SDK | designed; schema and search verified, SDK not generated |
@@ -88,6 +88,37 @@ station profile:
 A profile reads only its own accounts. Two profiles may declare `joplin`
 against different applications, and an account shared between them would give
 one profile's notes the other's identities.
+
+`likeness sources` keeps both files, under the active profile, so neither need be
+written by hand:
+
+```sh
+likeness sources add --source joplin --account <the Joplin profile id>   # the token is typed, echo off
+likeness sources add --source notion --instance docs --account <workspace id> --secret notion_docs.apikey
+likeness sources list                          # ref, source, base, account and secret name, never a value
+likeness sources rename 'notion$docs' 'notion$wiki'   # its account goes with it, so no lid changes
+likeness sources remove 'notion$wiki'          # its account goes too; its token stays in the vault
+likeness sources test joplin                   # doctor's row, for the connections named
+```
+
+`add` writes the instance `<api>`, or `<api>$<tag>` with `--instance`, and never
+overwrites a connection or a token. It stores the token in the vault under the
+instance's secret name before either file changes: typed at a prompt with echo
+off, or already stored and named with `--secret`, never an argument. No wired SDK
+can name the account a token reaches yet, so `--account` is required, and the
+refusal says why for each source; `spec/caps.aontu` marks a source whose SDK can,
+and `add` then asks it instead. It pins Obsidian's certificate as the plugin
+presents it, read by a probe that writes nothing: on a terminal it shows the
+fingerprint and asks, and otherwise `--fingerprint` names it and is held to it.
+`--plain-http`, with an `http://` base, writes `"tls": false` instead. Notion's
+`notion-version` is `--notion-version`, or 2022-06-28. Joplin's base is
+`http://127.0.0.1:41184` unless `--base` says otherwise.
+
+Each write changes both files or neither, and keeps everything in them that it
+does not change, in their own order and as written, laid out as
+`JSON.stringify(doc, null, 2)` lays out JSON. A rename writes the secret name the
+old ref derived into the block, so the token still resolves, and a profile
+cannot change a connection it inherits from `default`.
 
 #### Obsidian
 

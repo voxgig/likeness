@@ -28,13 +28,13 @@ station's C library reads only the environment, so it can neither validate
 | Part | State |
 |---|---|
 | The unit corpus | every entry but the eighteen of `connections` |
-| The core's pure functions | `serialise`, `parseSelector`, `parseSelectorError`, `compareCodePoints`, `lid`, `crockfordAlphabet`, `rfc3339`, `foldCase`, `takeConfigOption`, `parseArgv`, `partialCodes`, `vaultEntry` |
+| The core's pure functions | `serialise`, `parseSelector`, `parseSelectorError`, `compareCodePoints`, `lid`, `crockfordAlphabet`, `rfc3339`, `foldCase`, `takeConfigOption`, `parseArgv`, `partialCodes`, `vaultEntry`, and `sources add`'s `secretName` and `refFor` |
 | Each adapter's pure half | Joplin's `projectJoplin`; Obsidian's `obsidianUrl`, `vaultEntries`, `vaultWalk`, `obsidianTransport` and `projectObsidian`, with the certificate pin's `parsePin` and `fingerprintOf`; Notion's `notionVersion`, `notionTitle`, `notionSpace`, `notionTime` and `projectNotion` |
 | `connections` | waiting on station#23: it opens `station.json` through station |
 | `version`, `help`, `which` | answered as the transcript corpus defines them |
 | A command the table declares not ready | refused as every port refuses it |
 | A command line the grammar refuses | refused as every port refuses it, before anything runs |
-| `list`, `get`, `doctor`, the `secrets` actions | `unsupported-capability`, exit 4, naming the three issues, for every source alike |
+| `list`, `get`, `doctor`, the `secrets` and `sources` actions | `unsupported-capability`, exit 4, naming the three issues, for every source alike |
 | Reaching an Obsidian vault over its pinned certificate | waiting on sdkgen#403 with every read: the pin's grammar and a certificate's fingerprint are here, the TLS connection that holds a certificate to the pin is not |
 | `make parity` | not included: it runs the transcript corpus |
 | `make matrix` | every cell red, held to the three issues: each command refuses naming all three, and the mock receives nothing |
@@ -51,7 +51,7 @@ a directory, is refused as every port refuses it, and so is one nested more than
 | Program | Checks |
 |---|---|
 | `test/unit.c` | `spec/unit.json`, entry by entry. `connections` is declared waiting, and the run fails if that list names a function the port implements or one the corpus does not use, or if the corpus uses a function the port neither implements nor declares. A waiting entry is reported as a TAP `SKIP`, never as a pass. `unit ROOT --eval` answers `{"fn","in"}` lines on stdin, for comparing the port with another |
-| `test/transcript.c` | the 37 entries of `spec/cli.json` this port answers, against the committed bytes in `spec/expect/`. Every other entry is a `SKIP`, and the port's answer to it must be the refusal naming the three issues |
+| `test/transcript.c` | the 43 entries of `spec/cli.json` this port answers, against the committed bytes in `spec/expect/`. Every other entry is a `SKIP`, and the port's answer to it must be the refusal naming the three issues |
 | `test/process.c` | the binary as a process: no checkout and an empty `HOME`, a malformed configuration through both flag forms, one that cannot be read, one nested past 64 levels, a broken pipe, `which` over a real `PATH`, an argument that is not UTF-8 |
 | `test/selftest.c` | the building blocks against the canonical runtime: Node's `Number` formatting, `JSON.parse`, its UTF-8 decoder, `String.prototype.slice` and `path.posix`, and the FIPS 180-4 SHA-256 examples |
 
