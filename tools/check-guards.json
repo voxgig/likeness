@@ -6,6 +6,18 @@
   ],
   "allow": [
     {
+      "rule": "tls-verify",
+      "file": "python/likeness/pin.py",
+      "text": "probe.check_hostname = False",
+      "reason": "Python's pinned transport reads the certificate a server presents in a probe that writes no request byte, and compares its SHA-256 with the pin. Nothing read there is trusted: the request goes on a second connection verified against that certificate as its only trust anchor, with the host check on, and its fingerprint is compared again. Before Python 3.13 the standard library cannot read the certificate of a handshake its verification refused, which is how the TypeScript port's probe reads it."
+    },
+    {
+      "rule": "tls-verify",
+      "file": "python/likeness/pin.py",
+      "text": "probe.verify_mode = ssl.CERT_NONE",
+      "reason": "Python's pinned transport reads the certificate a server presents in a probe that writes no request byte, and compares its SHA-256 with the pin. Nothing read there is trusted: the request goes on a second connection verified against that certificate as its only trust anchor, with the host check on, and its fingerprint is compared again. Before Python 3.13 the standard library cannot read the certificate of a handshake its verification refused, which is how the TypeScript port's probe reads it."
+    },
+    {
       "rule": "source-name",
       "file": "ruby/lib/likeness/core.rb",
       "text": "ADAPTERS = { 'joplin' => Joplin }.freeze",

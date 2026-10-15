@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import asdict
 from typing import Any
 
+from likeness.adapter import obsidian
 from likeness.adapter.joplin import project
 from likeness.args import parse_argv
 from likeness.cli import parse_accounts, parse_station, take_config_option
@@ -15,6 +16,7 @@ from likeness.envelope import compare_code_points, serialise
 from likeness.errors import partial_codes
 from likeness.evaluate import fold_case
 from likeness.identity import CROCKFORD, lid, rfc3339
+from likeness.pin import fingerprint_of, parse_pin
 from likeness.selector import SelectorError, parse_selector
 from likeness.vault import vault_entry
 from tests.harness import entries
@@ -51,6 +53,19 @@ def _connections(v: dict[str, str]) -> list[dict[str, str]]:
     return [asdict(c) for c in connections_of(station, accounts, profile_of(env))]
 
 
+def _vault_walk(v: dict[str, Any]) -> list[dict[str, str]]:
+    listings = v['listings']
+    out = []
+    steps = obsidian.walk_steps()
+    try:
+        at = next(steps)
+        while True:
+            out.append(at)
+            at = steps.send(obsidian.entries(listings.get(at['list'], [])) if 'list' in at else None)
+    except StopIteration:
+        return out
+
+
 def _vault_entry(v: dict[str, Any]) -> dict[str, str]:
     profile = v.get('profile')
     return asdict(vault_entry(v['station'], 'default' if profile is None else profile, '/home/u',
@@ -71,6 +86,13 @@ REGISTRY: dict[str, Callable[[Any], Any]] = {
     'connections': _connections,
     'projectJoplin': lambda v: project(v['raw'], v['instance'], v['account'], False),
     'partialCodes': lambda _: partial_codes(),
+    'obsidianUrl': lambda v: obsidian.note_url(v['vault'], v['path']),
+    'vaultEntries': obsidian.entries,
+    'vaultWalk': _vault_walk,
+    'obsidianTransport': lambda v: obsidian.transport(v['instance'], v['block']),
+    'projectObsidian': lambda v: obsidian.project(v['raw'], v['path'], v['instance'], v['account'], False),
+    'parsePin': parse_pin,
+    'fingerprintOf': lambda digits: fingerprint_of(bytes.fromhex(digits)),
     'vaultEntry': _vault_entry,
 }
 
