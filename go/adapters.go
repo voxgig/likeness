@@ -2,6 +2,7 @@ package likeness
 
 import (
 	"errors"
+	"sort"
 
 	"github.com/voxgig/station/go/station"
 )
@@ -36,7 +37,7 @@ type (
 	}
 )
 
-var adapters = bySource(joplinAdapter{})
+var adapters = bySource(joplinAdapter{}, obsidianAdapter{})
 
 func bySource(all ...adapter) map[string]adapter {
 	out := map[string]adapter{}
@@ -74,7 +75,29 @@ func dataOf(v any) any {
 	return v
 }
 
-func isMap(v any) bool {
-	_, ok := v.(map[string]any)
-	return ok
+const sourceBug = "this is a bug in the source or its SDK; run with --raw to capture the payload"
+
+func refusedBlock(source, instance, what, remedy string) error {
+	return &LikenessError{Code: "invalid-project",
+		Msg: source + " connection \"" + instance + "\" " + what, Remedy: remedy}
+}
+
+// keysOf is a map's keys in code-point order.
+func keysOf(m map[string]any) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Slice(out, func(i, j int) bool { return CompareCodePoints(out[i], out[j]) < 0 })
+	return out
+}
+
+func otherKeys(m map[string]any, but string) []string {
+	out := []string{}
+	for _, k := range keysOf(m) {
+		if but != k {
+			out = append(out, k)
+		}
+	}
+	return out
 }

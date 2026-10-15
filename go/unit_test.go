@@ -1,6 +1,7 @@
 package likeness
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -127,6 +128,51 @@ func unitRegistry() map[string]unitFn {
 				return nil, err
 			}
 			return map[string]any{"file": e.File, "key": e.Key, "shown": e.Shown}, nil
+		},
+		"obsidianUrl": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			return obsidianURL(str(m, "vault"), str(m, "path")), nil
+		},
+		"vaultEntries": func(t *testing.T, in any) (any, error) {
+			got, err := vaultEntries(in.([]any))
+			return strList(got), err
+		},
+		"vaultWalk": func(t *testing.T, in any) (any, error) {
+			listings, _ := in.(map[string]any)["listings"].(map[string]any)
+			steps := []any{}
+			err := vaultWalk("", func(step vaultStep) ([]string, error) {
+				steps = append(steps, step.value())
+				if "list" != step.kind {
+					return nil, nil
+				}
+				listed, _ := listings[step.path].([]any)
+				return vaultEntries(listed)
+			})
+			return steps, err
+		},
+		"obsidianTransport": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			block, _ := m["block"].(map[string]any)
+			got, err := obsidianAdapter{}.transport(str(m, "instance"), block)
+			return got.value(), err
+		},
+		"projectObsidian": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			n, err := obsidianAdapter{}.project(m["raw"], str(m, "path"), str(m, "instance"), str(m, "account"), false)
+			if nil != err {
+				return nil, err
+			}
+			return n.Value(), nil
+		},
+		"parsePin": func(t *testing.T, in any) (any, error) {
+			return parsePin(in)
+		},
+		"fingerprintOf": func(t *testing.T, in any) (any, error) {
+			der, err := hex.DecodeString(in.(string))
+			if nil != err {
+				t.Fatal(err)
+			}
+			return fingerprintOf(der), nil
 		},
 		"partialCodes": func(t *testing.T, in any) (any, error) {
 			codes := PartialCodes()

@@ -1,17 +1,12 @@
 package likeness
 
 import (
-	"bufio"
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	joplin "github.com/voxgig-sdk/joplin-sdk/go"
 )
@@ -19,44 +14,10 @@ import (
 const mockKey = "joplin-mock-token"
 const epoch = "1970-01-01T00:00:00Z"
 
-// startMock runs mock/server.js on a free port and returns its root URL.
+// startMock runs mock/ with every source mounted and returns its root URL.
 func startMock(t *testing.T) string {
 	t.Helper()
-	if _, err := exec.LookPath("node"); nil != err {
-		t.Fatal("node is required: the wire tests drive the real transport against mock/")
-	}
-	cmd := exec.Command("node", filepath.Join(Root(t), "mock", "server.js"))
-	cmd.Env = append(os.Environ(), "LIKENESS_MOCK_PORT=0")
-	cmd.Stderr = os.Stderr
-	out, err := cmd.StdoutPipe()
-	if nil != err {
-		t.Fatal(err)
-	}
-	if err := cmd.Start(); nil != err {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-	})
-
-	at := make(chan string, 1)
-	go func() {
-		sc := bufio.NewScanner(out)
-		for sc.Scan() {
-			line := sc.Text()
-			if i := strings.Index(line, "http://"); 0 <= i && strings.Contains(line, "listening on") {
-				at <- strings.TrimSpace(line[i:])
-			}
-		}
-	}()
-	select {
-	case root := <-at:
-		return root
-	case <-time.After(30 * time.Second):
-		t.Fatal("the mock server did not report its address in time")
-	}
-	return ""
+	return serveMock(t, nil, nil).base
 }
 
 // fieldsSent reads the `fields` each Joplin request carried from the mock's ring.
