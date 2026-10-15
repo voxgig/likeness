@@ -1,7 +1,7 @@
 
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { Station } from '@voxgig/station'
+import type { Station } from '@voxgig/station'
 
 import { serialise, render, type Envelope } from './envelope.js'
 import { parseSelector, fieldsOf, SelectorError } from './selector.js'
@@ -14,14 +14,12 @@ import { supports, termOf } from './caps.js'
 import { parseArgv, commandDef, commandWords, helpText, helpRows, type Parsed } from './args.js'
 import { vaultEntry, vaultChain, secrets, type VaultEntry, type VaultFlags } from './vault.js'
 
+import { profileOf, openStation, withChain, connectionsOf, type Connection } from './station.js'
+
+export { profileOf, openStation, withChain, connectionsOf, type Connection }
+
 export const VERSION = '0.1.0'
 export const PORT = 'ts'
-
-export type Connection = {
-  instance: string
-  source: string
-  account: string
-}
 
 export type Ctx = {
   argv: string[]
@@ -51,34 +49,6 @@ type Session = {
   conns: Connection[]
   calls: Calls
   handle: (c: Connection) => unknown
-}
-
-export function profileOf (env?: Record<string, string>): string {
-  return env?.VOXGIG_STATION_PROFILE || 'default'
-}
-
-export function openStation (config: unknown, env?: Record<string, string>): Station {
-  return new Station({
-    config: (config ?? null) as any,
-    profile: profileOf(env),
-    proxy: 'off',
-    load: false,
-  })
-}
-
-// Every declared instance, in station's name order, with the account its
-// notes' identity derives from. An instance with no account is refused:
-// identity may not be derived from the instance name.
-export function connectionsOf (station: Station, accounts: Record<string, string>, profile: string): Connection[] {
-  return station.instances().filter(i => i.active).map(i => {
-    const account = accounts[i.name]
-    if ('string' !== typeof account || '' === account) {
-      throw new LikenessError('invalid-project',
-        'instance "' + i.name + '" has no account in likeness.json under profile "' + profile + '"',
-        'add `"' + i.name + '": { "account": "<id>" }` under `profiles.' + profile + '.instances` in likeness.json')
-    }
-    return { instance: i.name, source: i.api, account }
-  })
 }
 
 export type Result = {
@@ -523,17 +493,6 @@ export async function run (ctx: Ctx): Promise<Result> {
   catch (err) {
     return render(errorEnvelope(name, err, calls))
   }
-}
-
-// station.json with its secret chain replaced, in every profile, by the one
-// likeness decided on.
-export function withChain (config: unknown, chain: unknown[]): unknown {
-  if (null === config || 'object' !== typeof config) return config
-  const copy = JSON.parse(JSON.stringify(config))
-  for (const p of Object.values(copy.profiles ?? {})) {
-    if (null !== p && 'object' === typeof p) (p as Record<string, unknown>).secrets = { providers: chain }
-  }
-  return copy
 }
 
 const STATION_REMEDY = 'fix station.json; station validates it against its own shape'
