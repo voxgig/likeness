@@ -39,6 +39,29 @@ class ProcessTest < Minitest::Test
     end
   end
 
+  def test_a_number_no_double_can_hold_is_not_valid_json_in_either_file
+    Dir.mktmpdir('likeness-') do |home|
+      station = File.join(home, 'station.json')
+      likeness = File.join(home, 'likeness.json')
+      File.write(station, '{"station":1,"profiles":{"default":{"sdk":{"joplin":{"options":{"n":1e400}}}}}}')
+      _, err, status = version(home, station)
+      assert_equal 3, status.exitstatus, err
+      assert_equal refusal(station, 'is not valid JSON'), err
+      File.write(station, '{"station":1,"profiles":{"default":{"sdk":{"joplin":{}}}}}')
+      ['-1e400', "1#{'0' * 400}"].each do |account|
+        File.write(likeness, "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":#{account}}}}}}")
+        out, err, status = version(home, station)
+        assert_equal 3, status.exitstatus, "#{account[0, 8]}\n#{err}"
+        assert_equal '', out
+        assert_equal refusal(likeness, 'is not valid JSON'), err
+      end
+      # Too small to hold is zero, which is a number.
+      File.write(likeness, '{"likeness":1,"profiles":{"default":{"instances":{"joplin":{"account":1e-400}}}}}')
+      _, err, status = version(home, station)
+      assert_equal 0, status.exitstatus, err
+    end
+  end
+
   def test_a_configuration_this_process_has_no_permission_to_read_is_refused
     Dir.mktmpdir('likeness-') do |home|
       config = File.join(home, 'station.json')

@@ -17,11 +17,28 @@ module Likeness
 
   module_function
 
+  # A number past a double's range: JSON.parse reads it as an infinity, or as an
+  # integer no double holds, and the canonical port reads every number as one.
+  def finite?(doc)
+    pending = [doc]
+    until pending.empty?
+      value = pending.pop
+      case value
+      when Float then return false unless value.finite?
+      when Integer then return false unless value.to_f.finite?
+      when Hash then pending.concat(value.values)
+      when Array then pending.concat(value)
+      end
+    end
+    true
+  end
+
   def parse_json(source, path)
     begin
       raise JSON::ParserError if source.scan(NOT_JSON).any? { |escape, slash| escape || slash }
 
       doc = JSON.parse(source)
+      raise JSON::ParserError unless finite?(doc)
     rescue JSON::ParserError
       raise ConfigError, "#{path} is not valid JSON"
     end

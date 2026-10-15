@@ -199,7 +199,7 @@ static int json_object_fault(arena *a, str path, str *why) {
   sb_init(&m, a);
   sb_str(&m, path);
   if (0 != read_text(a, path, &text)) sb_puts(&m, " cannot be read");
-  else if (NULL != json_parse(a, text.p, text.n, &doc)) sb_puts(&m, " is not valid JSON");
+  else if (NULL != json_parse_finite(a, text.p, text.n, &doc)) sb_puts(&m, " is not valid JSON");
   else if (!jv_is(doc, J_OBJECT)) sb_puts(&m, " is not a JSON object");
   else return 0;
   *why = sb_done(&m);

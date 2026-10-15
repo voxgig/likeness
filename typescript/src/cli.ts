@@ -14,10 +14,23 @@ const REMEDY = 'fix the file, or point --config at another'
 function has (v: unknown): boolean { return undefined !== v && null !== v }
 function text (v: unknown): string { return 'string' === typeof v ? v : renderRaw(v) }
 
+// A number past a double's range parses as an infinity, which nothing can
+// write back. Walked without recursion, so nesting costs heap, not stack.
+function finite (doc: unknown): boolean {
+  const pending: unknown[] = [doc]
+  while (0 < pending.length) {
+    const v = pending.pop()
+    if ('number' === typeof v && !Number.isFinite(v)) return false
+    if (null !== v && 'object' === typeof v) for (const x of Object.values(v)) pending.push(x)
+  }
+  return true
+}
+
 function parseJson (source: string, path: string): any {
   let doc: unknown
   try { doc = JSON.parse(source) }
   catch { throw new ConfigError(path + ' is not valid JSON') }
+  if (!finite(doc)) throw new ConfigError(path + ' is not valid JSON')
   if (null === doc || 'object' !== typeof doc || Array.isArray(doc)) {
     throw new ConfigError(path + ' is not a JSON object')
   }

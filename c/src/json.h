@@ -22,6 +22,10 @@ struct jval {
  * as JSON.parse does. */
 const char *json_parse(arena *a, const char *text, size_t n, jval **out);
 
+/* As json_parse, except that a number past a double's range is refused rather
+ * than read as an infinity, which nothing can write back. */
+const char *json_parse_finite(arena *a, const char *text, size_t n, jval **out);
+
 jval *jv_null(arena *a);
 jval *jv_bool(arena *a, int b);
 jval *jv_num(arena *a, double d);

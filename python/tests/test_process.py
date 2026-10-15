@@ -45,6 +45,28 @@ class Process(unittest.TestCase):
             self.assertEqual('', r.stdout)
             self.assertEqual(refusal(str(named), 'cannot be read'), r.stderr)
 
+    def test_a_number_no_double_can_hold_is_not_valid_json_in_either_file(self) -> None:
+        station = Path(self.home) / 'station.json'
+        likeness = Path(self.home) / 'likeness.json'
+        station.write_text('{"station":1,"profiles":{"default":{"sdk":{"joplin":{"options":{"n":1e400}}}}}}',
+                           encoding='utf-8')
+        r = self.version(str(station))
+        self.assertEqual(3, r.returncode, r.stderr)
+        self.assertEqual(bad_stderr(str(station)), r.stderr)
+        station.write_text('{"station":1,"profiles":{"default":{"sdk":{"joplin":{}}}}}', encoding='utf-8')
+        for account in ('-1e400', '1' + '0' * 400):
+            likeness.write_text('{"likeness":1,"profiles":{"default":{"instances":{"joplin":{"account":' +
+                                account + '}}}}}', encoding='utf-8')
+            r = self.version(str(station))
+            self.assertEqual(3, r.returncode, account[:8] + '\n' + r.stderr)
+            self.assertEqual('', r.stdout)
+            self.assertEqual(bad_stderr(str(likeness)), r.stderr)
+        # Too small to hold is zero, which is a number.
+        likeness.write_text('{"likeness":1,"profiles":{"default":{"instances":{"joplin":{"account":1e-400}}}}}',
+                            encoding='utf-8')
+        r = self.version(str(station))
+        self.assertEqual(0, r.returncode, r.stderr)
+
     def test_a_configuration_this_process_has_no_permission_to_read_is_refused(self) -> None:
         config = Path(self.home) / 'station.json'
         config.write_text(STATION, encoding='utf-8')

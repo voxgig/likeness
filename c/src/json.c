@@ -17,6 +17,7 @@ typedef struct {
   const char *s;
   size_t n;
   size_t i;
+  int finite;
 } reader;
 
 static const char *fault(reader *r, const char *what) {
@@ -115,6 +116,7 @@ static int digit(reader *r) {
 static const char *number(reader *r, jval **out) {
   size_t start = r->i;
   char *text;
+  double value;
   if ('-' == r->s[r->i]) r->i++;
   if (!digit(r)) return fault(r, "malformed number");
   if ('0' == r->s[r->i]) r->i++;
@@ -131,7 +133,9 @@ static const char *number(reader *r, jval **out) {
     while (digit(r)) r->i++;
   }
   text = ar_copy(r->a, r->s + start, r->i - start);
-  *out = jv_num(r->a, strtod(text, NULL));
+  value = strtod(text, NULL);
+  if (r->finite && !isfinite(value)) return fault(r, "number beyond a double's range");
+  *out = jv_num(r->a, value);
   return NULL;
 }
 
@@ -166,7 +170,7 @@ static const char *member_key(reader *r, frame *top) {
 }
 
 /* Iterative, so a hostile nesting depth costs heap rather than the stack. */
-const char *json_parse(arena *a, const char *text, size_t n, jval **out) {
+static const char *parse(arena *a, const char *text, size_t n, int finite, jval **out) {
   reader r;
   frame *stack = NULL;
   size_t depth = 0;
@@ -179,6 +183,7 @@ const char *json_parse(arena *a, const char *text, size_t n, jval **out) {
   r.s = text;
   r.n = n;
   r.i = 0;
+  r.finite = finite;
 
   for (;;) {
     skip_ws(&r);
@@ -269,6 +274,14 @@ const char *json_parse(arena *a, const char *text, size_t n, jval **out) {
     }
     else return fault(&r, "expected ',' or '}'");
   }
+}
+
+const char *json_parse(arena *a, const char *text, size_t n, jval **out) {
+  return parse(a, text, n, 0, out);
+}
+
+const char *json_parse_finite(arena *a, const char *text, size_t n, jval **out) {
+  return parse(a, text, n, 1, out);
 }
 
 static jval *make(arena *a, jkind k) {

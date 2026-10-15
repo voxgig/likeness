@@ -43,6 +43,28 @@ test('a configuration that cannot be read as a file is refused, not taken for ab
   }
 })
 
+test('a number no double can hold is not valid JSON, in either file', () => {
+  const home = mkdtempSync(join(tmpdir(), 'likeness-'))
+  const station = join(home, 'station.json')
+  const likeness = join(home, 'likeness.json')
+  writeFileSync(station, '{"station":1,"profiles":{"default":{"sdk":{"joplin":{"options":{"n":1e400}}}}}}')
+  let r = version(home, station)
+  assert.equal(r.status, 3, r.stderr)
+  assert.equal(r.stderr, badStderr(station))
+  writeFileSync(station, '{"station":1,"profiles":{"default":{"sdk":{"joplin":{}}}}}')
+  for (const account of ['-1e400', '1' + '0'.repeat(400)]) {
+    writeFileSync(likeness, '{"likeness":1,"profiles":{"default":{"instances":{"joplin":{"account":' + account + '}}}}}')
+    r = version(home, station)
+    assert.equal(r.status, 3, account.slice(0, 8) + '\n' + r.stderr)
+    assert.equal(r.stdout, '')
+    assert.equal(r.stderr, badStderr(likeness))
+  }
+  // Too small to hold is zero, which is a number.
+  writeFileSync(likeness, '{"likeness":1,"profiles":{"default":{"instances":{"joplin":{"account":1e-400}}}}}')
+  r = version(home, station)
+  assert.equal(r.status, 0, r.stderr)
+})
+
 test('a configuration this process has no permission to read is refused', (t) => {
   const home = mkdtempSync(join(tmpdir(), 'likeness-'))
   const config = join(home, 'station.json')

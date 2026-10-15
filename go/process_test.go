@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -42,6 +43,38 @@ func TestProcessUnreadableConfigIsRefusedNotAbsent(t *testing.T) {
 		if want := fmt.Sprintf(unreadableStderr, c[1]); 3 != code || "" != out || want != errs {
 			t.Fatalf("%s: exit %d, stdout %q, stderr %q, expected %q", c[0], code, out, errs, want)
 		}
+	}
+}
+
+func TestProcessNumberBeyondADoubleIsNotValidJSON(t *testing.T) {
+	bin := buildBinary(t)
+	home := t.TempDir()
+	station := filepath.Join(home, "station.json")
+	likeness := filepath.Join(home, "likeness.json")
+	write := func(path, text string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(text), 0o600); nil != err {
+			t.Fatal(err)
+		}
+	}
+	refused := func(named string) {
+		t.Helper()
+		code, out, errs := runVersion(t, bin, home, station)
+		if want := fmt.Sprintf(badStderr, named); 3 != code || "" != out || want != errs {
+			t.Fatalf("exit %d, stdout %q, stderr %q, expected %q", code, out, errs, want)
+		}
+	}
+	write(station, `{"station":1,"profiles":{"default":{"sdk":{"joplin":{"options":{"n":1e400}}}}}}`)
+	refused(station)
+	write(station, `{"station":1,"profiles":{"default":{"sdk":{"joplin":{}}}}}`)
+	for _, account := range []string{"-1e400", "1" + strings.Repeat("0", 400)} {
+		write(likeness, `{"likeness":1,"profiles":{"default":{"instances":{"joplin":{"account":`+account+`}}}}}`)
+		refused(likeness)
+	}
+	// Too small to hold is zero, which is a number.
+	write(likeness, `{"likeness":1,"profiles":{"default":{"instances":{"joplin":{"account":1e-400}}}}}`)
+	if code, _, errs := runVersion(t, bin, home, station); 0 != code {
+		t.Fatalf("exit %d, stderr %q", code, errs)
 	}
 }
 

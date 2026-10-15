@@ -273,6 +273,53 @@ int main(int argc, char **argv) {
   }
 
   {
+    const char *dir = joinpath(a, home, str_of("cfg4"));
+    const char *station = joinpath(a, dir, str_of("station.json"));
+    const char *likeness = joinpath(a, dir, str_of("likeness.json"));
+    const char *args[4];
+    sbuf big;
+    sbuf want_station;
+    sbuf want_likeness;
+    proc s;
+    proc l;
+    proc z;
+    mkdir(dir, 0700);
+    args[0] = "version";
+    args[1] = "--config";
+    args[2] = station;
+    args[3] = NULL;
+    sb_init(&want_station, a);
+    sb_puts(&want_station, "error: invalid-project\n  ");
+    sb_puts(&want_station, station);
+    sb_puts(&want_station, " is not valid JSON\n  remedy  fix the file, or point --config at another\n");
+    sb_init(&want_likeness, a);
+    sb_puts(&want_likeness, "error: invalid-project\n  ");
+    sb_puts(&want_likeness, likeness);
+    sb_puts(&want_likeness, " is not valid JSON\n  remedy  fix the file, or point --config at another\n");
+    write_text(a, dir, "station.json", "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{\"options\":{\"n\":1e400}}}}}}");
+    s = spawn(a, home, home, "", args, 0);
+    write_text(a, dir, "station.json", "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}");
+    write_text(a, dir, "likeness.json", "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":-1e400}}}}}");
+    l = spawn(a, home, home, "", args, 0);
+    sb_init(&big, a);
+    sb_puts(&big, "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":1");
+    {
+      int k;
+      for (k = 0; k < 400; k++) sb_putc(&big, '0');
+    }
+    sb_puts(&big, "}}}}}");
+    write_text(a, dir, "likeness.json", sb_done(&big).p);
+    r = spawn(a, home, home, "", args, 0);
+    write_text(a, dir, "likeness.json", "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":1e-400}}}}}");
+    z = spawn(a, home, home, "", args, 0);
+    expect(&t, "a number no double can hold is not valid JSON, in either file, and one too small to hold is zero",
+      3 == s.status && 0 == s.out.n && str_eq(s.err, sb_done(&want_station)) &&
+      3 == l.status && 0 == l.out.n && str_eq(l.err, sb_done(&want_likeness)) &&
+      3 == r.status && 0 == r.out.n && str_eq(r.err, sb_done(&want_likeness)) && 0 == z.status,
+      described(a, 0 != z.status ? z : 3 != r.status ? r : 3 != l.status ? l : s));
+  }
+
+  {
     const char *dir = joinpath(a, home, str_of("cfg3"));
     const char *station;
     const char *args[4];

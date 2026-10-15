@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sys
@@ -26,9 +27,23 @@ def _refuse_constant(name: str) -> Any:
     raise ValueError('not JSON: ' + name)
 
 
+def _finite_float(text: str) -> float:
+    value = float(text)
+    if math.isinf(value):
+        raise ValueError('beyond a double: ' + text)
+    return value
+
+
+def _finite_int(text: str) -> int:
+    """Held to a double's range as well: the canonical port reads every number as one."""
+    _finite_float(text)
+    return int(text)
+
+
 def _parse_json(source: str, path: str) -> dict[str, Any]:
     try:
-        doc = json.loads(source, parse_constant=_refuse_constant)
+        doc = json.loads(source, parse_constant=_refuse_constant, parse_float=_finite_float,
+                         parse_int=_finite_int)
     except (ValueError, RecursionError):
         raise ConfigError(path + ' is not valid JSON') from None
     if not isinstance(doc, dict):
