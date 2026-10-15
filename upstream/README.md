@@ -81,6 +81,18 @@ Found while building the Obsidian and Notion adapters.
 | [sdkgen#420](https://github.com/voxgig/sdkgen/issues/420) | `voxgig/sdkgen` | a Go operation's error keeps no cause, so the Go pinned transport holds its refusal for the adapter to collect |
 | [station#50](https://github.com/voxgig/station/issues/50) | `voxgig/station` | the Go and Java stations record an `http` event's path decoded, so the Go port's call lists for escaped Obsidian paths differ from every other port's |
 
+## Filed for the omni runner, 2026-10-15
+
+SPEC.LIKENESS.md §22 Q9 in `metsitaba/project-specs` settles that the ports move onto omni's
+runner rather than keep their in-tree harnesses. These are the three gaps in the way. Each
+is proposed as an omni capability, so a port that lacks one refuses a spec that needs it.
+
+| Issue | Repository | What |
+|---|---|---|
+| [omni#72](https://github.com/voxgig/omni/issues/72) | `voxgig/omni` | an entry cannot carry both `ctx` and `args`, so a transcript's argv never reaches the subject, and it cannot name its function in `fn` |
+| [omni#73](https://github.com/voxgig/omni/issues/73) | `voxgig/omni` | a set stops at its first failure, where each harness here lists every failing entry |
+| [omni#74](https://github.com/voxgig/omni/issues/74) | `voxgig/omni` | no entry can be declared waiting on a named cause and held to fail until that cause is fixed (`tools/parity-waiting.json` and each port's waiting list) |
+
 ## A correction worth keeping
 
 `issue/11` was rewritten before filing. Its first draft said the paging signal was
