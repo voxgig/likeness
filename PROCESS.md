@@ -240,15 +240,15 @@ features: `debug`, `idempotency`, `metrics`, `paging`, `ratelimit`, `retry`,
 `test` and `timeout`. netsim is the `net:` option of `test`. Any plan that
 speaks of "the netsim feature" is describing something that does not exist.
 
-### Ruby cannot reach Notion at all
+### Ruby reaches Notion from the station-feature regeneration
 
-Separately from the divergences below: **notion-sdk ships no `rb` target.** It
-has `js` where the other three have `rb`, and there is no gemspec anywhere in
-the repository. So likeness's Ruby port has no Notion SDK to depend on, and no
-offline test mode for Notion either, because there is nothing to construct.
-
-`make spec-agree` reports this as a warning on every run rather than letting it
-be found during the Ruby stage. It is filed as `upstream/issue/09`.
+Until `notion-sdk@1e45fc3`, **notion-sdk shipped no `rb` target**: it had `js`
+where the other three have `rb`, so the Ruby port had no Notion SDK to depend
+on. That was `upstream/issue/09`. The regeneration that adds station's feature
+([notion-sdk#5](https://github.com/voxgig-sdk/notion-sdk/pull/5)) generates an
+`rb` target as well, and this repository is pinned to it, so `make spec-agree`
+no longer warns. A missing target is still reported as a warning on every run,
+for any source, rather than found during a port's stage.
 
 ### The feature is not yet identical across the ports
 

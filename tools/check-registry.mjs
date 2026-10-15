@@ -92,8 +92,8 @@ for (const key of Object.keys(sources)) {
 }
 
 // -- every likeness port can reach every source ------------------------------
-// Not an assumption: notion-sdk ships no `rb` target, so this FAILS today, and
-// it should, because likeness claims five ports over four sources.
+// A missing target is warned about on every run, because likeness claims five
+// ports over four sources and a gap must not wait to be found by a port.
 for (const [name, src] of Object.entries(sources)) {
   for (const port of PORTS) {
     if (null == src.target[port]) {

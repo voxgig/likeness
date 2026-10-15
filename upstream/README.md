@@ -12,13 +12,16 @@ each file is where it was filed.
 ## Status, 2026-10-14
 
 Every draft is filed. "Closed" for a `sdkgen` issue means the generator carries
-the fix; an SDK carries it only once regenerated. Joplin was regenerated on
-2026-10-14 with station's feature, and this repository is pinned to that
-revision (`24c2324`,
-[joplin-sdk#4](https://github.com/voxgig-sdk/joplin-sdk/pull/4)); Obsidian
-and Linear carry the fixes at their pins; Notion is still on the generator of
-2026-09-17 and carries every closed defect until
-[notion-sdk#1](https://github.com/voxgig-sdk/notion-sdk/issues/1) regenerates it.
+the fix; an SDK carries it only once regenerated. Joplin, Obsidian and Notion
+were regenerated with station's feature, loaded only when it initialises, and
+this repository is pinned to those revisions, the heads of open pull requests:
+Joplin at `89b86ca`
+([joplin-sdk#4](https://github.com/voxgig-sdk/joplin-sdk/pull/4)), Obsidian at
+`5e8cd8e` from the plugin's full definition
+([obsidian-sdk#3](https://github.com/voxgig-sdk/obsidian-sdk/pull/3)) and
+Notion at `1e45fc3`, which adds the `rb` target
+([notion-sdk#5](https://github.com/voxgig-sdk/notion-sdk/pull/5)). Linear
+carries the fixes at its pin and is held (SPEC §0 decision 11).
 
 | Draft | Filed as | Status |
 |---|---|---|
@@ -29,7 +32,7 @@ and Linear carry the fixes at their pins; Notion is still on the generator of
 | `issue/05` | [sdkgen#165](https://github.com/voxgig/sdkgen/issues/165) | closed |
 | `issue/07` | [sdkgen#167](https://github.com/voxgig/sdkgen/issues/167) | closed; Linear's offline test mode works in C and Ruby from sdkgen 4.30.2 |
 | `issue/08` | [aontu-lang/aontu#246](https://github.com/aontu-lang/aontu/issues/246) | fixed upstream: on 0.76.0 `explain` accepts a code as it is printed, with or without its `aontu/` prefix |
-| `issue/09` | [notion-sdk#2](https://github.com/voxgig-sdk/notion-sdk/issues/2) | open; the Ruby port cannot reach Notion until it lands |
+| `issue/09` | [notion-sdk#2](https://github.com/voxgig-sdk/notion-sdk/issues/2) | answered by the regeneration in [notion-sdk#5](https://github.com/voxgig-sdk/notion-sdk/pull/5), which generates `rb`; closes when it merges |
 | `issue/10` | [sdkgen#163](https://github.com/voxgig/sdkgen/issues/163) | closed; the Go harness no longer rewrites `json.Number` before seeding |
 | `issue/11` | [sdkgen#164](https://github.com/voxgig/sdkgen/issues/164) | closed |
 
