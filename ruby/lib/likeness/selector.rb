@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'identity'
+
 module Likeness
   # CLOSED: a selector naming any other field is refused before any request.
   FIELDS = %w[assignee author body created has instance source space state status tag title updated].freeze
@@ -142,15 +144,6 @@ module Likeness
 
   DATE_RE = /\A\d{4}-\d{2}-\d{2}\z/
   DUR_RE = /\A(\d+)(mo|d|w|y)\z/
-  MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31].freeze
-
-  def leap?(year)
-    (0 == year % 4 && 0 != year % 100) || 0 == year % 400
-  end
-
-  def days_in(year, month)
-    2 == month && leap?(year) ? 29 : MONTH_DAYS[month - 1]
-  end
 
   def classify(tok)
     return { 'k' => 'word', 'v' => tok.text } if 'quoted' == tok.kind

@@ -18,12 +18,12 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 275 entries, run by every port, C included but for the eighteen of `connections`; the groups `obsidian`, `pin` and `notion` are the TypeScript port's until the others take its new adapters |
-| `spec/cli.aontu` — the transcript corpus | 183 whole commands, run by the TypeScript, Go, Python and Ruby ports, the groups `obsidian`, `notion` and `sources` by TypeScript alone so far; C answers the 37 that need no source |
+| `spec/unit.aontu` — the pure-function corpus | 275 entries, run by every port, C included but for the eighteen of `connections`; the groups `obsidian`, `pin` and `notion` are the TypeScript and Ruby ports' until the others take the new adapters |
+| `spec/cli.aontu` — the transcript corpus | 183 whole commands, run by the TypeScript, Go, Python and Ruby ports, the groups `obsidian`, `notion` and `sources` by TypeScript and Ruby so far; C answers the 37 that need no source |
 | `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`, over Joplin and Obsidian, and Notion by `get`, since its SDK lists no pages; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
 | `python/` — the third port | the same again, through station's Python library |
-| `ruby/` — the Ruby port | the same again, on station's Ruby library and the SDK's `rb` gem |
+| `ruby/` — the Ruby port | the same again, on station's Ruby library and the SDKs' `rb` gems |
 | `c/` — the fifth port, C99 and POSIX with no dependency | every pure function of the unit corpus; `version`, `help` and `which`; every other command refused as `unsupported-capability`, naming what it waits on: a live transport in the C SDK ([sdkgen#403](https://github.com/voxgig/sdkgen/issues/403)), two C SDKs in one program ([sdkgen#405](https://github.com/voxgig/sdkgen/issues/405)) and station's C library reading the vault ([station#23](https://github.com/voxgig/station/issues/23)) |
 | The parity comparison | `make parity`: the TypeScript, Go, Python and Ruby ports agree, each names itself, and the comparison is proved to go red. It runs the transcript corpus, so C joins it when its transcript cells do |
 | `mock/` — a Fastify server emulating all four sources on one port | working, smoke-tested |

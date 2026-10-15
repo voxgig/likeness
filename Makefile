@@ -149,7 +149,7 @@ test-py: sdk-check mock-deps py-deps
 # looks. Point STATION_HOME, SEKRETO_HOME or PLUGIN_HOME at a checkout of the
 # pin to use it instead of a clone.
 RB_SDK_ROOT := $(abspath $(or $(LIKENESS_SDK_ROOT),$(CURDIR)/../voxgig-sdk))
-RB_SDKS := joplin-sdk obsidian-sdk
+RB_SDKS := joplin-sdk notion-sdk obsidian-sdk
 
 .PHONY: rb-libs
 rb-libs:

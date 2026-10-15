@@ -45,6 +45,15 @@ class UnitCorpusTest < Minitest::Test
     'projectObsidian' => lambda { |v|
       Likeness::Obsidian.project(v['raw'], v['path'], v['instance'], v['account'], false)
     },
+    'notionVersion' => ->(v) { Likeness::Notion.configure(v['instance'], v['block']) },
+    'notionTitle' => ->(properties) { Likeness::Notion.title_of(properties) },
+    # Absent is `{}`: the corpus has no way to say "no value" but an empty record.
+    'notionSpace' => lambda { |parent|
+      space = Likeness::Notion.space_of(parent)
+      space.nil? ? {} : { 'space' => space }
+    },
+    'notionTime' => ->(v) { Likeness::Notion.stamp(v, 'created_time') },
+    'projectNotion' => ->(v) { Likeness::Notion.project(v['raw'], v['instance'], v['account'], false) },
     'parsePin' => ->(text) { Likeness.parse_pin(text) },
     'fingerprintOf' => ->(hex) { Likeness.fingerprint_of([hex].pack('H*')) },
     'vaultEntry' => lambda { |v|
