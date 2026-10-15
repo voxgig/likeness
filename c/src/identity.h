@@ -13,4 +13,8 @@ str lk_lid(arena *a, str source, str account, str entity, str id);
  * dropped toward zero, as a JavaScript Date drops it. */
 const char *lk_rfc3339(arena *a, double ms, str *out);
 
+/* 1 with the instant in ms when text is an RFC 3339 date-time with seconds
+ * and an offset, else 0. A fraction of a second is dropped, not rounded. */
+int lk_parse_rfc3339(str text, double *ms);
+
 #endif

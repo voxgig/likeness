@@ -1,6 +1,7 @@
 /* The building blocks the corpus reaches only in part, against values taken
- * from the canonical runtime: Node's own Number, JSON.parse, UTF-8 decoder
- * and path.posix, and SHA-256, against FIPS 180-4's examples. */
+ * from the canonical runtime: Node's own Number, JSON.parse, UTF-8 decoder,
+ * String.prototype.slice and path.posix, and SHA-256, against FIPS 180-4's
+ * examples. */
 
 #include <math.h>
 #include <stdio.h>
@@ -121,6 +122,47 @@ static void utf8(tally *t, arena *a) {
       sb_puts(&name, hex);
     }
     expect_str(t, a, sb_done(&name).p, u8_sanitize(a, cases[i].in, strlen(cases[i].in)), cases[i].out);
+  }
+}
+
+static void slices(tally *t, arena *a) {
+  static const struct {
+    const char *s;
+    long start;
+    long end;
+    const char *out;
+    size_t units;
+  } cases[] = {
+    { "abc", 0, -1, "ab", 3 },
+    { "abc", -2, 3, "bc", 3 },
+    { "abc", 2, 1, "", 3 },
+    { "", 0, -3, "", 0 },
+    { "a\xc3\xa9", 0, -1, "a", 2 },
+    { "\xf0\x9f\x98\x80" "ab", 0, 1, "\xed\xa0\xbd", 4 },
+    { "\xf0\x9f\x98\x80" "ab", 1, 4, "\xed\xb8\x80" "ab", 4 },
+    { "\xf0\x9f\x98\x80" "ab", 0, 2, "\xf0\x9f\x98\x80", 4 },
+    { "a\xf0\x9f\x98\x80", 0, 2, "a\xed\xa0\xbd", 3 },
+    { "a\xf0\x9f\x98\x80", 2, 9, "\xed\xb8\x80", 3 },
+    { "\xf0\x9f\x98\x80", -1, 2, "\xed\xb8\x80", 2 },
+    { "x/\xf0\x9f\x98\x80.md", 2, -3, "\xf0\x9f\x98\x80", 7 },
+  };
+  size_t i;
+  for (i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+    str s = str_of(cases[i].s);
+    sbuf name;
+    sb_init(&name, a);
+    sb_puts(&name, "String.prototype.slice ");
+    lk_escape_string(&name, s);
+    sb_putc(&name, ' ');
+    sb_long(&name, cases[i].start);
+    sb_putc(&name, ' ');
+    sb_long(&name, cases[i].end);
+    expect_str(t, a, sb_done(&name).p, u8_slice(a, s, cases[i].start, cases[i].end), cases[i].out);
+    sb_init(&name, a);
+    sb_puts(&name, "length ");
+    lk_escape_string(&name, s);
+    if (cases[i].units == u8_units(s)) tap_ok(t, sb_done(&name));
+    else tap_fail(t, sb_done(&name), str_of("a different count of UTF-16 code units"));
   }
 }
 
@@ -248,6 +290,7 @@ int main(void) {
   numbers(&t, a);
   json(&t, a);
   utf8(&t, a);
+  slices(&t, a);
   paths(&t, a);
   sha(&t, a);
   status = tap_end(&t);
