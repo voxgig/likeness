@@ -18,24 +18,26 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 149 entries, run by both ports |
-| `spec/cli.aontu` — the transcript corpus | 141 whole commands, run by both ports |
+| `spec/unit.aontu` — the pure-function corpus | 149 entries, run by every port |
+| `spec/cli.aontu` — the transcript corpus | 141 whole commands, run by every port |
 | `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
+| `python/` — the third port | the same again, through station's Python library |
 | The parity comparison | `make parity`: the ports agree, each names itself, and the comparison is proved to go red |
 | `mock/` — a Fastify server emulating all four sources on one port | working, smoke-tested |
 | `replica/` — a local SQLite copy reached through a generated SDK | designed; schema and search verified, SDK not generated |
-| Python, Ruby and C | not started |
+| Ruby and C | not started |
 
 In the staging plan's terms (SPEC §20) this is **Stage 0 and Stage 1** complete — the ground
-truth and the two-port walking skeleton. Stage 2 is the primary loop: all four sources, Python
-and Ruby, and writes.
+truth and the walking skeleton, now in three ports. Stage 2 is the primary loop: all four
+sources, Ruby, and writes.
 
 ## Start here
 
 ```sh
 make sdk         # clone the generated SDKs at their pinned revisions
-make check       # the schema, both ports, both corpora and the parity comparison
+make py-deps     # the Python port's pinned checkouts and python/.venv
+make check       # the schema, every port, both corpora and the parity comparison
 make mock        # run the source mock server on 127.0.0.1:7777
 ```
 
@@ -43,23 +45,24 @@ make mock        # run the source mock server on 127.0.0.1:7777
 
 ### Running a command
 
-Both ports are libraries with a thin argv shell, so a whole command is a pure
+Every port is a library with a thin argv shell, so a whole command is a pure
 function of its inputs and the transcript corpus can run it in-process. From a
 built tree:
 
 ```sh
 node typescript/bin/likeness.js list 'updated>7d' --json
 cd go && go run ./cmd/likeness list 'updated>7d' --json
+python/.venv/bin/likeness-py list 'updated>7d' --json
 ```
 
-Both parse their arguments from one declared table, `spec/commands.aontu`, so the
+Each parses its arguments from one declared table, `spec/commands.aontu`, so the
 command line is the same interface in every port: `likeness help` and
 `likeness help <command>` print the help rendered from it, and an undeclared flag,
 a mistyped value or a misplaced argument is refused as `invalid-argument` before
 anything runs. A selector term that begins with `-` follows `--`:
 `likeness list -- '-tag:draft title:a'`.
 
-Both read `~/.config/likeness/station.json` (or `--config PATH`), which is a
+Each reads `~/.config/likeness/station.json` (or `--config PATH`), which is a
 [voxgig/station](https://github.com/voxgig/station) configuration in station's
 own grammar. Each instance is a ref under `sdk`: `joplin` for the first Joplin
 profile, `joplin$work` for a second. The account each instance belongs to, which
@@ -78,7 +81,7 @@ A profile reads only its own accounts. Two profiles may declare `joplin`
 against different applications, and an account shared between them would give
 one profile's notes the other's identities.
 
-Both ports bind every client through station, and the calls a command reports
+Every port binds every client through station, and the calls a command reports
 are station's own request events.
 
 ### Secrets
@@ -118,7 +121,8 @@ with no minivault ([voxgig/station#34](https://github.com/voxgig/station/issues/
 and Joplin takes its key as the `token` query parameter, which station does not
 place ([voxgig/station#25](https://github.com/voxgig/station/issues/25), fixed by
 [voxgig/station#28](https://github.com/voxgig/station/pull/28)). With station
-`main` and #28 in place, `doctor` and `list` pass against the mock in both ports.
+`main` and #28 in place, `doctor` and `list` pass against the mock in all three
+ports; the Python port takes #28 when `python/deps.json` moves its station pin.
 
 With no instances configured they answer `no-match` and exit 1, which is the
 answer "none" rather than an error.

@@ -1,0 +1,19 @@
+# What the Python port takes from PyPI, exactly. The unpublished voxgig
+# dependencies are pinned in deps.json.
+
+# Station validates station.json with it at run time.
+voxgig-struct==0.1.0
+
+# A DECLARED EXCEPTION to the rule that no port takes a third-party run-time
+# dependency. The pinned SDK's live transport is requests, imported only on the
+# first live call (sdkgen#402). No port module imports any of these, which
+# tests/test_dependencies.py holds; they go when the SDK's transport is the
+# standard library's.
+requests==2.34.2
+certifi==2026.7.22
+charset-normalizer==3.5.2
+idna==3.20
+urllib3==2.8.0
+
+# Build only: installs the port into its venv and writes its console scripts.
+setuptools==84.0.0

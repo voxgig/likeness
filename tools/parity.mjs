@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /* The cross-port byte comparison.
  *
- *   node tools/parity.mjs <dir>              # compare every port under <dir>
- *   node tools/parity.mjs <dir> --selftest   # prove the comparison goes red
+ *   node tools/parity.mjs <dir> --ports go,py,ts              # compare the ports named
+ *   node tools/parity.mjs <dir> --ports go,py,ts --selftest   # prove it goes red
  *
  * Each port's test suite writes its RAW transcript output under <dir>/<port>/
  * when LIKENESS_PARITY_OUT is set. This compares them.
@@ -12,7 +12,10 @@
  *   1. Every port produced an answer for every entry OF THE CORPUS - the list
  *      comes from spec/cli.json, not from whichever port happened to be
  *      listed first, so a port that emitted eight of thirty-eight entries is
- *      thirty missing answers and not "two ports agree on 8 entries".
+ *      thirty missing answers and not "two ports agree on 8 entries". And the
+ *      ports are the ones `--ports` NAMES, not the directories that happen to
+ *      exist: a port whose suite skipped its emit would otherwise leave the
+ *      comparison quietly, and the rest would agree without it.
  *
  *   2. Every port's stdout is the CANONICAL rendering of what it carries:
  *      sorted keys, one line, exactly one trailing newline. Indented JSON or
@@ -30,9 +33,9 @@
  *      never be identical - and a run where they were would mean one port was
  *      reporting another's name, which check 3 alone would applaud.
  *
- * Both ports also check themselves against the committed expectations in their
- * own suites. This is not a duplicate of that: it compares the ports to EACH
- * OTHER, so it still holds if an expectation file is wrong.
+ * Every port also checks itself against the committed expectations in its own
+ * suite. This is not a duplicate of that: it compares the ports to EACH OTHER,
+ * so it still holds if an expectation file is wrong.
  */
 
 import { readFileSync, statSync, existsSync, readdirSync } from 'node:fs'
@@ -41,9 +44,11 @@ import { fileURLToPath } from 'node:url'
 
 const dir = process.argv[2]
 const selftest = process.argv.includes('--selftest')
+const portsAt = process.argv.indexOf('--ports')
+const named = -1 === portsAt ? undefined : process.argv[portsAt + 1]
 
-if (undefined === dir || !existsSync(dir)) {
-  console.error('usage: node tools/parity.mjs <dir> [--selftest]')
+if (undefined === dir || !existsSync(dir) || undefined === named || '' === named) {
+  console.error('usage: node tools/parity.mjs <dir> --ports <port>,<port>[,...] [--selftest]')
   console.error('  <dir> holds one subdirectory per port, written by each port\'s suite')
   process.exit(2)
 }
@@ -141,9 +146,9 @@ function corpusIds () {
   return ids
 }
 
-const ports = readdirSync(dir).filter(p => statSync(join(dir, p)).isDirectory()).sort()
+const ports = [...new Set(named.split(','))].sort()
 if (ports.length < 2) {
-  console.error(`parity: found ${ports.length} port(s) under ${dir}; at least two are needed`)
+  console.error(`parity: ${ports.length} port(s) named; at least two are needed`)
   process.exit(2)
 }
 
@@ -151,6 +156,15 @@ const ids = corpusIds()
 const reference = ports[0]
 let bad = 0
 let noncanon = 0
+let missing = 0
+
+for (const p of readdirSync(dir).filter(p => statSync(join(dir, p)).isDirectory()).sort()) {
+  if (!ports.includes(p)) {
+    // Output from a port nobody named would otherwise be compared by no one.
+    console.error(`  UNNAMED  ${p} wrote output under ${dir} and is not in --ports`)
+    bad++
+  }
+}
 
 console.log(`  comparing ${ports.join(', ')} over ${ids.length} entries`)
 
@@ -159,10 +173,13 @@ for (const id of ids) {
   let complete = true
   for (const p of ports) {
     const f = join(dir, p, id + '.out')
-    if (!existsSync(f)) {
+    // The self-test withholds the last port's answer to the last entry.
+    const withheld = selftest && id === ids[ids.length - 1] && p === ports[ports.length - 1]
+    if (!existsSync(f) || withheld) {
       // Check 1.
       console.error(`  MISSING  ${p} produced nothing for ${id}`)
       bad++
+      missing++
       complete = false
       continue
     }
@@ -244,8 +261,13 @@ if (selftest) {
       ' The byte check is not checking bytes.')
     process.exit(1)
   }
+  if (0 === missing) {
+    console.error('\nparity --selftest: a deliberately withheld answer was NOT reported as missing.' +
+      ' The comparison is not counting answers.')
+    process.exit(1)
+  }
   console.log(`\nparity --selftest: ok - the deliberate differences were reported (${bad} finding(s),` +
-    ` ${noncanon} non-canonical)`)
+    ` ${noncanon} non-canonical, ${missing} missing)`)
   process.exit(0)
 }
 

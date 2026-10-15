@@ -1,0 +1,29 @@
+{
+  "_doc": [
+    "The Python port's dependencies that no package index serves, pinned by commit",
+    "sha. `make py-deps` clones each into python/.deps at its revision, refuses one",
+    "that is dirty or off its pin, and puts `dir` of each on the virtual environment's",
+    "path. A pip install from git cannot stand in: station reads spec/config-shape.json",
+    "from its own checkout at run time. The SDKs are named here and pinned in",
+    "spec/sources.aontu, like every port's; python/requirements.txt pins the rest.",
+    "plugin is unpinned in station's CI; this is the revision that resolves to."
+  ],
+  "checkout": {
+    "plugin": {
+      "repo": "voxgig/plugin",
+      "rev": "43acbf266b0dbcf52e5ab5463d85c822da9cd234",
+      "dir": "python"
+    },
+    "sekreto": {
+      "repo": "voxgig/sekreto",
+      "rev": "32b83acba90a8e4199be96f56d0cdd5f636c5dfb",
+      "dir": "python"
+    },
+    "station": {
+      "repo": "voxgig/station",
+      "rev": "50667dc650e94470dd00038d259f35406b7cc873",
+      "dir": "python"
+    }
+  },
+  "sdk": ["joplin"]
+}

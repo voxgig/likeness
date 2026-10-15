@@ -44,6 +44,17 @@ the one hole the SDKs' offline test mode cannot reach - a record with no id,
 since the mode stamps the map key onto every record - is pinned as a unit
 entry over the projection function instead.
 
+## The Python port does not wait on sdkgen#402
+
+The third port takes the Python SDK's live transport, `requests`, as a declared
+and tested exception to the rule that no port takes a third-party run-time
+dependency, tied to [sdkgen#402](https://github.com/voxgig/sdkgen/issues/402)
+rather than waiting on it. `python/requirements.txt` declares it and the four
+packages it pulls in, at exact versions; `python/tests/test_dependencies.py`
+holds that no port module imports any of them; and the SDK imports it only on
+its first live call, so neither corpus loads it. The exception goes when the
+SDK's transport is the standard library's.
+
 ## Waits on
 
 Stage 2 binds the SDKs to station and reaches every source from every port. It
@@ -56,7 +67,7 @@ worked around (SPEC §0 decision 1).
 | Linear from any port | [sdkgen#400](https://github.com/voxgig/sdkgen/issues/400), [sdkgen#401](https://github.com/voxgig/sdkgen/issues/401) | a bare list or load queries the wrong GraphQL field; relay paging has no `connpath` |
 | Notion from Ruby | [notion-sdk#2](https://github.com/voxgig-sdk/notion-sdk/issues/2) | no Ruby target |
 | Notion from any port, on the current generator | [notion-sdk#1](https://github.com/voxgig-sdk/notion-sdk/issues/1) | regeneration, with the station feature |
-| The Python port | [sdkgen#402](https://github.com/voxgig/sdkgen/issues/402) | the Python SDK depends on `requests`, which the no-third-party-dependency rule forbids |
+| Dropping the Python port's one dependency exception | [sdkgen#402](https://github.com/voxgig/sdkgen/issues/402) | the Python SDK depends on `requests`, which the no-third-party-dependency rule forbids; the port declares it until the transport is the standard library's |
 | The Ruby port with two sources | [sdkgen#404](https://github.com/voxgig/sdkgen/issues/404) | two Ruby SDKs loaded together redefine each other's classes |
 | The C port | [sdkgen#403](https://github.com/voxgig/sdkgen/issues/403), [sdkgen#405](https://github.com/voxgig/sdkgen/issues/405), [station#23](https://github.com/voxgig/station/issues/23) | no live transport, two C SDKs cannot be linked, station's C port is env-only |
 | Joplin without the `fields` workaround | [sdkgen#406](https://github.com/voxgig/sdkgen/issues/406) | the query parameter declared `fields` is generated as `field`; both adapters pass the wire name until it is fixed |

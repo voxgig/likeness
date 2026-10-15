@@ -52,6 +52,8 @@ help:
 	@echo '  sdk-check     fail if a clone is missing or off its pin'
 	@echo '  test-ts       build and run the TypeScript port against both corpora'
 	@echo '  test-go       build and run the Go port against both corpora'
+	@echo '  py-deps       clone the checkouts the Python port imports, build python/.venv'
+	@echo '  test-py       run the Python port against both corpora'
 	@echo '  parity        the ports produce the same bytes, and each names itself'
 	@echo '  check         spec, every port, and the parity comparison'
 	@echo '  expect        REGENERATE the committed expectations - read the diff'
@@ -65,7 +67,7 @@ spec: spec-fmt spec-check spec-expect spec-fresh spec-agree
 
 # Everything. What CI runs, and what a change should run before it is pushed.
 .PHONY: check
-check: comments spec test-ts test-go parity
+check: comments spec test-ts test-go test-py parity
 
 
 .PHONY: spec-expect
@@ -111,6 +113,20 @@ test-go: sdk-check mock-deps
 	@cd go && gofmt -l . | (! grep .) && go vet ./... && go test ./...
 
 
+# station, sekreto and plugin publish no Python package, so the port imports
+# pinned checkouts through its own venv. The pins are python/deps.json and
+# python/requirements.txt and are never restated here; the venv is rebuilt
+# only when one of them, or PYTHON, changes.
+.PHONY: py-deps
+py-deps:
+	@node tools/py-deps.mjs
+
+
+.PHONY: test-py
+test-py: sdk-check mock-deps py-deps
+	@cd python && .venv/bin/python -m unittest discover -s tests -t .
+
+
 # The cross-port byte comparison. Each port's suite writes its RAW transcript
 # output when LIKENESS_PARITY_OUT is set; the comparison then requires the
 # stripped bytes to MATCH and the raw bytes to DIFFER, because every envelope
@@ -121,18 +137,21 @@ test-go: sdk-check mock-deps
 # difference and requiring it to be reported: a comparison nobody has seen go
 # red might be comparing nothing at all.
 PARITY_DIR := build/parity
+PARITY_PORTS := go,py,ts
 
 .PHONY: parity
-parity: sdk-check mock-deps ts-deps
+parity: sdk-check mock-deps ts-deps py-deps
 	@rm -rf $(PARITY_DIR) && mkdir -p $(PARITY_DIR)
 	@cd typescript && npm run build >/dev/null && \
 	  LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" npm test >/dev/null
 	@# -count=1 defeats the test cache. Without it Go reports a cached PASS and
-	@# writes no files, and the comparison then finds one port and says so -
-	@# which is at least loud, but only because the comparison checks for it.
+	@# writes no files, and the comparison then reports every Go answer missing -
+	@# which is at least loud, but only because --ports names Go.
 	@cd go && LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" go test -count=1 -run TestEmitParity ./... >/dev/null
-	@node tools/parity.mjs $(PARITY_DIR)
-	@node tools/parity.mjs $(PARITY_DIR) --selftest 2>/dev/null
+	@cd python && out=$$(LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" \
+	  .venv/bin/python -m unittest tests.test_parity 2>&1) || { echo "$$out"; exit 1; }
+	@node tools/parity.mjs $(PARITY_DIR) --ports $(PARITY_PORTS)
+	@node tools/parity.mjs $(PARITY_DIR) --ports $(PARITY_PORTS) --selftest 2>/dev/null
 
 
 # NOT A TEST, and never run to make one pass. It rewrites the contract to agree
