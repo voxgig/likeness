@@ -77,10 +77,11 @@ function parse (text) {
 
 // stdout with the declared exceptions removed, for check 3, plus whether the
 // raw bytes were canonical, for check 2. Human output has no envelope and so
-// is compared verbatim and is canonical by definition.
-function comparable (stdout) {
+// is compared verbatim and is canonical by definition, even where its lines
+// are JSON rows.
+function comparable (stdout, envelope) {
   const t = stdout.trimEnd()
-  if (!t.startsWith('{')) return { text: stdout, canonical: true }
+  if (!envelope) return { text: stdout, canonical: true }
   let parsed
   try { parsed = JSON.parse(t) }
   catch { return { text: stdout, canonical: false } }
@@ -90,12 +91,19 @@ function comparable (stdout) {
   }
 }
 
-// The entries every port must answer: the corpus, not a port's output.
+// The entries every port must answer, and those whose stdout is an envelope:
+// the corpus says so by its expectation, where a port's first byte cannot.
+const ENVELOPE = new Set()
 function corpusIds () {
   const doc = JSON.parse(readFileSync(join(ROOT, 'spec', 'cli.json'), 'utf8'))
   const groups = doc.primary.cli
   const ids = []
-  for (const g of Object.keys(groups).sort()) for (const e of groups[g].set) ids.push(e.id)
+  for (const g of Object.keys(groups).sort()) {
+    for (const e of groups[g].set) {
+      ids.push(e.id)
+      if (String(e.out?.stdout ?? '').endsWith('.json')) ENVELOPE.add(e.id)
+    }
+  }
   return ids
 }
 
@@ -106,6 +114,7 @@ if (ports.length < 2) {
 }
 
 const ids = corpusIds()
+const firstEnvelope = ids.find(id => ENVELOPE.has(id))
 const reference = ports[0]
 let bad = 0
 let noncanon = 0
@@ -165,19 +174,19 @@ for (const id of ids) {
     // comparison nobody has seen go red might be comparing nothing at all.
     got[ports[1]].stdout = got[ports[1]].stdout.replace(/"count":(\d+)/, '"count":999')
     // And the right values in the wrong bytes, which check 2 exists to catch.
-    if (id === ids[0] && got[ports[1]].stdout.trimEnd().startsWith('{')) {
+    if (id === firstEnvelope) {
       got[ports[1]].stdout = JSON.stringify(JSON.parse(got[ports[1]].stdout), null, 2) + '\n'
     }
     // A declared difference must be set aside, and a declared one that has
     // gone must be reported stale.
     const free = !waits.has(ports[0]) && !waits.has(ports[1])
     const altered = before !== got[ports[1]].stdout
-    if (free && undefined === planted.excused && altered && id !== ids[0]) {
+    if (free && undefined === planted.excused && altered && id !== firstEnvelope) {
       planted.excused = id
       waits.set(ports[1], 'selftest: a declared difference')
     }
     else if (free && undefined === planted.stale && !altered &&
-      comparable(got[ports[0]].stdout).text === comparable(got[ports[1]].stdout).text) {
+      comparable(got[ports[0]].stdout, ENVELOPE.has(id)).text === comparable(got[ports[1]].stdout, ENVELOPE.has(id)).text) {
       planted.stale = id
       waits.set(ports[1], 'selftest: a declared difference that has gone')
     }
@@ -185,7 +194,7 @@ for (const id of ids) {
 
   // Check 2: canonical bytes, every port.
   for (const p of ports) {
-    if (!comparable(got[p].stdout).canonical) {
+    if (!comparable(got[p].stdout, ENVELOPE.has(id)).canonical) {
       console.error(`  NONCANON ${id}: ${p} stdout is not in canonical form`)
       bad++
       noncanon++
@@ -201,8 +210,8 @@ for (const id of ids) {
   for (const p of ports) {
     if (undefined === base || base === p) continue
     // Check 3: the parity claim.
-    const a = comparable(got[base].stdout).text
-    const b = comparable(got[p].stdout).text
+    const a = comparable(got[base].stdout, ENVELOPE.has(id)).text
+    const b = comparable(got[p].stdout, ENVELOPE.has(id)).text
     if (waits.has(p)) {
       if (a === b) {
         console.error(`  STALE    ${id}: ${p} agrees with ${base} again; take it out of tools/parity-waiting.json`)
@@ -234,8 +243,7 @@ for (const id of ids) {
   // Check 4: each envelope names its own port, and the raw bytes differ. Only
   // for entries whose stdout is an envelope - human output carries no `port`
   // and is expected to be identical.
-  const t = got[reference].stdout.trimEnd()
-  if (t.startsWith('{')) {
+  if (ENVELOPE.has(id)) {
     for (const p of ports) {
       let name
       try { name = JSON.parse(got[p].stdout.trimEnd()).port }
