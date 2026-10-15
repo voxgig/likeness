@@ -86,7 +86,7 @@ module Likeness
   def open_session(ctx, flags)
     entry = entry_of(ctx, flags)
     station = open_station(with_chain(ctx.station, []), ctx.env)
-    conns = connections_of(station, ctx.accounts || {})
+    conns = connections_of(station, ctx.accounts || {}, profile_of(ctx.env))
     if ctx.fixture.nil? && !conns.empty?
       chain = vault_chain(ctx, entry, flags)
       begin
@@ -101,13 +101,15 @@ module Likeness
 
   # Every declared active instance, in station's ref order, with the account
   # its notes' identity derives from. Identity is never derived from the ref.
-  def connections_of(station, accounts)
+  def connections_of(station, accounts, profile)
     station.instances.select { |i| i['active'] }.map do |i|
       name = i['name']
       account = accounts[name]
       unless account.is_a?(String) && !account.empty?
-        raise LikenessError.new('invalid-project', "instance \"#{name}\" has no account in likeness.json",
-                                "add `\"#{name}\": { \"account\": \"<id>\" }` under `instances` in likeness.json")
+        raise LikenessError.new('invalid-project',
+                                "instance \"#{name}\" has no account in likeness.json under profile \"#{profile}\"",
+                                "add `\"#{name}\": { \"account\": \"<id>\" }` under " \
+                                "`profiles.#{profile}.instances` in likeness.json")
       end
       Connection.new(instance: name, source: i['api'], account: account)
     end

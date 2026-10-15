@@ -45,9 +45,18 @@ module Likeness
     doc
   end
 
-  # The account each instance ref belongs to, from likeness.json.
-  def parse_accounts(source, path)
-    instances = parse_json(source, path)['instances']
+  # Read as JavaScript reads `value[key]`, so a malformed file is never a crash.
+  def member_of(value, key)
+    return value[key] if value.is_a?(Hash)
+    return nil unless value.is_a?(Array) && /\A(?:0|[1-9][0-9]*)\z/.match?(key) && Integer(key, 10) < value.length
+
+    value[Integer(key, 10)]
+  end
+
+  # The account each instance ref of one station profile belongs to, from
+  # likeness.json. A profile reads only its own: none is inherited.
+  def parse_accounts(source, path, profile)
+    instances = member_of(member_of(member_of(parse_json(source, path), 'profiles'), profile), 'instances')
     instances = instances.each_with_index.to_h { |v, i| [i.to_s, v] } if instances.is_a?(Array)
     return {} unless instances.is_a?(Hash)
 
@@ -61,12 +70,12 @@ module Likeness
     File.read(path, encoding: 'UTF-8').scrub
   end
 
-  def load_config(path)
+  def load_config(path, profile)
     return [nil, {}] unless File.exist?(path)
 
     station = parse_station(read_text(path), path)
     lpath = File.join(File.dirname(path), 'likeness.json')
-    [station, File.exist?(lpath) ? parse_accounts(read_text(lpath), lpath) : {}]
+    [station, File.exist?(lpath) ? parse_accounts(read_text(lpath), lpath, profile) : {}]
   end
 
   def probe_path(env)
@@ -148,7 +157,7 @@ module Likeness
     home = env.fetch('HOME') { Dir.home }
     path = taken['value'] || joined(home, '.config', 'likeness', 'station.json')
     begin
-      station, accounts = load_config(path)
+      station, accounts = load_config(path, profile_of(env))
     rescue ConfigError => e
       stderr.write("error: invalid-project\n  #{e.message}\n  remedy  #{CONFIG_REMEDY}\n")
       return 3

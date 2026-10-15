@@ -23,8 +23,10 @@ class UnitCorpusTest < Minitest::Test
     'takeConfigOption' => ->(argv) { Likeness.take_config_option(argv) },
     'parseArgv' => ->(argv) { Likeness.parse_argv(argv) },
     'connections' => lambda { |v|
-      station = Likeness.open_station(Likeness.parse_station(v['station'], 'station.json'))
-      Likeness.connections_of(station, Likeness.parse_accounts(v['likeness'], 'likeness.json'))
+      env = v.key?('profile') ? { 'VOXGIG_STATION_PROFILE' => v['profile'] } : nil
+      profile = Likeness.profile_of(env)
+      station = Likeness.open_station(Likeness.parse_station(v['station'], 'station.json'), env)
+      Likeness.connections_of(station, Likeness.parse_accounts(v['likeness'], 'likeness.json', profile), profile)
               .map { |c| { 'instance' => c.instance, 'source' => c.source, 'account' => c.account } }
     },
     'projectJoplin' => ->(v) { Likeness::Joplin.project(v['raw'], v['instance'], v['account'], false) },
