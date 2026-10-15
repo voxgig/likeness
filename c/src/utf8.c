@@ -134,3 +134,47 @@ str u8_wellformed(arena *a, str s) {
   }
   return sb_done(&b);
 }
+
+size_t u8_units(str s) {
+  size_t i = 0;
+  size_t units = 0;
+  while (i < s.n) {
+    unsigned long cp;
+    i += u8_next(s.p, s.n, i, &cp);
+    units += 0x10000 <= cp ? 2 : 1;
+  }
+  return units;
+}
+
+static long clamped(long at, long len) {
+  if (at < 0) return len + at < 0 ? 0 : len + at;
+  return len < at ? len : at;
+}
+
+str u8_slice(arena *a, str s, long start, long end) {
+  long len = (long)u8_units(s);
+  long from = clamped(start, len);
+  long to = clamped(end, len);
+  long unit = 0;
+  size_t i = 0;
+  sbuf b;
+  sb_init(&b, a);
+  while (i < s.n && unit < to) {
+    unsigned long cp;
+    size_t n = u8_next(s.p, s.n, i, &cp);
+    if (0x10000 <= cp) {
+      int high = from <= unit;
+      int low = unit + 1 < to;
+      if (high && low) sb_put(&b, s.p + i, n);
+      else if (high) u8_put(&b, 0xD800 + ((cp - 0x10000) >> 10));
+      else if (low && from <= unit + 1) u8_put(&b, 0xDC00 + ((cp - 0x10000) & 0x3FF));
+      unit += 2;
+    }
+    else {
+      if (from <= unit) sb_put(&b, s.p + i, n);
+      unit++;
+    }
+    i += n;
+  }
+  return sb_done(&b);
+}

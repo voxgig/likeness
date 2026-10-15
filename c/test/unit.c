@@ -16,6 +16,9 @@
 #include "harness.h"
 #include "identity.h"
 #include "joplin.h"
+#include "notion.h"
+#include "obsidian.h"
+#include "pin.h"
 #include "selector.h"
 #include "spec.h"
 #include "utf8.h"
@@ -202,20 +205,184 @@ static int fn_vault_entry(arena *a, const jval *in, jval **out, str *err) {
   return 0;
 }
 
+static int refused(const lk_error *e, str *err) {
+  *err = e->message;
+  return -1;
+}
+
+static int fn_obsidian_url(arena *a, const jval *in, jval **out, str *err) {
+  const jval *vault = jv_getz(in, "vault");
+  const jval *path = jv_getz(in, "path");
+  if (!jv_is(vault, J_STRING) || !jv_is(path, J_STRING)) return malformed(err);
+  *out = jv_str(a, lk_obsidian_url(a, vault->s, path->s));
+  return 0;
+}
+
+static int fn_vault_entries(arena *a, const jval *in, jval **out, str *err) {
+  str *names;
+  size_t n;
+  lk_error e;
+  if (!jv_is(in, J_ARRAY)) return malformed(err);
+  if (0 != lk_obsidian_entries(a, in, &names, &n, &e)) return refused(&e, err);
+  *out = string_list(a, names, n);
+  return 0;
+}
+
+/* Each list step is answered with that directory's listing, read as the
+ * adapter reads one; a directory with none lists nothing. */
+static int fn_vault_walk(arena *a, const jval *in, jval **out, str *err) {
+  const jval *listings = jv_getz(in, "listings");
+  lk_obsidian_walk w;
+  lk_obsidian_step step;
+  lk_error e;
+  if (!jv_is(listings, J_OBJECT)) return malformed(err);
+  *out = jv_arr(a);
+  step = lk_obsidian_walk_start(a, &w);
+  for (;;) {
+    jval *row = jv_obj(a);
+    const jval *listed = step.list ? jv_get(listings, step.path) : NULL;
+    str *names = NULL;
+    size_t n = 0;
+    jv_setz(a, row, step.list ? "list" : "read", jv_str(a, step.path));
+    jv_push(a, *out, row);
+    if (NULL != listed && J_NULL != listed->kind) {
+      if (!jv_is(listed, J_ARRAY)) return malformed(err);
+      if (0 != lk_obsidian_entries(a, listed, &names, &n, &e)) return refused(&e, err);
+    }
+    if (!lk_obsidian_walk_next(&w, names, n, &step)) return 0;
+  }
+}
+
+static int fn_obsidian_transport(arena *a, const jval *in, jval **out, str *err) {
+  const jval *instance = jv_getz(in, "instance");
+  const jval *block = jv_getz(in, "block");
+  lk_obsidian_tls tls;
+  lk_error e;
+  if (!jv_is(instance, J_STRING) || !jv_is(block, J_OBJECT)) return malformed(err);
+  if (0 != lk_obsidian_transport(a, instance->s, block, &tls, &e)) return refused(&e, err);
+  *out = jv_obj(a);
+  jv_setz(a, *out, "tls", jv_strz(a, tls.pinned ? "pinned" : "off"));
+  if (tls.pinned) jv_setz(a, *out, "pin", jv_str(a, tls.pin));
+  return 0;
+}
+
+static int fn_project_obsidian(arena *a, const jval *in, jval **out, str *err) {
+  const jval *path = jv_getz(in, "path");
+  const jval *instance = jv_getz(in, "instance");
+  const jval *account = jv_getz(in, "account");
+  lk_error e;
+  if (!jv_is(path, J_STRING) || !jv_is(instance, J_STRING) || !jv_is(account, J_STRING)) return malformed(err);
+  if (0 != lk_project_obsidian(a, jv_getz(in, "raw"), path->s, instance->s, account->s, 0, out, &e)) {
+    return refused(&e, err);
+  }
+  return 0;
+}
+
+static int fn_parse_pin(arena *a, const jval *in, jval **out, str *err) {
+  str pin;
+  const char *bad = lk_parse_pin(a, in, &pin);
+  if (NULL != bad) {
+    *err = str_of(bad);
+    return -1;
+  }
+  *out = jv_str(a, pin);
+  return 0;
+}
+
+static int hex_value(char c) {
+  if ('0' <= c && c <= '9') return c - '0';
+  if ('a' <= c && c <= 'f') return c - 'a' + 10;
+  if ('A' <= c && c <= 'F') return c - 'A' + 10;
+  return -1;
+}
+
+/* Buffer.from(hex, 'hex'): pairs up to the first that is not two hex digits. */
+static int fn_fingerprint_of(arena *a, const jval *in, jval **out, str *err) {
+  unsigned char *der;
+  size_t n = 0;
+  if (!jv_is(in, J_STRING)) return malformed(err);
+  der = ar_alloc(a, in->s.n / 2 + 1);
+  while (2 * n + 1 < in->s.n && 0 <= hex_value(in->s.p[2 * n]) && 0 <= hex_value(in->s.p[2 * n + 1])) {
+    der[n] = (unsigned char)(hex_value(in->s.p[2 * n]) * 16 + hex_value(in->s.p[2 * n + 1]));
+    n++;
+  }
+  *out = jv_str(a, lk_fingerprint_of(a, der, n));
+  return 0;
+}
+
+static int fn_notion_version(arena *a, const jval *in, jval **out, str *err) {
+  const jval *instance = jv_getz(in, "instance");
+  const jval *block = jv_getz(in, "block");
+  str version;
+  lk_error e;
+  if (!jv_is(instance, J_STRING) || !jv_is(block, J_OBJECT)) return malformed(err);
+  if (0 != lk_notion_configure(a, instance->s, block, &version, &e)) return refused(&e, err);
+  *out = jv_obj(a);
+  jv_setz(a, *out, "version", jv_str(a, version));
+  return 0;
+}
+
+static int fn_notion_title(arena *a, const jval *in, jval **out, str *err) {
+  str title;
+  lk_error e;
+  if (0 != lk_notion_title(a, in, &title, &e)) return refused(&e, err);
+  *out = jv_str(a, title);
+  return 0;
+}
+
+/* Absent is `{}`: the corpus has no way to say "no value" but an empty record. */
+static int fn_notion_space(arena *a, const jval *in, jval **out, str *err) {
+  str space;
+  lk_error e;
+  if (0 != lk_notion_space(a, in, &space, &e)) return refused(&e, err);
+  *out = jv_obj(a);
+  if (0 < space.n) jv_setz(a, *out, "space", jv_str(a, space));
+  return 0;
+}
+
+static int fn_notion_time(arena *a, const jval *in, jval **out, str *err) {
+  str when;
+  lk_error e;
+  if (0 != lk_notion_stamp(a, in, "created_time", &when, &e)) return refused(&e, err);
+  *out = jv_str(a, when);
+  return 0;
+}
+
+static int fn_project_notion(arena *a, const jval *in, jval **out, str *err) {
+  const jval *instance = jv_getz(in, "instance");
+  const jval *account = jv_getz(in, "account");
+  lk_error e;
+  if (!jv_is(instance, J_STRING) || !jv_is(account, J_STRING)) return malformed(err);
+  if (0 != lk_project_notion(a, jv_getz(in, "raw"), instance->s, account->s, 0, out, &e)) return refused(&e, err);
+  return 0;
+}
+
 static const implemented REGISTRY[] = {
   { "compareCodePoints", fn_compare_code_points },
   { "crockfordAlphabet", fn_crockford_alphabet },
+  { "fingerprintOf", fn_fingerprint_of },
   { "foldCase", fn_fold_case },
   { "lid", fn_lid },
+  { "notionSpace", fn_notion_space },
+  { "notionTime", fn_notion_time },
+  { "notionTitle", fn_notion_title },
+  { "notionVersion", fn_notion_version },
+  { "obsidianTransport", fn_obsidian_transport },
+  { "obsidianUrl", fn_obsidian_url },
   { "parseArgv", fn_parse_argv },
+  { "parsePin", fn_parse_pin },
   { "parseSelector", fn_parse_selector },
   { "parseSelectorError", fn_parse_selector_error },
   { "partialCodes", fn_partial_codes },
   { "projectJoplin", fn_project_joplin },
+  { "projectNotion", fn_project_notion },
+  { "projectObsidian", fn_project_obsidian },
   { "rfc3339", fn_rfc3339 },
   { "serialise", fn_serialise },
   { "takeConfigOption", fn_take_config_option },
+  { "vaultEntries", fn_vault_entries },
   { "vaultEntry", fn_vault_entry },
+  { "vaultWalk", fn_vault_walk },
   { NULL, NULL },
 };
 

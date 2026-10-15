@@ -17,4 +17,11 @@ str u8_sanitize(arena *a, const char *s, size_t n);
 /* Each lone surrogate written as U+FFFD, as TextEncoder writes it. */
 str u8_wellformed(arena *a, str s);
 
+/* A JavaScript string's length, in UTF-16 code units. */
+size_t u8_units(str s);
+
+/* String.prototype.slice, by UTF-16 code units. A cut through an astral
+ * character keeps the surrogate on its side, as WTF-8. */
+str u8_slice(arena *a, str s, long start, long end);
+
 #endif
