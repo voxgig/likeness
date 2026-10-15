@@ -65,6 +65,16 @@ class UnitCorpusTest < Minitest::Test
     },
   }.freeze
 
+  # The answer as canonical JSON reads it back, so `true` and `1` stay
+  # different answers and a value compares as the JSON it prints as.
+  def self.plain(fn)
+    ->(v) { JSON.parse(Likeness.serialise(fn.call(v))) }
+  end
+
+  UNIT = VoxgigOmni.make_runner(Harness.document('unit'),
+                                { subject: ->(name) { REGISTRY.key?(name) ? plain(REGISTRY[name]) : nil } })
+                   .call('unit')
+
   ALL = Harness.entries('unit')
 
   def test_the_unit_corpus_is_not_empty
@@ -76,6 +86,10 @@ class UnitCorpusTest < Minitest::Test
     assert_equal [], ids.select { |id| ids.count(id) > 1 }.uniq, 'duplicate corpus ids'
   end
 
+  def test_every_function_the_corpus_names_is_registered
+    assert_equal [], ALL.map { |e| e['fn'] }.uniq.sort - REGISTRY.keys
+  end
+
   # Read as written: a corpus integer is an Integer here, never a Float.
   def test_corpus_numbers_are_exact
     ALL.select { |e| 'rfc3339' == e['fn'] }.each do |e|
@@ -83,18 +97,9 @@ class UnitCorpusTest < Minitest::Test
     end
   end
 
-  ALL.each do |e|
-    define_method("test_unit #{e['id']}") do
-      fn = REGISTRY[e['fn']]
-      refute_nil fn, "no such function in the registry: #{e['fn']}"
-
-      # `err` INSTEAD OF `out`, never alongside it: the shape refuses both.
-      if e.key?('err')
-        thrown = assert_raises(StandardError) { fn.call(e['in']) }
-        assert_includes thrown.message, e['err']
-      else
-        assert_equal e['out'], fn.call(e['in'])
-      end
+  UNIT[:spec].keys.sort.each do |name|
+    define_method("test_unit #{name}") do
+      UNIT[:runsetflags].call(UNIT[:spec][name], { null: false, all: true })
     end
   end
 end

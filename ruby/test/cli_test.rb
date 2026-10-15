@@ -24,10 +24,28 @@ class CliCorpusTest < Minitest::Test
     assert_equal [], found - used, 'expectation files no entry refers to'
   end
 
-  ALL.each do |e|
-    define_method("test_cli #{e['id']}") do
-      failures = Harness.check(e)
-      assert_empty failures, "#{e['id']}:\n  #{failures.join("\n  ")}"
+  def test_every_entry_waiting_upstream_is_in_the_corpus
+    assert_equal [], Harness::WAITING.keys - ALL.map { |e| e['id'] }
+  end
+
+  SPEC = Harness.corpus('cli')
+
+  SPEC.keys.sort.each do |name|
+    define_method("test_cli #{name}") do
+      ids = SPEC[name]['set'].map { |e| e['id'] }
+      waits = Harness::WAITING.slice(*ids).transform_values { |(cause, _)| { 'cause' => cause } }
+      Harness.run_group(name, SPEC[name]['set'], { null: false, all: true, wait: waits })
+    end
+  end
+
+  # A wait holds an entry only while it fails; this holds it to failing for
+  # its declared cause alone, so the declaration cannot hide a second
+  # difference.
+  unless Harness::WAITING.empty?
+    define_method('test_cli waiting entries differ only as their cause predicts') do
+      waiting = ALL.select { |e| Harness::WAITING.key?(e['id']) }
+      predicted = waiting.map { |e| Harness::WAITING[e['id']][1].call(e) }
+      Harness.run_group('predicted', predicted, { null: false, all: true })
     end
   end
 end
