@@ -15,16 +15,6 @@
       "predict": "vault-unopened",
       "reason": "the published @voxgig/station 0.1.0 depends on sekreto 0.1.2, which has no minivault, so station refuses the vault as an unknown provider kind"
     },
-    "rb-station-plugins": {
-      "issues": ["voxgig/station#33"],
-      "predict": "vault-unopened",
-      "reason": "station's Ruby library gives sekreto no plugins, so it refuses the vault as an unknown provider kind; voxgig/station#40 fixes it, and is not merged"
-    },
-    "query-token": {
-      "issues": ["voxgig/station#25"],
-      "predict": "placeholder-token",
-      "reason": "station places a credential in headers only, so the Joplin SDK's token query parameter carries station's placeholder and Joplin refuses it; voxgig/station#28 fixes it, and is not merged"
-    },
     "linear-adapter": {
       "issues": ["voxgig/sdkgen#400"],
       "predict": "no-adapter",
@@ -42,23 +32,19 @@
     }
   },
   "waiting": [
-    { "port": "ts", "source": "joplin", "cause": "ts-station-minivault", "behind": ["query-token"] },
+    { "port": "ts", "source": "joplin", "cause": "ts-station-minivault" },
     { "port": "ts", "source": "obsidian", "cause": "ts-station-minivault" },
     { "port": "ts", "source": "notion", "cause": "ts-station-minivault" },
     { "port": "ts", "source": "linear", "cause": "ts-station-minivault", "behind": ["linear-adapter"] },
 
-    { "port": "go", "source": "joplin", "cause": "query-token" },
     { "port": "go", "source": "obsidian", "commands": ["list"], "cause": "nameless-root" },
     { "port": "go", "source": "linear", "cause": "linear-adapter" },
 
-    { "port": "py", "source": "joplin", "cause": "query-token" },
     { "port": "py", "source": "obsidian", "commands": ["list"], "cause": "nameless-root" },
     { "port": "py", "source": "linear", "cause": "linear-adapter" },
 
-    { "port": "rb", "source": "joplin", "cause": "rb-station-plugins", "behind": ["query-token"] },
-    { "port": "rb", "source": "obsidian", "cause": "rb-station-plugins", "behind": ["nameless-root"] },
-    { "port": "rb", "source": "notion", "cause": "rb-station-plugins" },
-    { "port": "rb", "source": "linear", "cause": "rb-station-plugins", "behind": ["linear-adapter"] },
+    { "port": "rb", "source": "obsidian", "commands": ["list"], "cause": "nameless-root" },
+    { "port": "rb", "source": "linear", "cause": "linear-adapter" },
 
     { "port": "c", "source": "joplin", "cause": "c-port" },
     { "port": "c", "source": "obsidian", "cause": "c-port" },
