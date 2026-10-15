@@ -54,3 +54,33 @@ export function rfc3339 (ms: number): string {
   return p(d.getUTCFullYear(), 4) + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate()) +
     'T' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ':' + p(d.getUTCSeconds()) + 'Z'
 }
+
+const INSTANT = /^([0-9]{4})-([0-9]{2})-([0-9]{2})[Tt]([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?(?:[Zz]|([+-])([0-9]{2}):([0-9]{2}))$/
+
+function daysFromCivil (year: number, month: number, day: number): number {
+  const y = month <= 2 ? year - 1 : year
+  const era = Math.floor(y / 400)
+  const yoe = y - era * 400
+  const doy = Math.floor((153 * (month + (month > 2 ? -3 : 9)) + 2) / 5) + day - 1
+  return era * 146097 + yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy - 719468
+}
+
+function daysIn (year: number, month: number): number {
+  const leap = 0 === year % 4 && (0 !== year % 100 || 0 === year % 400)
+  return [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+}
+
+export function parseRfc3339 (text: string): number | undefined {
+  const m = INSTANT.exec(text)
+  if (null === m) return undefined
+  const [year, month, day, hour, minute, second] = m.slice(1, 7).map(Number)
+  if (month < 1 || 12 < month || day < 1 || daysIn(year, month) < day) return undefined
+  if (23 < hour || 59 < minute || 59 < second) return undefined
+  let offset = 0
+  if (undefined !== m[7]) {
+    const [oh, om] = [Number(m[8]), Number(m[9])]
+    if (23 < oh || 59 < om) return undefined
+    offset = ('-' === m[7] ? -1 : 1) * (oh * 60 + om)
+  }
+  return ((daysFromCivil(year, month, day) * 24 + hour) * 60 + minute - offset) * 60000 + second * 1000
+}

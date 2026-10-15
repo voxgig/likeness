@@ -1,0 +1,1 @@
+{"cmd":["get"],"code":"not-found","data":null,"error":{"message":"notion:2a9e0000-0000-4000-8000-0000000000ff does not exist","remedy":"check the ref, or run `likeness list` to see what is there"},"meta":{"calls":1,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

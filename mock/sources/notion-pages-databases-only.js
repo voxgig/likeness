@@ -302,6 +302,20 @@ function gate (state, req, reply) {
     return send(reply, 401, envelope(401, 'unauthorized', 'API token is invalid.'))
   }
 
+  // 1b. VERSION - the real API refuses a request with no Notion-Version, and
+  // the definition declares none, so a client sends one only when its options'
+  // headers name it. MOCK DECISION: checked after the credential, and any
+  // YYYY-MM-DD value is taken as a version the API publishes.
+  const version = req.headers['notion-version']
+  if (null == version || '' === String(version).trim()) {
+    return send(reply, 400, envelope(400, 'missing_version',
+      'Notion-Version header failed validation: Notion-Version header should be defined, instead was `undefined`.'))
+  }
+  if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(version).trim())) {
+    return send(reply, 400, envelope(400, 'validation_error',
+      'Notion-Version header failed validation: ' + String(version) + ' is not a version.'))
+  }
+
   // 2. FORCED status - a deterministic test affordance, checked after auth
   // so that forcing a failure still requires a valid credential.
   const forced = takeForced(state, req)
@@ -390,8 +404,8 @@ function record (state, req) {
     auth: null == req.headers.authorization ? null : String(req.headers.authorization),
     contentType: req.headers['content-type'] ?? null,
 
-    // QUIRK PROOF: no Notion-Version header is EVER sent - the string does
-    // not appear anywhere in the definition, model or any generated target.
+    // The definition, the model and every generated target name no
+    // Notion-Version: it arrives only from the client's options' headers.
     notionVersion: req.headers['notion-version'] ?? null,
 
     body: undefined === req.body ? null : clone(req.body)

@@ -1,0 +1,7 @@
+  1  obsidian  2026-09-17
+  2  obsidian  Welcome
+  3  joplin    Retention policy for archived notes
+  4  obsidian  launch plan
+  5  joplin    Rate limit budget for the sync worker
+  6  joplin    Launch checklist
+  7  obsidian  deep note

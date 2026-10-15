@@ -18,9 +18,9 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 209 entries, run by every port, C included but for the eighteen of `connections`; the groups `obsidian` and `pin` are the TypeScript port's until the others take its Obsidian adapter |
-| `spec/cli.aontu` — the transcript corpus | 162 whole commands, run by the TypeScript, Go, Python and Ruby ports, the group `obsidian` by TypeScript alone so far; C answers the 37 that need no source |
-| `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`, over Joplin and Obsidian; offline through the real generated SDK |
+| `spec/unit.aontu` — the pure-function corpus | 275 entries, run by every port, C included but for the eighteen of `connections`; the groups `obsidian`, `pin` and `notion` are the TypeScript port's until the others take its new adapters |
+| `spec/cli.aontu` — the transcript corpus | 183 whole commands, run by the TypeScript, Go, Python and Ruby ports, the groups `obsidian`, `notion` and `sources` by TypeScript alone so far; C answers the 37 that need no source |
+| `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`, over Joplin and Obsidian, and Notion by `get`, since its SDK lists no pages; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
 | `python/` — the third port | the same again, through station's Python library |
 | `ruby/` — the Ruby port | the same again, on station's Ruby library and the SDK's `rb` gem |
@@ -105,6 +105,21 @@ without them. A certificate that no longer matches is refused as
 port is used only where the block says so, with `"base": "http://127.0.0.1:27123"`
 and `"options": { "tls": false }`, and `doctor` reports it. The instance's
 account is the vault's id, which its notes' `obsidian://` links name.
+
+#### Notion
+
+Every request to Notion carries the API version it was written against, so
+each Notion connection pins one, as its only header, and a connection that pins
+none is refused before any call:
+
+```json
+{ "station": 1, "profiles": { "default": { "sdk": { "notion": {
+  "options": { "headers": { "notion-version": "2022-06-28" } } } } } } }
+```
+
+A page is read by `get notion:<page id>`. Notion's generated SDK has no way to
+list pages, so `list` names Notion as a connection that cannot answer, and
+`list --source notion` is refused before any call.
 
 Every port binds every client through station, and the calls a command reports
 are station's own request events.

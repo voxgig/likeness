@@ -1,0 +1,103 @@
+{
+  "_doc": [
+    "Awkward Notion pages, for the projection rules every port must agree on.",
+    "",
+    "0dd0...01  every projected field null, and a time that is not a time",
+    "0dd0...02  a title that is not rich text, a time that is a number, an",
+    "           offset time, and a parent page named without its type",
+    "0dd0...03  rich text parts of every kind, lower-case separators, a date",
+    "           that does not exist, and a block for a parent",
+    "0dd0...04  two properties of type title, and a parent data source",
+    "0dd0...05  no url at all",
+    "0dd0...06  no properties, in the workspace"
+  ],
+  "entity": {
+    "page": {
+      "0dd00000-0000-4000-8000-000000000001": {
+        "object": "page",
+        "id": "0dd00000-0000-4000-8000-000000000001",
+        "created_time": null,
+        "last_edited_time": "yesterday",
+        "parent": null,
+        "archived": null,
+        "properties": null,
+        "url": "https://www.notion.so/0dd00000000040008000000000000001"
+      },
+      "0dd00000-0000-4000-8000-000000000002": {
+        "object": "page",
+        "id": "0dd00000-0000-4000-8000-000000000002",
+        "created_time": 1773129600000,
+        "last_edited_time": "2026-03-10T08:00:00+01:00",
+        "parent": { "page_id": "2a9e0000-0000-4000-8000-000000000001" },
+        "archived": false,
+        "properties": {
+          "Name": { "id": "title", "type": "title", "title": "A title that is not rich text" }
+        },
+        "url": "https://www.notion.so/0dd00000000040008000000000000002"
+      },
+      "0dd00000-0000-4000-8000-000000000003": {
+        "object": "page",
+        "id": "0dd00000-0000-4000-8000-000000000003",
+        "created_time": "2026-03-10t08:00:00.5z",
+        "last_edited_time": "2023-02-29T00:00:00Z",
+        "parent": { "type": "block_id", "block_id": "b10c0000-0000-4000-8000-000000000001" },
+        "archived": false,
+        "properties": {
+          "Name": {
+            "id": "title",
+            "type": "title",
+            "title": [
+              { "plain_text": "Part " },
+              { "plain_text": 42 },
+              { "plain_text": null },
+              { "text": { "content": "no plain text" } },
+              "bare",
+              { "plain_text": { "x": [1, 2] } }
+            ]
+          }
+        },
+        "url": "https://www.notion.so/0dd00000000040008000000000000003"
+      },
+      "0dd00000-0000-4000-8000-000000000004": {
+        "object": "page",
+        "id": "0dd00000-0000-4000-8000-000000000004",
+        "created_time": "2026-03-10T13:30:00+05:30",
+        "last_edited_time": "2026-03-10T23:45:00-02:00",
+        "parent": {
+          "type": "data_source_id",
+          "data_source_id": "d5d50000-0000-4000-8000-000000000001",
+          "database_id": "7b3d0000-0000-4000-8000-000000000001"
+        },
+        "archived": false,
+        "properties": {
+          "b": { "id": "b", "type": "title", "title": [ { "plain_text": "lower" } ] },
+          "A": { "id": "A", "type": "title", "title": [ { "plain_text": "Upper" } ] },
+          "Tags": { "id": "T", "type": "multi_select", "multi_select": [ { "name": "odd" } ] }
+        },
+        "url": "https://www.notion.so/0dd00000000040008000000000000004"
+      },
+      "0dd00000-0000-4000-8000-000000000005": {
+        "object": "page",
+        "id": "0dd00000-0000-4000-8000-000000000005",
+        "created_time": "2026-03-10T08:00:00.000Z",
+        "last_edited_time": "2026-03-10T08:00:00.000Z",
+        "parent": { "type": "workspace", "workspace": true },
+        "archived": false,
+        "properties": {
+          "title": { "id": "title", "type": "title", "title": [ { "plain_text": "Nowhere to open" } ] }
+        },
+        "url": null
+      },
+      "0dd00000-0000-4000-8000-000000000006": {
+        "object": "page",
+        "id": "0dd00000-0000-4000-8000-000000000006",
+        "created_time": "2026-03-10T08:00:00.000Z",
+        "last_edited_time": "2026-03-10T08:00:00.000Z",
+        "parent": { "type": "workspace", "workspace": true },
+        "archived": false,
+        "properties": {},
+        "url": "https://www.notion.so/0dd00000000040008000000000000006"
+      }
+    }
+  }
+}

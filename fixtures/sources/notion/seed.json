@@ -1,0 +1,133 @@
+{
+  "_doc": [
+    "Seed for the Notion SDK's offline test mode, handed to NotionSDK.test() as",
+    "{entity: {page: {<id>: <record>}}}. The seed key field of `page` is `id`, as",
+    "the SDK's own resolver derives it. Each record is a page object as the API",
+    "answers it under Notion-Version 2022-06-28: its title is the property of type",
+    "`title`, its parent a database, a page or the workspace, its times RFC 3339",
+    "text. A page is read without its blocks, so nothing here is a body."
+  ],
+  "entity": {
+    "page": {
+      "2a9e0000-0000-4000-8000-000000000001": {
+        "object": "page",
+        "id": "2a9e0000-0000-4000-8000-000000000001",
+        "created_time": "2026-03-02T09:15:00.000Z",
+        "last_edited_time": "2026-09-16T14:20:00.000Z",
+        "created_by": { "object": "user", "id": "5e7a0000-0000-4000-8000-000000000001" },
+        "last_edited_by": { "object": "user", "id": "5e7a0000-0000-4000-8000-000000000001" },
+        "cover": null,
+        "icon": null,
+        "parent": { "type": "database_id", "database_id": "7b3d0000-0000-4000-8000-000000000001" },
+        "archived": false,
+        "in_trash": false,
+        "properties": {
+          "Status": {
+            "id": "V%3D%7Ck",
+            "type": "select",
+            "select": { "id": "s-doing", "name": "Doing", "color": "yellow" }
+          },
+          "Tags": {
+            "id": "T%3Bxy",
+            "type": "multi_select",
+            "multi_select": [ { "id": "m-launch", "name": "launch", "color": "blue" } ]
+          },
+          "Name": {
+            "id": "title",
+            "type": "title",
+            "title": [
+              {
+                "type": "text",
+                "text": { "content": "Launch checklist", "link": null },
+                "annotations": {
+                  "bold": false, "italic": false, "strikethrough": false,
+                  "underline": false, "code": false, "color": "default"
+                },
+                "plain_text": "Launch checklist",
+                "href": null
+              }
+            ]
+          }
+        },
+        "url": "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001",
+        "public_url": null
+      },
+      "2a9e0000-0000-4000-8000-000000000002": {
+        "object": "page",
+        "id": "2a9e0000-0000-4000-8000-000000000002",
+        "created_time": "2026-04-01T10:00:00.000Z",
+        "last_edited_time": "2026-09-17T08:05:42.517Z",
+        "created_by": { "object": "user", "id": "5e7a0000-0000-4000-8000-000000000002" },
+        "last_edited_by": { "object": "user", "id": "5e7a0000-0000-4000-8000-000000000001" },
+        "cover": null,
+        "icon": { "type": "emoji", "emoji": "✅" },
+        "parent": { "type": "page_id", "page_id": "2a9e0000-0000-4000-8000-000000000001" },
+        "archived": false,
+        "in_trash": false,
+        "properties": {
+          "title": {
+            "id": "title",
+            "type": "title",
+            "title": [
+              {
+                "type": "text",
+                "text": { "content": "Retention ", "link": null },
+                "annotations": {
+                  "bold": true, "italic": false, "strikethrough": false,
+                  "underline": false, "code": false, "color": "default"
+                },
+                "plain_text": "Retention ",
+                "href": null
+              },
+              {
+                "type": "text",
+                "text": { "content": "policy", "link": null },
+                "annotations": {
+                  "bold": false, "italic": false, "strikethrough": false,
+                  "underline": false, "code": false, "color": "default"
+                },
+                "plain_text": "policy",
+                "href": null
+              }
+            ]
+          }
+        },
+        "url": "https://www.notion.so/Retention-policy-2a9e0000000040008000000000000002",
+        "public_url": null
+      },
+      "2a9e0000-0000-4000-8000-000000000003": {
+        "object": "page",
+        "id": "2a9e0000-0000-4000-8000-000000000003",
+        "created_time": "2026-01-05T16:30:00.000Z",
+        "last_edited_time": "2026-02-11T11:00:00.000Z",
+        "created_by": { "object": "user", "id": "5e7a0000-0000-4000-8000-000000000001" },
+        "last_edited_by": { "object": "user", "id": "5e7a0000-0000-4000-8000-000000000001" },
+        "cover": null,
+        "icon": null,
+        "parent": { "type": "workspace", "workspace": true },
+        "archived": false,
+        "in_trash": false,
+        "properties": {
+          "title": {
+            "id": "title",
+            "type": "title",
+            "title": [
+              {
+                "type": "text",
+                "text": { "content": "Team home", "link": null },
+                "annotations": {
+                  "bold": false, "italic": false, "strikethrough": false,
+                  "underline": false, "code": false, "color": "default"
+                },
+                "plain_text": "Team home",
+                "href": null
+              }
+            ]
+          }
+        },
+        "url": "https://www.notion.so/Team-home-2a9e0000000040008000000000000003",
+        "public_url": null
+      }
+    }
+  }
+}

@@ -982,6 +982,836 @@
           }
         ]
       },
+      "notion": {
+        "set": [
+          {
+            "fn": "notionVersion",
+            "id": "notion/version-pinned",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "notion-version": "2022-06-28"
+                  }
+                }
+              },
+              "instance": "notion"
+            },
+            "out": {
+              "version": "2022-06-28"
+            }
+          },
+          {
+            "fn": "notionVersion",
+            "id": "notion/version-header-named-in-any-case",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "Notion-Version": "2025-09-03"
+                  }
+                }
+              },
+              "instance": "notion$work"
+            },
+            "out": {
+              "version": "2025-09-03"
+            }
+          },
+          {
+            "fn": "notionVersion",
+            "id": "notion/version-beside-a-base",
+            "in": {
+              "block": {
+                "base": "http://127.0.0.1:7777/notion/v1",
+                "options": {
+                  "headers": {
+                    "notion-version": "2022-06-28"
+                  }
+                }
+              },
+              "instance": "notion"
+            },
+            "out": {
+              "version": "2022-06-28"
+            }
+          },
+          {
+            "err": "pins no Notion-Version",
+            "fn": "notionVersion",
+            "id": "notion/version-missing-is-refused",
+            "in": {
+              "block": {},
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "pins no Notion-Version",
+            "fn": "notionVersion",
+            "id": "notion/version-in-no-header-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {}
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "pins a Notion-Version that is not a date",
+            "fn": "notionVersion",
+            "id": "notion/version-not-a-date-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "notion-version": "latest"
+                  }
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "pins a Notion-Version that is not a date",
+            "fn": "notionVersion",
+            "id": "notion/version-not-text-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "notion-version": 20220628
+                  }
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "pins Notion-Version more than once",
+            "fn": "notionVersion",
+            "id": "notion/version-twice-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "Notion-Version": "2022-06-28",
+                    "notion-version": "2022-06-28"
+                  }
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "has a header likeness does not send: \"x-trace\"",
+            "fn": "notionVersion",
+            "id": "notion/version-beside-another-header-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "notion-version": "2022-06-28",
+                    "x-trace": "1"
+                  }
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "has an option likeness does not read: \"timeout\"",
+            "fn": "notionVersion",
+            "id": "notion/version-beside-another-option-is-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": {
+                    "notion-version": "2022-06-28"
+                  },
+                  "timeout": 5
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "has options that are not a map",
+            "fn": "notionVersion",
+            "id": "notion/version-options-not-a-map-are-refused",
+            "in": {
+              "block": {
+                "options": [
+                  "headers"
+                ]
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "err": "has headers that are not a map",
+            "fn": "notionVersion",
+            "id": "notion/version-headers-not-a-map-are-refused",
+            "in": {
+              "block": {
+                "options": {
+                  "headers": "notion-version: 2022-06-28"
+                }
+              },
+              "instance": "notion"
+            }
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-is-the-title-property",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": [
+                  {
+                    "plain_text": "Launch checklist",
+                    "type": "text"
+                  }
+                ],
+                "type": "title"
+              },
+              "Status": {
+                "id": "V%3D%7Ck",
+                "select": {
+                  "name": "Doing"
+                },
+                "type": "select"
+              }
+            },
+            "out": "Launch checklist"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-joins-its-rich-text",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": [
+                  {
+                    "plain_text": "Retention "
+                  },
+                  {
+                    "plain_text": "policy"
+                  }
+                ],
+                "type": "title"
+              }
+            },
+            "out": "Retention policy"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-parts-of-every-kind",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": [
+                  {
+                    "plain_text": "Part "
+                  },
+                  {
+                    "plain_text": 42
+                  },
+                  {
+                    "plain_text": null
+                  },
+                  {
+                    "text": {
+                      "content": "no plain text"
+                    }
+                  },
+                  "bare",
+                  {
+                    "plain_text": {
+                      "x": [
+                        1,
+                        2
+                      ]
+                    }
+                  }
+                ],
+                "type": "title"
+              }
+            },
+            "out": "Part 42bare{\"x\":[1,2]}"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-not-rich-text-is-its-text",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": "A title that is not rich text",
+                "type": "title"
+              }
+            },
+            "out": "A title that is not rich text"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-a-number-is-its-json",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": 7,
+                "type": "title"
+              }
+            },
+            "out": "7"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-null-is-empty",
+            "in": {
+              "Name": {
+                "id": "title",
+                "title": null,
+                "type": "title"
+              }
+            },
+            "out": ""
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-with-no-title-property-is-empty",
+            "in": {
+              "Status": {
+                "select": {
+                  "name": "Doing"
+                },
+                "type": "select"
+              }
+            },
+            "out": ""
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-of-no-properties-is-empty",
+            "in": null,
+            "out": ""
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-takes-the-first-by-code-point",
+            "in": {
+              "A": {
+                "title": [
+                  {
+                    "plain_text": "Upper"
+                  }
+                ],
+                "type": "title"
+              },
+              "a": {
+                "title": [
+                  {
+                    "plain_text": "also lower"
+                  }
+                ],
+                "type": "title"
+              },
+              "b": {
+                "title": [
+                  {
+                    "plain_text": "lower"
+                  }
+                ],
+                "type": "title"
+              }
+            },
+            "out": "Upper"
+          },
+          {
+            "fn": "notionTitle",
+            "id": "notion/title-passes-over-a-property-that-is-not-a-record",
+            "in": {
+              "A": "title",
+              "B": {
+                "title": [
+                  {
+                    "plain_text": "B"
+                  }
+                ],
+                "type": "title"
+              }
+            },
+            "out": "B"
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-a-database",
+            "in": {
+              "database_id": "7b3d0000-0000-4000-8000-000000000001",
+              "type": "database_id"
+            },
+            "out": {
+              "space": "7b3d0000-0000-4000-8000-000000000001"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-a-page",
+            "in": {
+              "page_id": "2a9e0000-0000-4000-8000-000000000001",
+              "type": "page_id"
+            },
+            "out": {
+              "space": "2a9e0000-0000-4000-8000-000000000001"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-a-data-source-is-its-database",
+            "in": {
+              "data_source_id": "d5d5",
+              "database_id": "7b3d",
+              "type": "data_source_id"
+            },
+            "out": {
+              "space": "7b3d"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-the-workspace-is-none",
+            "in": {
+              "type": "workspace",
+              "workspace": true
+            },
+            "out": {}
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-a-block-is-none",
+            "in": {
+              "block_id": "b10c",
+              "type": "block_id"
+            },
+            "out": {}
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-without-a-type-is-the-database-first",
+            "in": {
+              "database_id": "d",
+              "page_id": "p"
+            },
+            "out": {
+              "space": "d"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-without-a-type-is-the-page",
+            "in": {
+              "page_id": "p"
+            },
+            "out": {
+              "space": "p"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-named-but-empty-is-none",
+            "in": {
+              "database_id": "",
+              "type": "database_id"
+            },
+            "out": {}
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-named-but-null-is-none",
+            "in": {
+              "page_id": null,
+              "type": "page_id"
+            },
+            "out": {}
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-not-text-is-its-json",
+            "in": {
+              "database_id": 7,
+              "type": "database_id"
+            },
+            "out": {
+              "space": "7"
+            }
+          },
+          {
+            "fn": "notionSpace",
+            "id": "notion/space-of-no-parent-is-none",
+            "in": null,
+            "out": {}
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-utc-with-a-fraction",
+            "in": "2026-03-02T09:15:00.000Z",
+            "out": "2026-03-02T09:15:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-with-an-offset",
+            "in": "2026-03-10T13:30:00+05:30",
+            "out": "2026-03-10T08:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-with-a-negative-offset-crosses-midnight",
+            "in": "2026-03-10T23:45:00-02:00",
+            "out": "2026-03-11T01:45:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-with-lower-case-separators",
+            "in": "2026-03-10t08:00:00.5z",
+            "out": "2026-03-10T08:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-fraction-is-dropped-not-rounded",
+            "in": "2026-03-10T08:00:59.999999Z",
+            "out": "2026-03-10T08:00:59Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-on-a-leap-day",
+            "in": "2024-02-29T12:00:00Z",
+            "out": "2024-02-29T12:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-on-a-day-that-does-not-exist-is-the-epoch",
+            "in": "2023-02-29T00:00:00Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-on-a-century-that-is-not-leap-is-the-epoch",
+            "in": "1900-02-29T00:00:00Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-on-a-leap-century",
+            "in": "2000-02-29T00:00:00Z",
+            "out": "2000-02-29T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-without-an-offset-is-the-epoch",
+            "in": "2026-03-10T08:00:00",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-without-seconds-is-the-epoch",
+            "in": "2026-03-10T08:00Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-with-a-space-is-the-epoch",
+            "in": "2026-03-10 08:00:00Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-a-date-alone-is-the-epoch",
+            "in": "2026-03-10",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-hour-24-is-the-epoch",
+            "in": "2026-03-10T24:00:00Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-a-leap-second-is-the-epoch",
+            "in": "2016-12-31T23:59:60Z",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-an-offset-of-24-hours-is-the-epoch",
+            "in": "2026-03-10T08:00:00+24:00",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-not-a-time-is-the-epoch",
+            "in": "yesterday",
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-a-number-is-the-epoch",
+            "in": 1773129600000,
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-null-is-the-epoch",
+            "in": null,
+            "out": "1970-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-at-the-first-instant",
+            "in": "0000-01-01T00:00:00Z",
+            "out": "0000-01-01T00:00:00Z"
+          },
+          {
+            "fn": "notionTime",
+            "id": "notion/time-at-the-last-instant",
+            "in": "9999-12-31T23:59:59Z",
+            "out": "9999-12-31T23:59:59Z"
+          },
+          {
+            "err": "outside the years 0000 to 9999",
+            "fn": "notionTime",
+            "id": "notion/time-moved-past-9999-is-refused",
+            "in": "9999-12-31T23:30:00-01:00"
+          },
+          {
+            "err": "outside the years 0000 to 9999",
+            "fn": "notionTime",
+            "id": "notion/time-moved-before-0000-is-refused",
+            "in": "0000-01-01T00:30:00+01:00"
+          },
+          {
+            "fn": "projectNotion",
+            "id": "notion/project-a-page-in-a-database",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "archived": false,
+                "created_time": "2026-03-02T09:15:00.000Z",
+                "id": "2a9e0000-0000-4000-8000-000000000001",
+                "last_edited_time": "2026-09-16T14:20:00.000Z",
+                "object": "page",
+                "parent": {
+                  "database_id": "7b3d0000-0000-4000-8000-000000000001",
+                  "type": "database_id"
+                },
+                "properties": {
+                  "Name": {
+                    "id": "title",
+                    "title": [
+                      {
+                        "plain_text": "Launch checklist",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "title"
+                  },
+                  "Status": {
+                    "id": "V%3D%7Ck",
+                    "select": {
+                      "name": "Doing"
+                    },
+                    "type": "select"
+                  }
+                },
+                "url": "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+              }
+            },
+            "out": {
+              "created": "2026-03-02T09:15:00Z",
+              "id": "2a9e0000-0000-4000-8000-000000000001",
+              "instance": "notion",
+              "lid": "lk_hznpc6cad3dx",
+              "source": "notion",
+              "space": "7b3d0000-0000-4000-8000-000000000001",
+              "title": "Launch checklist",
+              "updated": "2026-09-16T14:20:00Z",
+              "url": "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+            }
+          },
+          {
+            "fn": "projectNotion",
+            "id": "notion/project-a-page-in-the-workspace-has-no-space",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "archived": false,
+                "created_time": "2026-03-02T09:15:00.000Z",
+                "id": "2a9e0000-0000-4000-8000-000000000001",
+                "last_edited_time": "2026-09-16T14:20:00.000Z",
+                "object": "page",
+                "parent": {
+                  "type": "workspace",
+                  "workspace": true
+                },
+                "properties": {
+                  "Name": {
+                    "id": "title",
+                    "title": [
+                      {
+                        "plain_text": "Launch checklist",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "title"
+                  },
+                  "Status": {
+                    "id": "V%3D%7Ck",
+                    "select": {
+                      "name": "Doing"
+                    },
+                    "type": "select"
+                  }
+                },
+                "url": "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+              }
+            },
+            "out": {
+              "created": "2026-03-02T09:15:00Z",
+              "id": "2a9e0000-0000-4000-8000-000000000001",
+              "instance": "notion",
+              "lid": "lk_hznpc6cad3dx",
+              "source": "notion",
+              "title": "Launch checklist",
+              "updated": "2026-09-16T14:20:00Z",
+              "url": "https://www.notion.so/Launch-checklist-2a9e0000000040008000000000000001"
+            }
+          },
+          {
+            "fn": "projectNotion",
+            "id": "notion/project-nulls",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "created_time": null,
+                "id": "p1",
+                "last_edited_time": null,
+                "parent": null,
+                "properties": null,
+                "url": "https://www.notion.so/p1"
+              }
+            },
+            "out": {
+              "created": "1970-01-01T00:00:00Z",
+              "id": "p1",
+              "instance": "notion",
+              "lid": "lk_jxv4dbshcr7r",
+              "source": "notion",
+              "title": "",
+              "updated": "1970-01-01T00:00:00Z",
+              "url": "https://www.notion.so/p1"
+            }
+          },
+          {
+            "fn": "projectNotion",
+            "id": "notion/project-an-id-that-is-not-text",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "id": 42,
+                "url": "https://www.notion.so/42"
+              }
+            },
+            "out": {
+              "created": "1970-01-01T00:00:00Z",
+              "id": "42",
+              "instance": "notion",
+              "lid": "lk_ygdfkrprgxp1",
+              "source": "notion",
+              "title": "",
+              "updated": "1970-01-01T00:00:00Z",
+              "url": "https://www.notion.so/42"
+            }
+          },
+          {
+            "err": "notion returned a page with no id",
+            "fn": "projectNotion",
+            "id": "notion/project-with-no-id-is-refused-before-its-url",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {}
+            }
+          },
+          {
+            "err": "notion returned a page with no id",
+            "fn": "projectNotion",
+            "id": "notion/project-an-empty-id-is-refused",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "id": "",
+                "url": "https://www.notion.so/x"
+              }
+            }
+          },
+          {
+            "err": "notion returned a page with no http or https url",
+            "fn": "projectNotion",
+            "id": "notion/project-with-no-url-is-refused",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "id": "p1"
+              }
+            }
+          },
+          {
+            "err": "notion returned a page with no http or https url",
+            "fn": "projectNotion",
+            "id": "notion/project-a-url-of-another-scheme-is-refused",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "id": "p1",
+                "url": "notion://www.notion.so/p1"
+              }
+            }
+          },
+          {
+            "err": "notion returned a page that is not a record",
+            "fn": "projectNotion",
+            "id": "notion/project-a-page-that-is-not-a-record-is-refused",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": [
+                "page"
+              ]
+            }
+          },
+          {
+            "err": "whose last_edited_time is outside the years 0000 to 9999",
+            "fn": "projectNotion",
+            "id": "notion/project-a-time-past-9999-is-refused",
+            "in": {
+              "account": "acme-workspace",
+              "instance": "notion",
+              "raw": {
+                "id": "p1",
+                "last_edited_time": "9999-12-31T23:59:59-00:01",
+                "url": "https://www.notion.so/p1"
+              }
+            }
+          }
+        ]
+      },
       "obsidian": {
         "set": [
           {

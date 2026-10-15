@@ -54,7 +54,10 @@ afterwards as one key reads it. The vault's bytes are never compared: they chang
 on every write.
 
 The TypeScript and Go ports run both corpora in full, and `make parity` compares
-their transcript output byte for byte. The C port runs the unit corpus but for
+their transcript output byte for byte. The groups for the Obsidian and Notion
+adapters (`obsidian`, `pin` and `notion` in the unit corpus; `obsidian`,
+`notion` and `sources` in the transcripts) are the TypeScript port's alone
+until the other ports take those adapters, and fail in them until then. The C port runs the unit corpus but for
 `connections`, which waits on station's C library reading `station.json`
 ([station#23](https://github.com/voxgig/station/issues/23)), and the 37 transcript
 entries whose answer needs no source: `help`, `version`, `which`, a command not

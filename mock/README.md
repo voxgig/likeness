@@ -218,6 +218,14 @@ definition declares no `401` or `403` anywhere.
 | `Database().load()` | GET | `/databases/{id}` |
 | `Database().update()` | PATCH | `/databases/{id}` |
 
+Every request must carry a `Notion-Version` header, as the real API demands:
+without one the mock answers `400` with code `missing_version`, and with a value
+that is not a `YYYY-MM-DD` date, `400` with `validation_error`. The definition
+declares no such header, so the generated client sends one only when its
+options' `headers` name it — likeness pins it per connection in `station.json`.
+The credential is checked first. The seeded pages carry the `url` every real
+page object has.
+
 Bodies arrive **pretty-printed** (`JSON.stringify(v, null, 2)`) and `PATCH`
 carries `id` in the body even though the schema forbids it — the path id wins.
 `update` echoes `created_time` **verbatim** when the caller sends it, because the

@@ -529,7 +529,7 @@ primary: cli: {
       args: ["list" "--json"]
       ctx: {
         fixture: "joplin"
-        connections: [{ instance:"notion" account:"acme" }]
+        connections: [{ instance:"linear" account:"acme" }]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
       }
@@ -1042,7 +1042,7 @@ primary: cli: {
         fixture: "joplin"
         connections: [
           { instance:"joplin" account:"local" }
-          { instance:"notion" account:"acme" }
+          { instance:"linear" account:"acme" }
         ]
         clock: "2026-09-18T00:00:00Z"
         seed: 1
@@ -3391,6 +3391,704 @@ primary: cli: {
         seed: 1
       }
       out: { exit:3 stdout:"spec/expect/obsidian/malformed-pin.json" calls: [] }
+    }
+  ]
+
+  notion: set: [
+    {
+      id: "notion/get-one"
+      # The page's title is its title property; its space, the database it is in.
+      args: ["get" "notion:2a9e0000-0000-4000-8000-000000000001" "--json"]
+      ctx: {
+        fixture: "notion"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/notion/get-one.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/2a9e0000-0000-4000-8000-000000000001"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "notion/get-several"
+      # A page under a page, and one in the workspace, which has no space.
+      args: [
+        "get"
+        "notion:2a9e0000-0000-4000-8000-000000000002"
+        "notion:2a9e0000-0000-4000-8000-000000000003"
+        "--json"
+      ]
+      ctx: {
+        fixture: "notion"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/notion/get-several.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/2a9e0000-0000-4000-8000-000000000002"
+          }
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/2a9e0000-0000-4000-8000-000000000003"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "notion/get-raw"
+      args: [
+        "get"
+        "notion:2a9e0000-0000-4000-8000-000000000001"
+        "--raw"
+        "--json"
+      ]
+      ctx: {
+        fixture: "notion"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/notion/get-raw.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/2a9e0000-0000-4000-8000-000000000001"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "notion/get-not-found"
+      args: ["get" "notion:2a9e0000-0000-4000-8000-0000000000ff" "--json"]
+      ctx: {
+        fixture: "notion"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/notion/get-not-found.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/2a9e0000-0000-4000-8000-0000000000ff"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "notion/get-odd-values"
+      args: [
+        "get"
+        "notion:0dd00000-0000-4000-8000-000000000001"
+        "notion:0dd00000-0000-4000-8000-000000000002"
+        "notion:0dd00000-0000-4000-8000-000000000003"
+        "notion:0dd00000-0000-4000-8000-000000000004"
+        "notion:0dd00000-0000-4000-8000-000000000006"
+        "--json"
+      ]
+      ctx: {
+        fixture: "notion-odd"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/notion/get-odd.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/0dd00000-0000-4000-8000-000000000001"
+          }
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/0dd00000-0000-4000-8000-000000000002"
+          }
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/0dd00000-0000-4000-8000-000000000003"
+          }
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/0dd00000-0000-4000-8000-000000000004"
+          }
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/0dd00000-0000-4000-8000-000000000006"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "notion/get-odd-raw"
+      args: [
+        "get"
+        "notion:0dd00000-0000-4000-8000-000000000001"
+        "notion:0dd00000-0000-4000-8000-000000000003"
+        "--raw"
+        "--json"
+      ]
+      ctx: {
+        fixture: "notion-odd"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/notion/get-odd-raw.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/0dd00000-0000-4000-8000-000000000001"
+          }
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/0dd00000-0000-4000-8000-000000000003"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "notion/get-a-page-with-no-url-is-refused"
+      # A page's link is the one field no id can stand in for, so it is refused, never made up.
+      args: ["get" "notion:0dd00000-0000-4000-8000-000000000005" "--json"]
+      ctx: {
+        fixture: "notion-odd"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/notion/get-no-url.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/0dd00000-0000-4000-8000-000000000005"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "notion/list-is-refused-before-any-call"
+      # The SDK has no list for a page, so the refusal names the operation it does have.
+      args: ["list" "--source" "notion" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"joplin" account:"local" }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:4 stdout:"spec/expect/notion/list-refused.json" calls: [] }
+    }
+
+    {
+      id: "notion/list-of-notion-alone-is-refused"
+      args: ["list" "updated>7d" "--json"]
+      ctx: {
+        fixture: "notion"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/notion/list-alone-refused.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "notion/doctor-ok"
+      # A page no workspace holds is not found only once the token and the version are accepted.
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "notion"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/notion/doctor-ok.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/00000000-0000-0000-0000-000000000000"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "notion/doctor-token-rejected"
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "notion"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+            net: { failTimes:1 failStatus:401 }
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/notion/doctor-token-rejected.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/00000000-0000-0000-0000-000000000000"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "notion/doctor-version-refused"
+      # A bad request to a page that cannot exist is the pinned version Notion does not know.
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "notion"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+            net: { failTimes:1 failStatus:400 }
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/notion/doctor-version-refused.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/00000000-0000-0000-0000-000000000000"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "notion/doctor-unreachable"
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "notion"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "2022-06-28"
+            net: offline: true
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/notion/doctor-unreachable.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/00000000-0000-0000-0000-000000000000"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "notion/no-version-is-refused"
+      # Notion refuses a request without its API version, so likeness never sends one.
+      args: ["get" "notion:2a9e0000-0000-4000-8000-000000000001" "--json"]
+      ctx: {
+        fixture: "notion"
+        connections: [{ instance:"notion" account:"acme-workspace" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/notion/no-version.json" calls: [] }
+    }
+
+    {
+      id: "notion/a-version-that-is-not-a-date-is-refused"
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "notion"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: "notion-version": "latest"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/notion/version-not-a-date.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "notion/a-header-beside-the-version-is-refused"
+      args: ["get" "notion:2a9e0000-0000-4000-8000-000000000001" "--json"]
+      ctx: {
+        fixture: "notion"
+        connections: [
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            block: options: headers: {
+              "notion-version": "2022-06-28"
+              "x-trace": "1"
+            }
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/notion/another-header.json" calls: [] }
+    }
+  ]
+
+  sources: set: [
+    {
+      id: "sources/list-across-three-sources"
+      # Notion cannot list, so it is a connection that did not answer, named in meta.incomplete.
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"joplin" account:"local" }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 2
+        stdout: "spec/expect/sources/list-across.json"
+        calls: [
+          { instance:"joplin" method:"GET" path:"/notes" }
+          { instance:"obsidian" method:"GET" path:"/vault/" }
+          { instance:"obsidian" method:"GET" path:"/vault/Daily%2F" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/Daily%2F2026-09-17.md"
+          }
+          { instance:"obsidian" method:"GET" path:"/vault/Welcome.md" }
+          { instance:"obsidian" method:"GET" path:"/vault/projects%2F" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Flaunch%20plan.md"
+          }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Fnested%2F"
+          }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Fnested%2Fdeep%20note.md"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "sources/list-across-three-sources-human"
+      args: ["list" "updated>30d"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"joplin" account:"local" }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 2
+        stdout: "spec/expect/sources/list-across-human.txt"
+        stderr: "notion unavailable - results are incomplete\n"
+        calls: [
+          { instance:"joplin" method:"GET" path:"/notes" }
+          { instance:"obsidian" method:"GET" path:"/vault/" }
+          { instance:"obsidian" method:"GET" path:"/vault/Daily%2F" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/Daily%2F2026-09-17.md"
+          }
+          { instance:"obsidian" method:"GET" path:"/vault/Welcome.md" }
+          { instance:"obsidian" method:"GET" path:"/vault/projects%2F" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Flaunch%20plan.md"
+          }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Fnested%2F"
+          }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Fnested%2Fdeep%20note.md"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "sources/list-strict-halts-at-notion"
+      # Under --strict a connection that cannot answer stops the fan-out.
+      args: ["list" "--strict" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"joplin" account:"local" }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/sources/list-strict.json"
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "sources/get-across-three-sources"
+      args: [
+        "get"
+        "notion:2a9e0000-0000-4000-8000-000000000001"
+        "obsidian:Welcome.md"
+        "joplin:a0e50000000000000000000000000001"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"joplin" account:"local" }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/sources/get-across.json"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/2a9e0000-0000-4000-8000-000000000001"
+          }
+          { instance:"obsidian" method:"GET" path:"/vault/Welcome.md" }
+          {
+            instance: "joplin"
+            method: "GET"
+            path: "/notes/a0e50000000000000000000000000001"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "sources/doctor-across-three-sources"
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          { instance:"joplin" account:"local" }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/sources/doctor-across.json"
+        calls: [
+          { instance:"joplin" method:"GET" path:"/notes" }
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/00000000-0000-0000-0000-000000000000"
+          }
+          { instance:"obsidian" method:"GET" path:"/vault/" }
+        ]
+      }
     }
   ]
 }

@@ -9,6 +9,7 @@ import { lid, rfc3339, CROCKFORD } from '../src/identity.js'
 import { partialCodes } from '../src/errors.js'
 import { foldCase } from '../src/evaluate.js'
 import { project } from '../src/adapter/joplin.js'
+import * as notion from '../src/adapter/notion.js'
 import * as obsidian from '../src/adapter/obsidian.js'
 import { parsePin, fingerprintOf } from '../src/pin.js'
 import { takeConfigOption, parseStation, parseAccounts } from '../src/cli.js'
@@ -87,6 +88,21 @@ const REGISTRY: Record<string, Fn> = {
   projectObsidian: (v) => {
     const { raw, path, instance, account } = v as { raw: unknown, path: string, instance: string, account: string }
     return obsidian.project(raw, path, instance, account, false)
+  },
+  notionVersion: (v) => {
+    const { instance, block } = v as { instance: string, block: Record<string, unknown> }
+    return notion.configure(instance, block)
+  },
+  notionTitle: (properties) => notion.titleOf(properties),
+  // Absent is `{}`: the corpus has no way to say "no value" but an empty record.
+  notionSpace: (parent) => {
+    const space = notion.spaceOf(parent)
+    return undefined === space ? {} : { space }
+  },
+  notionTime: (v) => notion.stamp(v, 'created_time'),
+  projectNotion: (v) => {
+    const { raw, instance, account } = v as { raw: unknown, instance: string, account: string }
+    return notion.project(raw, instance, account, false)
   },
   parsePin: (s) => parsePin(s),
   fingerprintOf: (hex) => fingerprintOf(Buffer.from(hex as string, 'hex')),

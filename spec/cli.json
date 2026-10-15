@@ -424,7 +424,7 @@
                 },
                 {
                   "account": "acme",
-                  "instance": "notion"
+                  "instance": "linear"
                 }
               ],
               "fixture": "joplin",
@@ -1323,7 +1323,7 @@
               "connections": [
                 {
                   "account": "acme",
-                  "instance": "notion"
+                  "instance": "linear"
                 }
               ],
               "fixture": "joplin",
@@ -1989,6 +1989,616 @@
               "exit": 3,
               "stderr": "error: invalid-argument\n  no command given\n  remedy  try `likeness list`, or `likeness help` for the command list\n",
               "stdout": "spec/expect/meta/no-command.txt"
+            }
+          }
+        ]
+      },
+      "notion": {
+        "set": [
+          {
+            "args": [
+              "get",
+              "notion:2a9e0000-0000-4000-8000-000000000001",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/get-one",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/2a9e0000-0000-4000-8000-000000000001"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/notion/get-one.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "notion:2a9e0000-0000-4000-8000-000000000002",
+              "notion:2a9e0000-0000-4000-8000-000000000003",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/get-several",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/2a9e0000-0000-4000-8000-000000000002"
+                },
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/2a9e0000-0000-4000-8000-000000000003"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/notion/get-several.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "notion:2a9e0000-0000-4000-8000-000000000001",
+              "--raw",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/get-raw",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/2a9e0000-0000-4000-8000-000000000001"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/notion/get-raw.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "notion:2a9e0000-0000-4000-8000-0000000000ff",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/get-not-found",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/2a9e0000-0000-4000-8000-0000000000ff"
+                }
+              ],
+              "exit": 1,
+              "stdout": "spec/expect/notion/get-not-found.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "notion:0dd00000-0000-4000-8000-000000000001",
+              "notion:0dd00000-0000-4000-8000-000000000002",
+              "notion:0dd00000-0000-4000-8000-000000000003",
+              "notion:0dd00000-0000-4000-8000-000000000004",
+              "notion:0dd00000-0000-4000-8000-000000000006",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion-odd",
+              "seed": 1
+            },
+            "id": "notion/get-odd-values",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/0dd00000-0000-4000-8000-000000000001"
+                },
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/0dd00000-0000-4000-8000-000000000002"
+                },
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/0dd00000-0000-4000-8000-000000000003"
+                },
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/0dd00000-0000-4000-8000-000000000004"
+                },
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/0dd00000-0000-4000-8000-000000000006"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/notion/get-odd.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "notion:0dd00000-0000-4000-8000-000000000001",
+              "notion:0dd00000-0000-4000-8000-000000000003",
+              "--raw",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion-odd",
+              "seed": 1
+            },
+            "id": "notion/get-odd-raw",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/0dd00000-0000-4000-8000-000000000001"
+                },
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/0dd00000-0000-4000-8000-000000000003"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/notion/get-odd-raw.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "notion:0dd00000-0000-4000-8000-000000000005",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion-odd",
+              "seed": 1
+            },
+            "id": "notion/get-a-page-with-no-url-is-refused",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/0dd00000-0000-4000-8000-000000000005"
+                }
+              ],
+              "exit": 3,
+              "stdout": "spec/expect/notion/get-no-url.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--source",
+              "notion",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "joplin"
+                },
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "fixture": "notion",
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "notion/list-is-refused-before-any-call",
+            "out": {
+              "calls": [],
+              "exit": 4,
+              "stdout": "spec/expect/notion/list-refused.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "updated>7d",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/list-of-notion-alone-is-refused",
+            "out": {
+              "calls": [],
+              "exit": 4,
+              "stdout": "spec/expect/notion/list-alone-refused.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/doctor-ok",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/00000000-0000-0000-0000-000000000000"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/notion/doctor-ok.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion",
+                  "net": {
+                    "failStatus": 401,
+                    "failTimes": 1
+                  }
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/doctor-token-rejected",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/00000000-0000-0000-0000-000000000000"
+                }
+              ],
+              "exit": 3,
+              "stdout": "spec/expect/notion/doctor-token-rejected.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion",
+                  "net": {
+                    "failStatus": 400,
+                    "failTimes": 1
+                  }
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/doctor-version-refused",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/00000000-0000-0000-0000-000000000000"
+                }
+              ],
+              "exit": 3,
+              "stdout": "spec/expect/notion/doctor-version-refused.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "instance": "notion",
+                  "net": {
+                    "offline": true
+                  }
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/doctor-unreachable",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/00000000-0000-0000-0000-000000000000"
+                }
+              ],
+              "exit": 3,
+              "stdout": "spec/expect/notion/doctor-unreachable.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "notion:2a9e0000-0000-4000-8000-000000000001",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/no-version-is-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/notion/no-version.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "latest"
+                      }
+                    }
+                  },
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/a-version-that-is-not-a-date-is-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/notion/version-not-a-date.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "notion:2a9e0000-0000-4000-8000-000000000001",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28",
+                        "x-trace": "1"
+                      }
+                    }
+                  },
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "notion",
+              "seed": 1
+            },
+            "id": "notion/a-header-beside-the-version-is-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/notion/another-header.json"
             }
           }
         ]
@@ -5476,6 +6086,368 @@
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/secrets/list-refuses-an-env-store.json"
+            }
+          }
+        ]
+      },
+      "sources": {
+        "set": [
+          {
+            "args": [
+              "list",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "joplin"
+                },
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "fixture": "notion",
+                  "instance": "notion"
+                },
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "sources/list-across-three-sources",
+            "out": {
+              "calls": [
+                {
+                  "instance": "joplin",
+                  "method": "GET",
+                  "path": "/notes"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Daily%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Daily%2F2026-09-17.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Welcome.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Flaunch%20plan.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Fnested%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Fnested%2Fdeep%20note.md"
+                }
+              ],
+              "exit": 2,
+              "stdout": "spec/expect/sources/list-across.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "updated>30d"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "joplin"
+                },
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "fixture": "notion",
+                  "instance": "notion"
+                },
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "sources/list-across-three-sources-human",
+            "out": {
+              "calls": [
+                {
+                  "instance": "joplin",
+                  "method": "GET",
+                  "path": "/notes"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Daily%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Daily%2F2026-09-17.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Welcome.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Flaunch%20plan.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Fnested%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Fnested%2Fdeep%20note.md"
+                }
+              ],
+              "exit": 2,
+              "stderr": "notion unavailable - results are incomplete\n",
+              "stdout": "spec/expect/sources/list-across-human.txt"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--strict",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "joplin"
+                },
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "fixture": "notion",
+                  "instance": "notion"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "sources/list-strict-halts-at-notion",
+            "out": {
+              "calls": [
+                {
+                  "instance": "joplin",
+                  "method": "GET",
+                  "path": "/notes"
+                }
+              ],
+              "exit": 4,
+              "stdout": "spec/expect/sources/list-strict.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "notion:2a9e0000-0000-4000-8000-000000000001",
+              "obsidian:Welcome.md",
+              "joplin:a0e50000000000000000000000000001",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "joplin"
+                },
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "fixture": "notion",
+                  "instance": "notion"
+                },
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "sources/get-across-three-sources",
+            "out": {
+              "calls": [
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/2a9e0000-0000-4000-8000-000000000001"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Welcome.md"
+                },
+                {
+                  "instance": "joplin",
+                  "method": "GET",
+                  "path": "/notes/a0e50000000000000000000000000001"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/sources/get-across.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "joplin"
+                },
+                {
+                  "account": "acme-workspace",
+                  "block": {
+                    "options": {
+                      "headers": {
+                        "notion-version": "2022-06-28"
+                      }
+                    }
+                  },
+                  "fixture": "notion",
+                  "instance": "notion"
+                },
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "sources/doctor-across-three-sources",
+            "out": {
+              "calls": [
+                {
+                  "instance": "joplin",
+                  "method": "GET",
+                  "path": "/notes"
+                },
+                {
+                  "instance": "notion",
+                  "method": "GET",
+                  "path": "/v1/pages/00000000-0000-0000-0000-000000000000"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/sources/doctor-across.json"
             }
           }
         ]
