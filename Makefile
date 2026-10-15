@@ -146,11 +146,12 @@ test-py: sdk-check mock-deps py-deps
 
 
 # station, sekreto and plugin are no more published than the SDKs, so the
-# Ruby port loads them from checkouts at the revisions ruby/libs.json pins:
-# `rb-libs` clones them, and `rb-deps` verifies every pin and links each
-# checkout, and the SDK clones, under ruby/vendor/ - the one place the port
-# looks. Point STATION_HOME, SEKRETO_HOME or PLUGIN_HOME at a checkout of the
-# pin to use it instead of a clone.
+# Ruby port loads them from checkouts at the revisions ruby/libs.json pins, and
+# its tests load omni the same way: `rb-libs` clones them, and `rb-deps`
+# verifies every pin and links each checkout, and the SDK clones, under
+# ruby/vendor/ - the one place the port looks. Point STATION_HOME,
+# SEKRETO_HOME, PLUGIN_HOME or OMNI_HOME at a checkout of the pin to use it
+# instead of a clone.
 RB_SDK_ROOT := $(abspath $(or $(LIKENESS_SDK_ROOT),$(CURDIR)/../voxgig-sdk))
 RB_SDKS := joplin-sdk notion-sdk obsidian-sdk
 
