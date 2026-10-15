@@ -20,7 +20,7 @@ def _escaped_as_quote(e: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-_ESCURL = ("the Python obsidian-sdk's escurl percent-encodes !'()* in a path, "
+_ESCURL = ("voxgig/sdkgen#418: the Python obsidian-sdk's escurl percent-encodes !'()* in a path, "
            "where the canonical port's encodeURIComponent keeps them")
 
 # Entries this port cannot answer yet, each with the upstream cause it waits on.
