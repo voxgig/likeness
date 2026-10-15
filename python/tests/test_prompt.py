@@ -17,7 +17,8 @@ MASTER = b'fixture master passphrase'
 PROMPT = b'passphrase for master: '
 
 
-def _run(argv: list[str], env: dict[str, str], ahead: bytes = b'', after: bytes = b'') -> tuple[bytes, int]:
+def _run(argv: list[str], env: dict[str, str], ahead: bytes = b'', after: bytes = b'',
+         instant: bytes = b'') -> tuple[bytes, int]:
     import pty
     pid, fd = pty.fork()
     if 0 == pid:
@@ -26,6 +27,9 @@ def _run(argv: list[str], env: dict[str, str], ahead: bytes = b'', after: bytes 
     out = b''
     deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
+        if instant and PROMPT in out:
+            os.write(fd, instant)
+            instant = b''
         if after and PROMPT in out:
             # Past the prompt the terminal is raw: give it time to get there.
             time.sleep(0.5)
@@ -80,5 +84,10 @@ class Prompt(unittest.TestCase):
 
     def test_a_passphrase_typed_at_the_prompt_is_not_echoed(self) -> None:
         out, code = self.run_list(after=MASTER + b'\r')
+        self.assertEqual(0, code, out)
+        self.assertEqual(PROMPT + b'\r\njoplin.apikey\r\nnotion.apikey\r\n', out)
+
+    def test_a_passphrase_typed_the_moment_the_prompt_appears_is_not_echoed(self) -> None:
+        out, code = self.run_list(instant=MASTER + b'\r')
         self.assertEqual(0, code, out)
         self.assertEqual(PROMPT + b'\r\njoplin.apikey\r\nnotion.apikey\r\n', out)

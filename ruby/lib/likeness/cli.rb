@@ -164,11 +164,14 @@ module Likeness
     { 'rest' => argv[0...at] + argv[(at + width)..], 'value' => value }
   end
 
-  # One line from the terminal with echo off; nil at the end of input.
+  # One line from the terminal with echo off; nil at the end of input. Echo goes
+  # off before the label shows, or an answer typed the moment it appears is echoed.
   def prompt(label, stdin, stderr)
-    stderr.write("#{label}: ")
-    stderr.flush
-    line = stdin.noecho(&:gets)
+    line = stdin.noecho do |io|
+      stderr.write("#{label}: ")
+      stderr.flush
+      io.gets
+    end
     line&.chomp&.force_encoding(Encoding::UTF_8)&.scrub
   rescue Interrupt
     exit 130

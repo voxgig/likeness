@@ -189,16 +189,61 @@ func loadConfig(path, profile string) (map[string]any, map[string]string, error)
 	return doc, accounts, nil
 }
 
+// afterCR holds across prompts: a line typed ahead ends in \n, Enter in raw
+// mode is \r, so a \n straight after the \r that ended a line is that end.
+var afterCR bool
+
 // prompt reads one line from the terminal with echo off; false at end of
-// input.
+// input. It reads raw, as the canonical port does: echo goes off before the
+// label shows, or an answer typed the moment it appears is echoed.
 func prompt(label string) (string, bool) {
-	fmt.Fprint(os.Stderr, label+": ")
-	typed, err := term.ReadPassword(int(os.Stdin.Fd()))
-	fmt.Fprint(os.Stderr, "\n")
+	fd := int(os.Stdin.Fd())
+	saved, err := term.MakeRaw(fd)
 	if nil != err {
 		return "", false
 	}
-	return string(typed), true
+	fmt.Fprint(os.Stderr, label+": ")
+	typed, ok, interrupted := readTyped(os.Stdin)
+	_ = term.Restore(fd, saved)
+	fmt.Fprint(os.Stderr, "\n")
+	if interrupted {
+		os.Exit(130)
+	}
+	return typed, ok
+}
+
+// readTyped takes one byte at a time, so what was typed past the line end is
+// left for the prompt that follows.
+func readTyped(in io.Reader) (typed string, ok bool, interrupted bool) {
+	var line []byte
+	one := make([]byte, 1)
+	for {
+		n, err := in.Read(one)
+		if 0 == n {
+			if nil != err {
+				return wellFormed(string(line)), 0 < len(line), false
+			}
+			continue
+		}
+		ch := one[0]
+		lf := afterCR && '\n' == ch
+		afterCR = false
+		switch {
+		case lf:
+		case '\r' == ch || '\n' == ch:
+			afterCR = '\r' == ch
+			return wellFormed(string(line)), true, false
+		case 0x04 == ch:
+			return wellFormed(string(line)), 0 < len(line), false
+		case 0x03 == ch:
+			return "", false, true
+		case 0x7f == ch || '\b' == ch:
+			_, size := utf8.DecodeLastRune(line)
+			line = line[:len(line)-size]
+		default:
+			line = append(line, ch)
+		}
+	}
 }
 
 func readStdin() (string, error) {

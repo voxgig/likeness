@@ -224,10 +224,12 @@ def prompt(label: str) -> str | None:
     """One line from the terminal with echo off; None at end of input. Read
     raw, so what was typed ahead of the prompt is kept: getpass flushes it."""
     fd = sys.stdin.fileno()
-    _write(sys.stderr.buffer, label + ': ')
     saved = termios.tcgetattr(fd)
+    # Echo goes off before the label shows, or an answer typed the moment it
+    # appears is echoed.
     termios.tcsetattr(fd, termios.TCSADRAIN, _raw(saved))
     try:
+        _write(sys.stderr.buffer, label + ': ')
         answer = _typed(fd)
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, saved)
