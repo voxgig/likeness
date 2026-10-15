@@ -281,7 +281,8 @@ templates:
   `encodeURIComponent` keeps, so a vault path holding one is spelled differently
   in a call (`upstream/issue/12`). The transcript entries
   `obsidian/list-odd-values` and `obsidian/list-odd-raw` differ in their `calls`
-  alone; `ruby/test/harness.rb` names them, and fails once they match.
+  alone; `ruby/test/harness.rb` declares them waiting, so omni fails the
+  group once they match.
 - A `list` builds an entity only for an item that is a record, so the plugin's
   root listing, which names its entries as text, comes back as entities with no
   data (`upstream/issue/13`). The offline transport lists records, so the corpus
