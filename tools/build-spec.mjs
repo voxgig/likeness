@@ -65,6 +65,10 @@ const C_EMBED = 'c/src/spec_embed.c'
 const C_NAMES = { 'commands.aontu': 'commands', 'errors.aontu': 'errors', 'caps.aontu': 'caps' }
 const cTexts = {}
 
+// The command that connects a source, whose flags the capability matrix
+// qualifies per source.
+const CONNECT = 'sources add'
+
 const check = process.argv.includes('--check')
 let stale = 0
 let wrote = 0
@@ -116,12 +120,15 @@ for (const name of SOURCES) {
   if (undefined !== C_NAMES[name]) cTexts[C_NAMES[name]] = text
 }
 
-const faults = grammarFaults(compiled['commands.aontu'], compiled['errors.aontu'])
+const faults = [
+  ...grammarFaults(compiled['commands.aontu'], compiled['errors.aontu']),
+  ...connectFaults(compiled['commands.aontu'], compiled['caps.aontu']),
+]
 if (0 < faults.length) {
   for (const f of faults) console.error(`  INVALID spec/commands.aontu: ${f}`)
   process.exit(2)
 }
-const help = JSON.stringify(sortDeep(renderHelp(compiled['commands.aontu'])), null, 2) + '\n'
+const help = JSON.stringify(sortDeep(renderHelp(compiled['commands.aontu'], compiled['caps.aontu'])), null, 2) + '\n'
 for (const dst of HELP) emit(dst, help, 'spec/commands.aontu')
 cTexts.help = help
 emit(C_EMBED, cEmbed(cTexts), 'spec/*.aontu')
@@ -185,6 +192,29 @@ function grammarFaults (table, errors) {
   return out
 }
 
+function connectFaults (table, caps) {
+  const out = []
+  const flags = table.command[CONNECT]?.flag ?? {}
+  for (const c of Object.values(caps.capability)) {
+    for (const f of [...c.connect.flag, ...Object.keys(c.connect.default)]) {
+      if (undefined === flags[f]) out.push(`capability ${c.name} names --${f}, which \`${CONNECT}\` does not declare`)
+    }
+  }
+  return out
+}
+
+// Which sources alone take a flag of CONNECT, and its value when none is given.
+function connectNote (caps, flag) {
+  const rows = Object.values(caps.capability).sort((a, b) => (a.name < b.name ? -1 : 1))
+  const only = rows.filter(c => c.connect.flag.includes(flag)).map(c => c.name)
+  const given = rows.filter(c => undefined !== c.connect.default[flag])
+    .map(c => (1 === only.length && only[0] === c.name ? '' : c.name + ' ') + c.connect.default[flag])
+  const parts = []
+  if (0 < only.length) parts.push(only.join(', ') + ' only')
+  if (0 < given.length) parts.push('default ' + given.join(', '))
+  return 0 === parts.length ? '' : ' (' + parts.join('; ') + ')'
+}
+
 function groupsOf (table) {
   const groups = {}
   for (const name of Object.keys(table.command)) {
@@ -220,7 +250,7 @@ function columns (rows) {
   return rows.map(([l, r]) => `  ${l.padEnd(width)}  ${r}`.trimEnd()).join('\n')
 }
 
-function renderHelp (table) {
+function renderHelp (table, caps) {
   const names = Object.keys(table.command).sort()
   const globals = Object.keys(table.global).sort()
     .map(n => flagUsage(n, table.global[n])).join(', ')
@@ -235,7 +265,8 @@ function renderHelp (table) {
       .filter(Boolean).join(' ')
     const lines = [
       ...cmd.arg.map(a => [argLabel(a), a.short]),
-      ...flags.map(f => [flagUsage(f, cmd.flag[f]), cmd.flag[f].short + range(cmd.flag[f])]),
+      ...flags.map(f => [flagUsage(f, cmd.flag[f]),
+        cmd.flag[f].short + range(cmd.flag[f]) + (CONNECT === name ? connectNote(caps, f) : '')]),
     ]
     text[name] = [
       usage, '', cmd.short + (cmd.ready ? '' : '\nnot implemented yet'),

@@ -3318,6 +3318,140 @@
           }
         ]
       },
+      "sources": {
+        "set": [
+          {
+            "fn": "secretName",
+            "id": "sources/secret-untagged",
+            "in": "joplin",
+            "out": "joplin.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-tagged",
+            "in": "joplin$work",
+            "out": "joplin_work.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-hyphen",
+            "in": "notion$docs-eu",
+            "out": "notion_docs_eu.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-a-run-is-one-underscore",
+            "in": "joplin$a--b",
+            "out": "joplin_a_b.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-edges-trimmed",
+            "in": "joplin$-x-",
+            "out": "joplin_x.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-case-folded",
+            "in": "Joplin$Work",
+            "out": "joplin_work.apikey"
+          },
+          {
+            "fn": "secretName",
+            "id": "sources/secret-an-api-and-a-tag-meet",
+            "in": "notes-a",
+            "out": "notes_a.apikey"
+          },
+          {
+            "fn": "refFor",
+            "id": "sources/ref-untagged",
+            "in": {
+              "source": "joplin"
+            },
+            "out": "joplin"
+          },
+          {
+            "fn": "refFor",
+            "id": "sources/ref-tag",
+            "in": {
+              "instance": "work",
+              "source": "joplin"
+            },
+            "out": "joplin$work"
+          },
+          {
+            "fn": "refFor",
+            "id": "sources/ref-a-tag-is-never-the-api",
+            "in": {
+              "instance": "joplin",
+              "source": "joplin"
+            },
+            "out": "joplin$joplin"
+          },
+          {
+            "fn": "refFor",
+            "id": "sources/ref-given-whole",
+            "in": {
+              "instance": "joplin$2nd",
+              "source": "joplin"
+            },
+            "out": "joplin$2nd"
+          },
+          {
+            "err": "--instance names a connection to another API than --source does",
+            "fn": "refFor",
+            "id": "sources/ref-of-another-api",
+            "in": {
+              "instance": "notion$work",
+              "source": "joplin"
+            }
+          },
+          {
+            "err": "--instance takes a tag of lowercase letters, digits and hyphens",
+            "fn": "refFor",
+            "id": "sources/ref-tag-not-lowercase",
+            "in": {
+              "instance": "Work",
+              "source": "joplin"
+            }
+          },
+          {
+            "err": "--instance takes a tag of lowercase letters, digits and hyphens",
+            "fn": "refFor",
+            "id": "sources/ref-tag-empty",
+            "in": {
+              "instance": "",
+              "source": "joplin"
+            }
+          },
+          {
+            "err": "--instance takes a tag of lowercase letters, digits and hyphens",
+            "fn": "refFor",
+            "id": "sources/ref-tag-empty-after-the-api",
+            "in": {
+              "instance": "joplin$",
+              "source": "joplin"
+            }
+          },
+          {
+            "err": "--instance takes a tag of lowercase letters, digits and hyphens",
+            "fn": "refFor",
+            "id": "sources/ref-tag-holds-a-dollar",
+            "in": {
+              "instance": "joplin$a$b",
+              "source": "joplin"
+            }
+          },
+          {
+            "err": "--source takes a source's name",
+            "fn": "refFor",
+            "id": "sources/ref-source-not-a-name",
+            "in": {
+              "source": "Joplin"
+            }
+          }
+        ]
+      },
       "text": {
         "set": [
           {

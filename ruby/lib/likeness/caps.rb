@@ -23,4 +23,14 @@ module Likeness
   def term_of(source, entity)
     CAPS.dig(source, 'entity', entity, 'term') || entity
   end
+
+  # How `sources add` connects a source, or nil for one not registered.
+  def connect_of(source)
+    CAPS.key?(source) ? CAPS[source]['connect'] : nil
+  end
+
+  # The flags of `sources add` that some source alone reads, in code-point order.
+  def source_flags
+    CAPS.values.flat_map { |c| c['connect']['flag'] }.uniq.sort
+  end
 end

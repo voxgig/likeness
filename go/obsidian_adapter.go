@@ -105,6 +105,61 @@ func (a obsidianAdapter) configure(instance string, block map[string]any) (any, 
 	return a.transport(instance, block)
 }
 
+const plainBase = "http://127.0.0.1:27123"
+
+/*
+setup is the block `sources add` writes. An https base is pinned to the
+certificate it presents, which --fingerprint names or a terminal confirms: never
+one taken on trust because it answered first.
+*/
+func (obsidianAdapter) setup(instance string, given map[string]any, ask asker) (pairs, error) {
+	base := textOf(given["base"])
+	fingerprint, fingerprinted := given["fingerprint"]
+	if true == given["plain-http"] {
+		if fingerprinted {
+			return nil, bad("--plain-http and --fingerprint contradict each other: plain HTTP pins no certificate", "give one of them")
+		}
+		if !strings.HasPrefix(base, "http://") {
+			return nil, bad("--plain-http needs an http base", "give the plugin's HTTP address with --base, such as "+plainBase)
+		}
+		return pairs{{"base", base}, {"options", pairs{{"tls", false}}}}, nil
+	}
+	if !strings.HasPrefix(base, "https://") {
+		return nil, bad("an http base is plain HTTP, which only --plain-http declares",
+			"add --plain-http, or give the plugin's HTTPS address with --base")
+	}
+
+	pin := ""
+	if fingerprinted {
+		parsed, err := parsePin(fingerprint)
+		if nil != err {
+			return nil, bad("--fingerprint is not sha256: and 64 hex digits", "give the certificate's SHA-256, as sha256:<hex>")
+		}
+		pin = parsed
+	} else if !ask.tty {
+		return nil, bad("pinning the plugin's certificate needs --fingerprint, or a terminal to confirm it on",
+			"pass --fingerprint sha256:<hex>; `openssl x509 -noout -fingerprint -sha256 -in obsidian-local-rest-api.crt` prints it")
+	}
+
+	named := obsidianSource + " at " + base
+	detail := map[string]string{"source": obsidianSource, "instance": instance}
+	presented, err := ask.presented(base)
+	if nil != err {
+		return nil, &LikenessError{Code: "source-unavailable", Msg: "nothing at " + base + " presented a certificate",
+			Remedy: "start Obsidian with the Local REST API community plugin enabled, or give its address with --base", Detail: detail}
+	}
+	if fingerprinted && pin != presented {
+		return nil, &LikenessError{Code: "certificate-rejected",
+			Msg:    named + " presents " + presented + ", not the certificate --fingerprint names",
+			Remedy: "check the fingerprint against the plugin's certificate; if it was regenerated, pass the new one", Detail: detail}
+	}
+	if !fingerprinted && !ask.confirm(named+" presents "+presented+"; type yes to pin it") {
+		return nil, &LikenessError{Code: "certificate-rejected", Msg: "the certificate " + named + " presents was not confirmed",
+			Remedy: "check it against the plugin's certificate, and run it again to pin it", Detail: detail}
+	}
+	return pairs{{"base", base}, {"options", pairs{{"tls", pairs{{"fingerprint", presented}}}}}}, nil
+}
+
 type vaultHandle struct {
 	sdk      *obsidian.ObsidianSDK
 	plain    bool

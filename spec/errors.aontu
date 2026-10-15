@@ -147,6 +147,13 @@ error: {
     retryable: false
     means: "the vault, or a key in it, is already there and is never overwritten"
   }
+  instance-exists: {
+    code: "instance-exists"
+    exit: 4
+    partial: false
+    retryable: false
+    means: "a connection with that ref is already configured, and is never overwritten"
+  }
   limit-exceeded: {
     code: "limit-exceeded"
     exit: 4

@@ -1,8 +1,9 @@
-# The fixture vault
+# The fixture vaults
 
-`likeness.skmv` is a sekreto minivault, written by `node tools/make-vault.mjs`.
-The secrets corpus copies it into each run's configuration directory, so no
-entry changes the committed file.
+`likeness.skmv` and `empty.skmv` are sekreto minivaults, written by
+`node tools/make-vault.mjs`. The corpus copies one into a run's configuration
+directory, so no entry changes a committed file. `empty.skmv` holds a master
+key, with the passphrase below, and no secret, as `secrets init` leaves a vault.
 
 The passphrases are public test values. Nothing real is ever stored here.
 

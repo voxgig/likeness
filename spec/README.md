@@ -23,6 +23,8 @@ spec/
   unit.aontu          DATA. The unit corpus: pure functions, every port.
   cli.aontu           DATA. The transcript corpus: whole commands, every port.
   help.json           RENDERED from commands.aontu by `make spec-build`; `help` prints it.
+  expect/             What each transcript entry prints, byte for byte.
+  written/            What each transcript entry writes, byte for byte.
   example/
     likeness.aontu          a valid project file
     likeness-broken.aontu   a deliberately invalid one; CI asserts it FAILS
@@ -40,21 +42,31 @@ installed port reads no specification file from disk and needs no checkout.
 The command table carries rules its shape cannot say, and the build refuses a
 table that breaks them: a command may not redeclare a global flag, only the last
 positional repeats, a valued flag names its value, a range belongs to an integer,
-and every exit is a registered code.
+and every exit is a registered code. Each source's `connect` row in `caps.aontu`
+names the `sources add` flags that source alone reads and the defaults its flags
+take, and the build refuses one that names a flag the command does not declare;
+the help for `sources add` says which source reads each flag, and its default,
+from that row.
 
 A transcript entry runs in a home directory of its own, with the configuration
 directory at `~/.config/likeness`. Each of its connections is an instance under
 `sdk` in station.json, whose block there is the connection's `block`, or `{}`
 when it gives none, and whose seed is its own `fixture`, or the entry's when it
-names none. It may bring files into the directory (the fixture vault,
-`fixtures/vault/likeness.skmv`, which every port's sekreto reads), give stdin,
-and stand in for a terminal with the answers typed at its prompts. It then
-asserts the prompts shown and, for a vault command, what the vault holds
-afterwards as one key reads it. The vault's bytes are never compared: they change
-on every write.
+names none. It may bring files into the directory (the fixture vaults under
+`fixtures/vault/`, which every port's sekreto reads), give stdin, stand in for a
+terminal with the answers typed at its prompts, and say what certificate each
+TLS server presents, by `host:port`, for the probe that pins one. An entry that
+brings `station.json` or `likeness.json` (from `fixtures/config/`, or what
+another entry wrote) is configured by those files alone, read as the argv shell
+reads them, and declares no connections. It then asserts the prompts shown, for
+a vault command what the vault holds afterwards as one key reads it, and for a
+command that writes the configuration each file afterwards, byte for byte
+against `spec/written/` or the fixture it brought, and the files that are not
+there. The vault's bytes are never compared: they change on every write.
 
 The TypeScript, Go, Python and Ruby ports run both corpora in full, and `make
-parity` compares their transcript output byte for byte. Where a port's SDK or
+parity` compares their transcript output byte for byte; C runs the `sources`
+group's two pure functions, `secretName` and `refFor`. Where a port's SDK or
 station still differs upstream, the port declares the entry waiting, with a reason
 naming the issue, and the declaration is held to its cause: the entry must still
 fail, and must pass once the cause's predicted change is applied. So a declaration
@@ -65,7 +77,7 @@ Ruby wait on two Obsidian entries
 `tools/parity-waiting.json` sets aside Go's one differing answer in the comparison
 the same way. The C port runs the unit corpus but for
 `connections`, which waits on station's C library reading `station.json`
-([station#23](https://github.com/voxgig/station/issues/23)), and the 37 transcript
+([station#23](https://github.com/voxgig/station/issues/23)), and the 43 transcript
 entries whose answer needs no source: `help`, `version`, `which`, a command not
 ready yet, and every command line the grammar refuses. The other transcript entries
 wait on a live transport in the C SDK ([sdkgen#403](https://github.com/voxgig/sdkgen/issues/403)),

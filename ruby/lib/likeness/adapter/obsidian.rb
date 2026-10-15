@@ -93,6 +93,72 @@ module Likeness
       transport(instance, block)
     end
 
+    PLAIN = 'http://127.0.0.1:27123'
+
+    # The block `sources add` writes. An https base is pinned to the certificate
+    # it presents, which --fingerprint names or a terminal confirms: never one
+    # taken on trust because it answered first.
+    def setup(instance, given, ask)
+      base = given['base'].to_s
+      return plain_setup(base, given) if true == given['plain-http']
+      unless base.start_with?('https://')
+        raise Likeness.bad('an http base is plain HTTP, which only --plain-http declares',
+                           "add --plain-http, or give the plugin's HTTPS address with --base")
+      end
+
+      pin = given_pin(given['fingerprint'], ask)
+      named = "#{SOURCE} at #{base}"
+      detail = { 'source' => SOURCE, 'instance' => instance }
+      presented = begin
+        ask.presented.call(base)
+      rescue StandardError
+        raise LikenessError.new('source-unavailable', "nothing at #{base} presented a certificate",
+                                'start Obsidian with the Local REST API community plugin enabled, ' \
+                                'or give its address with --base', detail)
+      end
+      if !pin.nil? && pin != presented
+        raise LikenessError.new('certificate-rejected',
+                                "#{named} presents #{presented}, not the certificate --fingerprint names",
+                                "check the fingerprint against the plugin's certificate; " \
+                                'if it was regenerated, pass the new one', detail)
+      end
+      if pin.nil? && !ask.confirm.call("#{named} presents #{presented}; type yes to pin it")
+        raise LikenessError.new('certificate-rejected', "the certificate #{named} presents was not confirmed",
+                                "check it against the plugin's certificate, and run it again to pin it", detail)
+      end
+      { 'base' => base, 'options' => { 'tls' => { 'fingerprint' => presented } } }
+    end
+
+    def plain_setup(base, given)
+      unless given['fingerprint'].nil?
+        raise Likeness.bad('--plain-http and --fingerprint contradict each other: plain HTTP pins no certificate',
+                           'give one of them')
+      end
+      unless base.start_with?('http://')
+        raise Likeness.bad('--plain-http needs an http base',
+                           "give the plugin's HTTP address with --base, such as #{PLAIN}")
+      end
+
+      { 'base' => base, 'options' => { 'tls' => false } }
+    end
+
+    # The pin --fingerprint names, or nil where a terminal is to confirm the one presented.
+    def given_pin(fingerprint, ask)
+      unless fingerprint.nil?
+        begin
+          return Likeness.parse_pin(fingerprint)
+        rescue PinError
+          raise Likeness.bad('--fingerprint is not sha256: and 64 hex digits',
+                             "give the certificate's SHA-256, as sha256:<hex>")
+        end
+      end
+      return nil if ask.tty
+
+      raise Likeness.bad("pinning the plugin's certificate needs --fingerprint, or a terminal to confirm it on",
+                         'pass --fingerprint sha256:<hex>; ' \
+                         '`openssl x509 -noout -fingerprint -sha256 -in obsidian-local-rest-api.crt` prints it')
+    end
+
     def connect(station, conn, config, seed = nil)
       feature = { 'station' => { 'instance' => conn.instance } }
       options = { 'headers' => { 'accept' => NOTE_JSON }, 'feature' => feature }

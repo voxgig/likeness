@@ -1,0 +1,12 @@
+{
+  "station": 1,
+  "profiles": {
+    "default": {
+      "sdk": {
+        "joplin$2nd": {
+          "base": "http://127.0.0.1:41184"
+        }
+      }
+    }
+  }
+}

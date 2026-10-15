@@ -12,10 +12,12 @@ import { project } from '../src/adapter/joplin.js'
 import * as notion from '../src/adapter/notion.js'
 import * as obsidian from '../src/adapter/obsidian.js'
 import { parsePin, fingerprintOf } from '../src/pin.js'
-import { takeConfigOption, parseStation, parseAccounts } from '../src/cli.js'
+import { takeConfigOption } from '../src/cli.js'
+import { parseStation, parseAccounts } from '../src/config.js'
 import { openStation, connectionsOf, profileOf } from '../src/core.js'
 import { parseArgv } from '../src/args.js'
 import { vaultEntry } from '../src/vault.js'
+import { secretName, refFor } from '../src/sources.js'
 import { entries, type UnitEntry } from './harness.js'
 
 type Fn = (input: any) => unknown
@@ -106,6 +108,11 @@ const REGISTRY: Record<string, Fn> = {
   },
   parsePin: (s) => parsePin(s),
   fingerprintOf: (hex) => fingerprintOf(Buffer.from(hex as string, 'hex')),
+  secretName: (ref) => secretName(ref as string),
+  refFor: (v) => {
+    const { source, instance } = v as { source: string, instance?: string }
+    return refFor(source, instance)
+  },
   vaultEntry: (v) => {
     const { station, profile, key } = v as { station: unknown, profile?: string, key?: string }
     return vaultEntry(station, {

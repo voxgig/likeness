@@ -7,7 +7,7 @@ import { LikenessError } from '../errors.js'
 import { pageMax } from '../caps.js'
 import { renderRaw } from '../envelope.js'
 import { CertificateError, parsePin, pinnedFetcher, PinError, type Refusal } from '../pin.js'
-import type { Check, Conn } from '../adapters.js'
+import type { Ask, Check, Conn, Given } from '../adapters.js'
 
 // eslint-disable-next-line
 import pkg from '@voxgig-sdk/obsidian-sdk'
@@ -87,6 +87,64 @@ export function transport (instance: string, block: Record<string, unknown>): Tr
 
 export function configure (instance: string, block: Record<string, unknown>): Transport {
   return transport(instance, block)
+}
+
+const PLAIN = 'http://127.0.0.1:27123'
+
+function bad (message: string, remedy: string): LikenessError {
+  return new LikenessError('invalid-argument', message, remedy)
+}
+
+/* The block `sources add` writes. An https base is pinned to the certificate
+ * it presents, which --fingerprint names or a terminal confirms: never one
+ * taken on trust because it answered first. */
+export async function setup (instance: string, given: Given, ask: Ask): Promise<Record<string, unknown>> {
+  const base = String(given.base)
+  const fingerprint = given.fingerprint
+  if (true === given['plain-http']) {
+    if (undefined !== fingerprint) {
+      throw bad('--plain-http and --fingerprint contradict each other: plain HTTP pins no certificate', 'give one of them')
+    }
+    if (!base.startsWith('http://')) {
+      throw bad('--plain-http needs an http base', 'give the plugin\'s HTTP address with --base, such as ' + PLAIN)
+    }
+    return { base, options: { tls: false } }
+  }
+  if (!base.startsWith('https://')) {
+    throw bad('an http base is plain HTTP, which only --plain-http declares',
+      'add --plain-http, or give the plugin\'s HTTPS address with --base')
+  }
+
+  let pin: string | undefined
+  if (undefined !== fingerprint) {
+    try { pin = parsePin(fingerprint) }
+    catch (err) {
+      if (err instanceof PinError) throw bad('--fingerprint is not sha256: and 64 hex digits', 'give the certificate\'s SHA-256, as sha256:<hex>')
+      throw err
+    }
+  }
+  else if (!ask.tty) {
+    throw bad('pinning the plugin\'s certificate needs --fingerprint, or a terminal to confirm it on',
+      'pass --fingerprint sha256:<hex>; `openssl x509 -noout -fingerprint -sha256 -in obsidian-local-rest-api.crt` prints it')
+  }
+
+  const named = SOURCE + ' at ' + base
+  const detail = { source: SOURCE, instance }
+  let presented: string
+  try { presented = await ask.presented(base) }
+  catch {
+    throw new LikenessError('source-unavailable', 'nothing at ' + base + ' presented a certificate',
+      'start Obsidian with the Local REST API community plugin enabled, or give its address with --base', detail)
+  }
+  if (undefined !== pin && pin !== presented) {
+    throw new LikenessError('certificate-rejected', named + ' presents ' + presented + ', not the certificate --fingerprint names',
+      'check the fingerprint against the plugin\'s certificate; if it was regenerated, pass the new one', detail)
+  }
+  if (undefined === pin && !await ask.confirm(named + ' presents ' + presented + '; type yes to pin it')) {
+    throw new LikenessError('certificate-rejected', 'the certificate ' + named + ' presents was not confirmed',
+      'check it against the plugin\'s certificate, and run it again to pin it', detail)
+  }
+  return { base, options: { tls: { fingerprint: presented } } }
 }
 
 export type Handle = { sdk: any, plain: boolean, instance: string }

@@ -13,10 +13,15 @@ likeness <command> [arguments] [flags]
   secrets revoke  drop a restricted key
   secrets rotate  a new root key for every secret; every other key is dropped
   secrets set     store a secret, its value read from a terminal or from stdin
+  sources add     add a connection to --source API, tagged --instance TAG; its token goes to the vault first
+  sources list    every connection of the active profile: ref, source, base, account and secret name
+  sources remove  remove a connection and its account; the vault keeps its token
+  sources rename  give a connection a new ref, its account and its token with it
+  sources test    check the named connections, or every one, as doctor does
   version         this port and its version
   which           every likeness on PATH: path, port, version
 
-declared, not implemented yet: archive, caps, describe, edit, link, move, new, open, rm, search, sources, tag
+declared, not implemented yet: archive, caps, describe, edit, link, move, new, open, rm, search, tag
 
 global flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME
 run `likeness help <command>` for one command

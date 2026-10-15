@@ -200,6 +200,14 @@ func unitRegistry() map[string]unitFn {
 			}
 			return fingerprintOf(der), nil
 		},
+		"secretName": func(t *testing.T, in any) (any, error) { return secretName(in.(string)), nil },
+		"refFor": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			if instance, ok := m["instance"].(string); ok {
+				return refFor(str(m, "source"), instance)
+			}
+			return refFor(str(m, "source"))
+		},
 		"partialCodes": func(t *testing.T, in any) (any, error) {
 			codes := PartialCodes()
 			out := make([]any, len(codes))

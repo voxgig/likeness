@@ -41,11 +41,12 @@ class CliCorpus(unittest.TestCase):
         self.assertEqual(sorted(set(ids)), sorted(ids), 'duplicate corpus ids')
 
     def test_no_expectation_file_is_unreferenced(self) -> None:
-        base = ROOT / 'spec' / 'expect'
+        # spec/written holds the files a command writes, as spec/expect holds what it prints.
         found = sorted(
-            p.relative_to(ROOT).as_posix() for p in base.rglob('*')
+            p.relative_to(ROOT).as_posix() for base in (ROOT / 'spec' / 'expect', ROOT / 'spec' / 'written')
+            for p in base.rglob('*')
             if p.is_file() and not any(part.startswith('.') for part in p.relative_to(base).parts))
-        used = {e['out']['stdout'] for e in ALL}
+        used = {f for e in ALL for f in [e['out']['stdout'], *e['out'].get('files', {}).values()]}
         self.assertEqual([], [f for f in found if f not in used], 'expectation files no entry refers to')
 
     def test_every_entry_waiting_upstream_is_in_the_corpus(self) -> None:

@@ -1,0 +1,1 @@
+added joplin$work, its token in the vault as joplin_work.apikey

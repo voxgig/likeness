@@ -81,6 +81,20 @@ func (notionAdapter) configure(instance string, block map[string]any) (any, erro
 	return pinnedVersion{version}, nil
 }
 
+// setup is the block `sources add` writes: the pinned version, and the base when one is given.
+func (notionAdapter) setup(_ string, given map[string]any, _ asker) (pairs, error) {
+	version, ok := given["notion-version"].(string)
+	if !ok || !notionVersionShape.MatchString(version) {
+		return nil, bad("--notion-version is not a date such as 2022-06-28",
+			"give the API version as YYYY-MM-DD, as Notion publishes it")
+	}
+	block := pairs{}
+	if base, ok := given["base"]; ok {
+		block = append(block, pair{"base", base})
+	}
+	return append(block, pair{"options", pairs{{"headers", pairs{{"notion-version", version}}}}}), nil
+}
+
 // The ref goes in the station feature's options: the SDK refuses a top-level instance option.
 func (notionAdapter) connect(st *station.Station, conn Connection, config any, seed map[string]any) any {
 	pinned, _ := config.(pinnedVersion)

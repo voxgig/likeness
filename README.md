@@ -18,9 +18,9 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 275 entries, run by every port, C included but for the eighteen of `connections` |
-| `spec/cli.aontu` — the transcript corpus | 183 whole commands, run by the TypeScript, Go, Python and Ruby ports. Where a port's SDK or station still differs upstream, it declares the entry waiting, held to its cause: two Obsidian entries in Python and Ruby ([sdkgen#418](https://github.com/voxgig/sdkgen/issues/418)), eight in Go ([station#50](https://github.com/voxgig/station/issues/50), sdkgen#418). C answers the 37 that need no source |
-| `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`, over Joplin and Obsidian, and Notion by `get`, since its SDK lists no pages; offline through the real generated SDK |
+| `spec/unit.aontu` — the pure-function corpus | 292 entries, run by every port, C included but for the eighteen of `connections` |
+| `spec/cli.aontu` — the transcript corpus | 259 whole commands, run by the TypeScript, Go, Python and Ruby ports. Where a port's SDK or station still differs upstream, it declares the entry waiting, held to its cause: two Obsidian entries in Python and Ruby ([sdkgen#418](https://github.com/voxgig/sdkgen/issues/418)), eight in Go ([station#50](https://github.com/voxgig/station/issues/50), sdkgen#418). C answers the 43 that need no source |
+| `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `sources`, `help`, `version`, `which`, over Joplin and Obsidian, and Notion by `get`, since its SDK lists no pages; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
 | `python/` — the third port | the same again, through station's Python library |
 | `ruby/` — the Ruby port | the same again, on station's Ruby library and the three SDKs' `rb` gems, loaded together with their constant collisions ([sdkgen#404](https://github.com/voxgig/sdkgen/issues/404)) proved inert for what likeness uses |
@@ -88,6 +88,37 @@ station profile:
 A profile reads only its own accounts. Two profiles may declare `joplin`
 against different applications, and an account shared between them would give
 one profile's notes the other's identities.
+
+`likeness sources` keeps both files, under the active profile, so neither need be
+written by hand:
+
+```sh
+likeness sources add --source joplin --account <the Joplin profile id>   # the token is typed, echo off
+likeness sources add --source notion --instance docs --account <workspace id> --secret notion_docs.apikey
+likeness sources list                          # ref, source, base, account and secret name, never a value
+likeness sources rename 'notion$docs' 'notion$wiki'   # its account goes with it, so no lid changes
+likeness sources remove 'notion$wiki'          # its account goes too; its token stays in the vault
+likeness sources test joplin                   # doctor's row, for the connections named
+```
+
+`add` writes the instance `<api>`, or `<api>$<tag>` with `--instance`, and never
+overwrites a connection or a token. It stores the token in the vault under the
+instance's secret name before either file changes: typed at a prompt with echo
+off, or already stored and named with `--secret`, never an argument. No wired SDK
+can name the account a token reaches yet, so `--account` is required, and the
+refusal says why for each source; `spec/caps.aontu` marks a source whose SDK can,
+and `add` then asks it instead. It pins Obsidian's certificate as the plugin
+presents it, read by a probe that writes nothing: on a terminal it shows the
+fingerprint and asks, and otherwise `--fingerprint` names it and is held to it.
+`--plain-http`, with an `http://` base, writes `"tls": false` instead. Notion's
+`notion-version` is `--notion-version`, or 2022-06-28. Joplin's base is
+`http://127.0.0.1:41184` unless `--base` says otherwise.
+
+Each write changes both files or neither, and keeps everything in them that it
+does not change, in their own order and as written, laid out as
+`JSON.stringify(doc, null, 2)` lays out JSON. A rename writes the secret name the
+old ref derived into the block, so the token still resolves, and a profile
+cannot change a connection it inherits from `default`.
 
 #### Obsidian
 

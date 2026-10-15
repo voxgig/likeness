@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'voxgig_station'
-
 require_relative 'adapters'
 require_relative 'args'
 require_relative 'calls'
@@ -12,6 +10,8 @@ require_relative 'evaluate'
 require_relative 'identity'
 require_relative 'note'
 require_relative 'selector'
+require_relative 'sources'
+require_relative 'station'
 require_relative 'vault'
 require_relative 'version'
 
@@ -19,14 +19,12 @@ module Likeness
   # Every impure input, named. `station` is station.json in station's grammar,
   # `accounts` each instance's account from likeness.json beside it, `fixture`
   # the SDKs' offline seeds, absent in production. A path under `home` is shown
-  # from `~`, a relative vault path is read from `dir`, and with `tty` what the
-  # environment lacks may be asked for.
+  # from `~`, and a relative vault path is read from `dir`; `sources` rewrites
+  # `config` through `fs`. With `tty` what the environment lacks may be asked for.
   Ctx = Struct.new(:argv, :env, :clock, :seed, :station, :accounts, :fixture, :path,
-                   :home, :dir, :stdin, :tty, :prompt, keyword_init: true)
+                   :home, :dir, :config, :stdin, :tty, :prompt, :presented, :fs, keyword_init: true)
 
   Result = Struct.new(:exit, :stdout, :stderr, :calls, keyword_init: true)
-
-  Connection = Struct.new(:instance, :source, :account, keyword_init: true)
 
   Flags = Struct.new(:json, :raw, :limit, :sort, :strict, :deterministic, :instance, :source,
                      :passphrase_env, :new_passphrase_env, :vault_key, :reveal, :write, keyword_init: true)
@@ -55,28 +53,6 @@ module Likeness
   end
 
   module_function
-
-  def profile_of(env)
-    profile = env&.fetch('VOXGIG_STATION_PROFILE', nil)
-    profile.nil? || profile.empty? ? 'default' : profile
-  end
-
-  def open_station(config, env = nil)
-    VoxgigStation::Station.new('config' => config, 'profile' => profile_of(env), 'proxy' => 'off', 'load' => false)
-  end
-
-  # station.json with its secret chain replaced, in every profile, by the one
-  # likeness decided on.
-  def with_chain(config, chain)
-    return config unless config.is_a?(Hash)
-
-    copy = Marshal.load(Marshal.dump(config))
-    profiles = copy['profiles']
-    (profiles.is_a?(Hash) ? profiles.values : []).each do |p|
-      p['secrets'] = { 'providers' => chain } if p.is_a?(Hash)
-    end
-    copy
-  end
 
   def entry_of(ctx, flags)
     home = ctx.home || Dir.home
@@ -123,22 +99,6 @@ module Likeness
     conns.each_with_object({}) do |conn, out|
       adapter = adapter_for(conn)
       out[conn.instance] = adapter.configure(conn.instance, blocks[conn.instance] || {}) if adapter.respond_to?(:configure)
-    end
-  end
-
-  # Every declared active instance, in station's ref order, with the account
-  # its notes' identity derives from. Identity is never derived from the ref.
-  def connections_of(station, accounts, profile)
-    station.instances.select { |i| i['active'] }.map do |i|
-      name = i['name']
-      account = accounts[name]
-      unless account.is_a?(String) && !account.empty?
-        raise LikenessError.new('invalid-project',
-                                "instance \"#{name}\" has no account in likeness.json under profile \"#{profile}\"",
-                                "add `\"#{name}\": { \"account\": \"<id>\" }` under " \
-                                "`profiles.#{profile}.instances` in likeness.json")
-      end
-      Connection.new(instance: name, source: i['api'], account: account)
     end
   end
 
@@ -384,7 +344,7 @@ module Likeness
                                    calls: session.calls.count)
   end
 
-  def cmd_doctor(flags, session)
+  def cmd_doctor(name, flags, session)
     conns = selected(session.conns, flags)
     failures = []
     rows = conns.map do |conn|
@@ -411,12 +371,12 @@ module Likeness
     end
     # The worst row wins: highest exit status, then code name to break a tie.
     worst = failures.uniq.min_by { |c| [-exit_for(c), c] }
-    env = envelope(['doctor'], worst || 'ok', rows, count: rows.length, sources: conns.map(&:instance).sort,
-                                                    calls: session.calls.count)
+    env = envelope([name], worst || 'ok', rows, count: rows.length, sources: conns.map(&:instance).sort,
+                                                 calls: session.calls.count)
     return env if failures.empty?
 
     fails(env, "#{failures.length} #{1 == failures.length ? 'connection needs' : 'connections need'} attention",
-          'start the application, check the token, and re-run `likeness doctor`')
+          "start the application, check the token, and re-run `likeness #{name}`")
   end
 
   def cmd_version
@@ -443,6 +403,23 @@ module Likeness
   def cmd_secrets(ctx, name, flags, args)
     got = secrets(name.delete_prefix('secrets '), args, entry_of(ctx, flags), ctx, flags)
     [envelope([name], got.empty ? 'no-match' : 'ok', got.data, count: got.count), got.text]
+  end
+
+  def replied(name, got)
+    [envelope([name], got.empty ? 'no-match' : 'ok', got.data, count: got.count), got.text]
+  end
+
+  # Every `sources` action but `test`, which runs as doctor does.
+  def cmd_sources(ctx, parsed, flags, watch)
+    name = parsed['command']
+    args = parsed['args']
+    case name
+    when 'sources list' then replied(name, sources_list(open_configured(ctx), ctx.accounts || {}))
+    when 'sources add' then replied(name, sources_add(ctx, parsed['flags'], flags, watch))
+    when 'sources remove' then replied(name, sources_remove(ctx, args[0]))
+    when 'sources rename' then replied(name, sources_rename(ctx, args[0], args[1]))
+    else raise "no such sources action: #{name}"
+    end
   end
 
   def run(ctx)
@@ -477,13 +454,17 @@ module Likeness
         when /\Asecrets /
           answer, text = cmd_secrets(ctx, name, flags, parsed['args'])
           answer
+        when /\Asources (?!test\z)/
+          answer, text = cmd_sources(ctx, parsed, flags, ->(station) { calls = Calls.new(station) })
+          answer
         else
           session = open_session(ctx, flags)
           calls = session.calls
           case name
           when 'list' then cmd_list(ctx, flags, parsed['args'], session)
           when 'get' then cmd_get(flags, parsed['args'], session)
-          when 'doctor' then cmd_doctor(flags, session)
+          when 'doctor' then cmd_doctor(name, flags, session)
+          when 'sources test' then cmd_doctor(name, flags.dup.tap { |f| f.instance += parsed['args'] }, session)
           else raise "declared ready and not dispatched: #{name}"
           end
         end

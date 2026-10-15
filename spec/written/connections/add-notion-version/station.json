@@ -1,0 +1,17 @@
+{
+  "station": 1,
+  "profiles": {
+    "default": {
+      "sdk": {
+        "notion$eu": {
+          "base": "https://api.notion.com",
+          "options": {
+            "headers": {
+              "notion-version": "2025-09-03"
+            }
+          }
+        }
+      }
+    }
+  }
+}

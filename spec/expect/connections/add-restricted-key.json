@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"vault-denied","data":null,"error":{"message":"only a master key stores a new secret, and the key ci is restricted","remedy":"run it as the master key, or store the token first and name it with --secret"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

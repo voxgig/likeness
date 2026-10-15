@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"invalid-argument","data":null,"error":{"message":"joplin$a--b would take its token from joplin_a_b.apikey, as joplin$a-b does","remedy":"choose another tag with --instance, or name a secret of its own with --secret"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

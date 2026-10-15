@@ -59,6 +59,20 @@ module Likeness
       { 'version' => version }
     end
 
+    # The block `sources add` writes: the pinned version, and the base when one is given.
+    def setup(_instance, given, _ask)
+      version = given['notion-version']
+      unless version.is_a?(String) && VERSION_RE.match?(version)
+        raise LikenessError.new('invalid-argument', '--notion-version is not a date such as 2022-06-28',
+                                'give the API version as YYYY-MM-DD, as Notion publishes it')
+      end
+
+      block = {}
+      block['base'] = given['base'] unless given['base'].nil?
+      block['options'] = { 'headers' => { 'notion-version' => version } }
+      block
+    end
+
     # The ref rides the station feature: a top-level `instance` reaches the SDK, which refuses it.
     def connect(station, conn, config, seed = nil)
       feature = { 'station' => { 'instance' => conn.instance } }

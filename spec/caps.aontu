@@ -1,187 +1,217 @@
-capability: joplin: name: "joplin"
-capability: joplin: entity: note: kind: "note"
-capability: joplin: entity: note: term: "note"
-capability: joplin: entity: note: sdk: "note"
-capability: joplin: entity: note: op: {
-  list: true
-  get: true
-  search: "replica"
-  create: true
-  update: true
-  move: "parent-id"
-  tag: false
-  link: "markdown"
-  archive: false
-  delete: true
-}
-capability: joplin: entity: space: kind: "space"
-capability: joplin: entity: space: term: "notebook"
-capability: joplin: entity: space: sdk: "folder"
-capability: joplin: entity: space: op: {
-  list: true
-  get: true
-  # The replica indexes NOTES only - note_fts is built over the note table -
-  # so a space or a tag is not searchable through it either. Claiming
-  # otherwise would be the same overclaim as the ones already corrected here.
-  search: false
-  create: true
-  update: true
-  move: "parent-id"
-  tag: false
-  link: false
-  archive: false
-  delete: true
-}
-capability: joplin: entity: tag: kind: "tag"
-capability: joplin: entity: tag: term: "tag"
-capability: joplin: entity: tag: sdk: "tag"
-capability: joplin: entity: tag: op: {
-  list: true
-  get: true
-  # The replica indexes NOTES only - note_fts is built over the note table -
-  # so a space or a tag is not searchable through it either. Claiming
-  # otherwise would be the same overclaim as the ones already corrected here.
-  search: false
-  create: true
-  update: true
-  move: false
-  tag: false
-  link: false
-  archive: false
-  delete: true
-}
-capability: joplin: limit: {
-  page_max: 100
-  body: "markdown"
-  search: "none"
-  rate: 0
-  version_token: false
-}
+capability: {
+  joplin: name: "joplin"
+  joplin: entity: note: kind: "note"
+  joplin: entity: note: term: "note"
+  joplin: entity: note: sdk: "note"
+  joplin: entity: note: op: {
+    list: true
+    get: true
+    search: "replica"
+    create: true
+    update: true
+    move: "parent-id"
+    tag: false
+    link: "markdown"
+    archive: false
+    delete: true
+  }
+  joplin: entity: space: kind: "space"
+  joplin: entity: space: term: "notebook"
+  joplin: entity: space: sdk: "folder"
+  joplin: entity: space: op: {
+    list: true
+    get: true
+    # The replica indexes NOTES only - note_fts is built over the note table -
+    # so a space or a tag is not searchable through it either. Claiming
+    # otherwise would be the same overclaim as the ones already corrected here.
+    search: false
+    create: true
+    update: true
+    move: "parent-id"
+    tag: false
+    link: false
+    archive: false
+    delete: true
+  }
+  joplin: entity: tag: kind: "tag"
+  joplin: entity: tag: term: "tag"
+  joplin: entity: tag: sdk: "tag"
+  joplin: entity: tag: op: {
+    list: true
+    get: true
+    # The replica indexes NOTES only - note_fts is built over the note table -
+    # so a space or a tag is not searchable through it either. Claiming
+    # otherwise would be the same overclaim as the ones already corrected here.
+    search: false
+    create: true
+    update: true
+    move: false
+    tag: false
+    link: false
+    archive: false
+    delete: true
+  }
+  joplin: limit: {
+    page_max: 100
+    body: "markdown"
+    search: "none"
+    rate: 0
+    version_token: false
+  }
+  joplin: connect: default: base: "http://127.0.0.1:41184"
+  joplin: connect: flag: []
+  joplin: connect: account: {
+    term: "the Joplin profile id"
+    discover: false
+    why: "Joplin's data API names no profile id"
+  }
 
-capability: obsidian: name: "obsidian"
-capability: obsidian: entity: note: kind: "note"
-capability: obsidian: entity: note: term: "file"
-capability: obsidian: entity: note: sdk: "vault"
-capability: obsidian: entity: note: op: {
-  list: true
-  get: true
-  search: "replica"
-  create: true
-  update: true
-  move: false
-  tag: "frontmatter"
-  link: "wikilink"
-  archive: false
-  delete: true
-}
-capability: obsidian: entity: tag: kind: "tag"
-capability: obsidian: entity: tag: term: "tag"
-capability: obsidian: entity: tag: sdk: "tag"
-capability: obsidian: entity: tag: op: {
-  list: true
-  get: false
-  # The replica indexes NOTES only - note_fts is built over the note table -
-  # so a space or a tag is not searchable through it either. Claiming
-  # otherwise would be the same overclaim as the ones already corrected here.
-  search: false
-  create: false
-  update: false
-  move: false
-  tag: false
-  link: false
-  archive: false
-  delete: false
-}
-capability: obsidian: limit: {
-  page_max: 5000
-  body: "markdown"
-  search: "none"
-  rate: 0
-  version_token: true
-}
+  obsidian: name: "obsidian"
+  obsidian: entity: note: kind: "note"
+  obsidian: entity: note: term: "file"
+  obsidian: entity: note: sdk: "vault"
+  obsidian: entity: note: op: {
+    list: true
+    get: true
+    search: "replica"
+    create: true
+    update: true
+    move: false
+    tag: "frontmatter"
+    link: "wikilink"
+    archive: false
+    delete: true
+  }
+  obsidian: entity: tag: kind: "tag"
+  obsidian: entity: tag: term: "tag"
+  obsidian: entity: tag: sdk: "tag"
+  obsidian: entity: tag: op: {
+    list: true
+    get: false
+    # The replica indexes NOTES only - note_fts is built over the note table -
+    # so a space or a tag is not searchable through it either. Claiming
+    # otherwise would be the same overclaim as the ones already corrected here.
+    search: false
+    create: false
+    update: false
+    move: false
+    tag: false
+    link: false
+    archive: false
+    delete: false
+  }
+  obsidian: limit: {
+    page_max: 5000
+    body: "markdown"
+    search: "none"
+    rate: 0
+    version_token: true
+  }
+  obsidian: connect: default: base: "https://127.0.0.1:27124"
+  obsidian: connect: flag: ["fingerprint" "plain-http"]
+  obsidian: connect: account: {
+    term: "the vault's id"
+    discover: false
+    why: "the Local REST API plugin names no vault"
+  }
 
-capability: notion: name: "notion"
-capability: notion: entity: note: kind: "note"
-capability: notion: entity: note: term: "page"
-capability: notion: entity: note: sdk: "page"
-capability: notion: entity: note: op: {
-  list: false
-  get: true
-  search: "replica"
-  create: true
-  update: true
-  move: false
-  tag: "property"
-  link: "mention"
-  archive: "archived-flag"
-  delete: false
-}
-capability: notion: entity: space: kind: "space"
-capability: notion: entity: space: term: "database"
-capability: notion: entity: space: sdk: "database"
-capability: notion: entity: space: op: {
-  list: false
-  get: true
-  # The replica indexes NOTES only - note_fts is built over the note table -
-  # so a space or a tag is not searchable through it either. Claiming
-  # otherwise would be the same overclaim as the ones already corrected here.
-  search: false
-  create: true
-  update: true
-  move: false
-  tag: false
-  link: false
-  archive: false
-  delete: false
-}
-capability: notion: limit: {
-  page_max: 100
-  body: "blocks"
-  search: "none"
-  rate: 3
-  version_token: false
-}
+  notion: {
+    name: "notion"
+    entity: note: kind: "note"
+    entity: note: term: "page"
+    entity: note: sdk: "page"
+    entity: note: op: {
+      list: false
+      get: true
+      search: "replica"
+      create: true
+      update: true
+      move: false
+      tag: "property"
+      link: "mention"
+      archive: "archived-flag"
+      delete: false
+    }
+    entity: space: kind: "space"
+    entity: space: term: "database"
+    entity: space: sdk: "database"
+    entity: space: op: {
+      list: false
+      get: true
+      # The replica indexes NOTES only - note_fts is built over the note table -
+      # so a space or a tag is not searchable through it either. Claiming
+      # otherwise would be the same overclaim as the ones already corrected here.
+      search: false
+      create: true
+      update: true
+      move: false
+      tag: false
+      link: false
+      archive: false
+      delete: false
+    }
+    limit: page_max: 100
+    limit: body: "blocks"
+    limit: search: "none"
+    limit: rate: 3
+    limit: version_token: false
+    connect: {
+      default: notion-version: "2022-06-28"
+      flag: ["notion-version"]
+      account: term: "the workspace id"
+      account: discover: false
+      account: why: "its SDK cannot ask which workspace a token belongs to"
+    }
+  }
 
-capability: linear: name: "linear"
-capability: linear: entity: note: kind: "note"
-capability: linear: entity: note: term: "issue"
-capability: linear: entity: note: sdk: "issue"
-# No remove operation exists, so a hard delete is refused from
-# data rather than attempted. Linear archives instead.
-capability: linear: entity: note: op: {
-  list: true
-  get: true
-  search: "replica"
-  create: true
-  update: true
-  move: "team-id"
-  tag: false
-  link: false
-  archive: false
-  delete: false
-}
-capability: linear: entity: space: kind: "space"
-capability: linear: entity: space: term: "team"
-capability: linear: entity: space: sdk: "team"
-capability: linear: entity: space: op: {
-  list: true
-  get: true
-  # The replica indexes NOTES only - note_fts is built over the note table -
-  # so a space or a tag is not searchable through it either. Claiming
-  # otherwise would be the same overclaim as the ones already corrected here.
-  search: false
-  create: false
-  update: false
-  move: false
-  tag: false
-  link: false
-  archive: false
-  delete: false
-}
-capability: linear: limit: {
-  page_max: 100
-  body: "markdown"
-  search: "none"
-  rate: 0
-  version_token: false
+  linear: {
+    name: "linear"
+    entity: note: kind: "note"
+    entity: note: term: "issue"
+    entity: note: sdk: "issue"
+    # No remove operation exists, so a hard delete is refused from
+    # data rather than attempted. Linear archives instead.
+    entity: note: op: {
+      list: true
+      get: true
+      search: "replica"
+      create: true
+      update: true
+      move: "team-id"
+      tag: false
+      link: false
+      archive: false
+      delete: false
+    }
+    entity: space: kind: "space"
+    entity: space: term: "team"
+    entity: space: sdk: "team"
+    entity: space: op: {
+      list: true
+      get: true
+      # The replica indexes NOTES only - note_fts is built over the note table -
+      # so a space or a tag is not searchable through it either. Claiming
+      # otherwise would be the same overclaim as the ones already corrected here.
+      search: false
+      create: false
+      update: false
+      move: false
+      tag: false
+      link: false
+      archive: false
+      delete: false
+    }
+    limit: page_max: 100
+    limit: body: "markdown"
+    limit: search: "none"
+    limit: rate: 0
+    limit: version_token: false
+    connect: default: {}
+    connect: flag: []
+    connect: account: {
+      term: "the organisation id"
+      discover: false
+      why: "its SDK reads issues and teams, and no organisation"
+    }
+  }
 }

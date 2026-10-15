@@ -1,0 +1,18 @@
+{
+  "likeness": 1,
+  "profiles": {
+    "default": {
+      "instances": {
+        "joplin": {
+          "account": "local"
+        },
+        "joplin$work": {
+          "account": "office"
+        },
+        "notion$wiki": {
+          "account": "acme-workspace"
+        }
+      }
+    }
+  }
+}

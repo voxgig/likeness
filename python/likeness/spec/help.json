@@ -116,9 +116,29 @@
       "takes": "<name> [-]"
     },
     {
-      "command": "sources",
-      "does": "connection management (not implemented yet)",
+      "command": "sources add",
+      "does": "add a connection to --source API, tagged --instance TAG; its token goes to the vault first",
       "takes": ""
+    },
+    {
+      "command": "sources list",
+      "does": "every connection of the active profile: ref, source, base, account and secret name",
+      "takes": ""
+    },
+    {
+      "command": "sources remove",
+      "does": "remove a connection and its account; the vault keeps its token",
+      "takes": "<ref>"
+    },
+    {
+      "command": "sources rename",
+      "does": "give a connection a new ref, its account and its token with it",
+      "takes": "<ref> <new-ref>"
+    },
+    {
+      "command": "sources test",
+      "does": "check the named connections, or every one, as doctor does",
+      "takes": "[<ref>...]"
     },
     {
       "command": "tag",
@@ -137,7 +157,7 @@
     }
   ],
   "text": {
-    "": "likeness <command> [arguments] [flags]\n\n  doctor          check every selected connection\n  get             notes by ref\n  help            the command list, or one command's help\n  list            notes matching a selector, across the selected connections\n  secrets get     whether a secret is set, and with --reveal its value\n  secrets grant   mint a restricted key that reads the named secrets\n  secrets init    create the vault station.json names, with its master key\n  secrets keys    every key in the vault, and what it may do\n  secrets list    the names this key can read\n  secrets remove  drop a secret\n  secrets revoke  drop a restricted key\n  secrets rotate  a new root key for every secret; every other key is dropped\n  secrets set     store a secret, its value read from a terminal or from stdin\n  version         this port and its version\n  which           every likeness on PATH: path, port, version\n\ndeclared, not implemented yet: archive, caps, describe, edit, link, move, new, open, rm, search, sources, tag\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\nrun `likeness help <command>` for one command\n",
+    "": "likeness <command> [arguments] [flags]\n\n  doctor          check every selected connection\n  get             notes by ref\n  help            the command list, or one command's help\n  list            notes matching a selector, across the selected connections\n  secrets get     whether a secret is set, and with --reveal its value\n  secrets grant   mint a restricted key that reads the named secrets\n  secrets init    create the vault station.json names, with its master key\n  secrets keys    every key in the vault, and what it may do\n  secrets list    the names this key can read\n  secrets remove  drop a secret\n  secrets revoke  drop a restricted key\n  secrets rotate  a new root key for every secret; every other key is dropped\n  secrets set     store a secret, its value read from a terminal or from stdin\n  sources add     add a connection to --source API, tagged --instance TAG; its token goes to the vault first\n  sources list    every connection of the active profile: ref, source, base, account and secret name\n  sources remove  remove a connection and its account; the vault keeps its token\n  sources rename  give a connection a new ref, its account and its token with it\n  sources test    check the named connections, or every one, as doctor does\n  version         this port and its version\n  which           every likeness on PATH: path, port, version\n\ndeclared, not implemented yet: archive, caps, describe, edit, link, move, new, open, rm, search, tag\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\nrun `likeness help <command>` for one command\n",
     "archive": "likeness archive\n\narchive notes, reversibly\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
     "caps": "likeness caps\n\nthe capability matrix\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
     "describe": "likeness describe\n\nthe whole surface, for agents\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
@@ -162,7 +182,12 @@
     "secrets revoke": "likeness secrets revoke <key>\n\ndrop a restricted key\n\n  <key>  the key's name\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
     "secrets rotate": "likeness secrets rotate\n\na new root key for every secret; every other key is dropped\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
     "secrets set": "likeness secrets set <name> [-]\n\nstore a secret, its value read from a terminal or from stdin\n\n  <name>  the secret's name\n  -       read the value from stdin\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
-    "sources": "likeness sources\n\nconnection management\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "sources": "likeness sources <action> [arguments] [flags]\n\n  add     add a connection to --source API, tagged --instance TAG; its token goes to the vault first\n  list    every connection of the active profile: ref, source, base, account and secret name\n  remove  remove a connection and its account; the vault keeps its token\n  rename  give a connection a new ref, its account and its token with it\n  test    check the named connections, or every one, as doctor does\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\nrun `likeness help sources <action>` for one action\n",
+    "sources add": "likeness sources add [--account ID] [--base URL] [--fingerprint FP] [--notion-version DATE] [--plain-http] [--secret NAME]\n\nadd a connection to --source API, tagged --instance TAG; its token goes to the vault first\n\n  --account ID           the source's own id for the account, which every note's identity derives from\n  --base URL             where the application answers, if not at its usual address (default joplin http://127.0.0.1:41184, obsidian https://127.0.0.1:27124)\n  --fingerprint FP       the certificate to pin, sha256:<hex>, held to the one presented (obsidian only)\n  --notion-version DATE  the API version every request carries (notion only; default 2022-06-28)\n  --plain-http           reach an http base with TLS off (obsidian only)\n  --secret NAME          a token already in the vault, rather than one typed now\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "sources list": "likeness sources list\n\nevery connection of the active profile: ref, source, base, account and secret name\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "sources remove": "likeness sources remove <ref>\n\nremove a connection and its account; the vault keeps its token\n\n  <ref>  the connection, as api or api$tag\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "sources rename": "likeness sources rename <ref> <new-ref>\n\ngive a connection a new ref, its account and its token with it\n\n  <ref>      the connection\n  <new-ref>  its new ref, of the same API\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
+    "sources test": "likeness sources test [<ref>...]\n\ncheck the named connections, or every one, as doctor does\n\n  <ref>...  a connection to check\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
     "tag": "likeness tag\n\nadd or remove tags\nnot implemented yet\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
     "version": "likeness version\n\nthis port and its version\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n",
     "which": "likeness which\n\nevery likeness on PATH: path, port, version\n\nglobal flags: --config PATH, --deterministic, --instance REF..., --json, --passphrase-env VAR, --source API..., --strict, --vault-key NAME\n"

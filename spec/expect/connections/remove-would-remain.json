@@ -1,0 +1,1 @@
+{"cmd":["sources","remove"],"code":"invalid-argument","data":null,"error":{"message":"connection \"joplin\" would remain: the default profile declares it too, and \"work\" inherits it","remedy":"remove the default profile's first, with VOXGIG_STATION_PROFILE unset"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

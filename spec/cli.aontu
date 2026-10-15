@@ -4091,4 +4091,2213 @@ primary: cli: {
       }
     }
   ]
+
+  # The `sources` group: station.json and likeness.json, changed together.
+  connections: set: [
+    {
+      id: "connections/needs-an-action"
+      # A group is not a command: its action is the second argument.
+      args: ["sources"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/needs-an-action.txt"
+        calls: []
+        stderr: "error: invalid-argument\n  `sources` needs an action: add, list, remove, rename or test\n  remedy  run `likeness help sources` for what each does\n"
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/help-group"
+      args: ["help" "sources"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/connections/help-group.txt" calls: [] }
+    }
+
+    {
+      id: "connections/help-add"
+      # The flags one source reads, and their defaults, come from the capability data.
+      args: ["help" "sources" "add"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:0 stdout:"spec/expect/connections/help-add.txt" calls: [] }
+    }
+
+    {
+      id: "connections/add-surplus-not-repeated"
+      # Echo is off for `sources add`: a token typed as an argument is not repeated.
+      args: ["sources" "add" "--source" "joplin" "s3cr3t-token"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-surplus-not-repeated.txt"
+        calls: []
+        stderr: "error: invalid-argument\n  `sources add` takes no further argument; it is not repeated here, in case it is a secret\n  remedy  run `likeness help sources add` for its arguments\n"
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-undeclared-flag-not-repeated"
+      args: ["sources" "add" "--token=s3cr3t" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-undeclared-flag-not-repeated.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/rename-needs-a-new-ref"
+      args: ["sources" "rename" "joplin" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/rename-needs-a-new-ref.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/list"
+      # Names and settings only, and never a value.
+      args: ["sources" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          {
+            instance: "joplin"
+            account: "local"
+            block: base: "http://127.0.0.1:41184"
+          }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/list.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/list-human"
+      args: ["sources" "list"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          {
+            instance: "joplin"
+            account: "local"
+            block: base: "http://127.0.0.1:41184"
+          }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/list-human.txt"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/list-none"
+      args: ["sources" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/connections/list-none.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/list-from-files"
+      # An inactive connection is marked, and one with no account has none to show.
+      args: ["sources" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/list-from-files.json"
+        calls: []
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/list-under-a-profile"
+      # A profile inherits the default profile's connections and none of its accounts.
+      args: ["sources" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/kept/station.json"
+          "likeness.json": "fixtures/config/kept/likeness.json"
+        }
+        env: VOXGIG_STATION_PROFILE: "work"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/list-under-a-profile.json"
+        calls: []
+        files: {
+          "station.json": "fixtures/config/kept/station.json"
+          "likeness.json": "fixtures/config/kept/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/add-joplin"
+      # The token is typed with echo off and stored under the ref's derived name before either file is written.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "work"
+        "--account"
+        "local"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["typed-joplin-token"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-joplin.json"
+        calls: []
+        prompts: ["token for joplin$work"]
+        files: {
+          "station.json": "spec/written/connections/add-joplin/station.json"
+          "likeness.json": "spec/written/connections/add-joplin/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "joplin_work.apikey" "notion.apikey"]
+          values: "joplin_work.apikey": "typed-joplin-token"
+        }
+      }
+    }
+
+    {
+      id: "connections/add-joplin-human"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "work"
+        "--account"
+        "local"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["typed-joplin-token"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-joplin-human.txt"
+        calls: []
+        prompts: ["token for joplin$work"]
+        files: {
+          "station.json": "spec/written/connections/add-joplin/station.json"
+          "likeness.json": "spec/written/connections/add-joplin/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "joplin_work.apikey" "notion.apikey"]
+        }
+      }
+    }
+
+    {
+      id: "connections/add-then-list"
+      # What `sources add` wrote is a configuration the next command reads.
+      args: ["sources" "list" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "spec/written/connections/add-joplin/station.json"
+          "likeness.json": "spec/written/connections/add-joplin/likeness.json"
+        }
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-then-list.json"
+        calls: []
+        files: {
+          "station.json": "spec/written/connections/add-joplin/station.json"
+          "likeness.json": "spec/written/connections/add-joplin/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/add-instance-as-a-ref"
+      # --instance may be the whole ref, which is how a tag that begins with a digit is given.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "joplin$2nd"
+        "--account"
+        "local"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["typed-joplin-token"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-instance-as-a-ref.json"
+        calls: []
+        prompts: ["token for joplin$2nd"]
+        files: {
+          "station.json": "spec/written/connections/add-instance-as-a-ref/station.json"
+          "likeness.json": "spec/written/connections/add-instance-as-a-ref/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "joplin_2nd.apikey" "notion.apikey"]
+        }
+      }
+    }
+
+    {
+      id: "connections/add-notion"
+      # Notion's API version is pinned as the connection's one header, its declared default when none is given.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "notion"
+        "--account"
+        "acme-workspace"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/empty.skmv"
+        tty: ["typed-notion-token"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-notion.json"
+        calls: []
+        prompts: ["token for notion"]
+        files: {
+          "station.json": "spec/written/connections/add-notion/station.json"
+          "likeness.json": "spec/written/connections/add-notion/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["notion.apikey"]
+          values: "notion.apikey": "typed-notion-token"
+        }
+      }
+    }
+
+    {
+      id: "connections/add-notion-version"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "notion"
+        "--instance"
+        "eu"
+        "--account"
+        "acme-eu"
+        "--notion-version"
+        "2025-09-03"
+        "--base"
+        "https://api.notion.com"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["typed-notion-token"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-notion-version.json"
+        calls: []
+        prompts: ["token for notion$eu"]
+        files: {
+          "station.json": "spec/written/connections/add-notion-version/station.json"
+          "likeness.json": "spec/written/connections/add-notion-version/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey" "notion_eu.apikey"]
+        }
+      }
+    }
+
+    {
+      id: "connections/add-notion-version-not-a-date"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "notion"
+        "--account"
+        "acme-workspace"
+        "--notion-version"
+        "latest"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: []
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-notion-version-not-a-date.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-confirmed"
+      # On a terminal the presented certificate is shown, and pinned only once it is confirmed.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "8dc726dfc2eecbf2"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["yes" "typed-obsidian-token"]
+        presents: "127.0.0.1:27124": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-obsidian-confirmed.json"
+        calls: []
+        prompts: [
+          "obsidian at https://127.0.0.1:27124 presents sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25; type yes to pin it"
+          "token for obsidian"
+        ]
+        files: {
+          "station.json": "spec/written/connections/add-obsidian-confirmed/station.json"
+          "likeness.json": "spec/written/connections/add-obsidian-confirmed/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey" "obsidian.apikey"]
+          values: "obsidian.apikey": "typed-obsidian-token"
+        }
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-fingerprint"
+      # A fingerprint given is held to the certificate presented, and pinned in its plain form, with no question asked.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "8dc726dfc2eecbf2"
+        "--fingerprint"
+        "sha256:55:89:BA:19:52:F2:D1:1C:07:D7:9A:38:1B:C5:86:36:47:7F:D1:7E:FA:2B:70:71:0F:C9:9E:F2:CE:99:4D:25"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["typed-obsidian-token"]
+        presents: "127.0.0.1:27124": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-obsidian-fingerprint.json"
+        calls: []
+        prompts: ["token for obsidian"]
+        files: {
+          "station.json": "spec/written/connections/add-obsidian-confirmed/station.json"
+          "likeness.json": "spec/written/connections/add-obsidian-confirmed/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey" "obsidian.apikey"]
+        }
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-declined"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "8dc726dfc2eecbf2"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["no"]
+        presents: "127.0.0.1:27124": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/connections/add-obsidian-declined.json"
+        calls: []
+        prompts: [
+          "obsidian at https://127.0.0.1:27124 presents sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25; type yes to pin it"
+        ]
+        absent: ["station.json" "likeness.json"]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-fingerprint-differs"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "8dc726dfc2eecbf2"
+        "--fingerprint"
+        "sha256:abababababababababababababababababababababababababababababababab"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: []
+        presents: "127.0.0.1:27124": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/connections/add-obsidian-fingerprint-differs.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-needs-a-fingerprint"
+      # With no terminal to confirm on, nothing is pinned that --fingerprint does not name.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "8dc726dfc2eecbf2"
+        "--secret"
+        "obsidian.apikey"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        presents: "127.0.0.1:27124": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-obsidian-needs-a-fingerprint.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-nothing-answers"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "8dc726dfc2eecbf2"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: []
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-obsidian-nothing-answers.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-plain-http"
+      # Plain HTTP is written only where --plain-http declares it.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "8dc726dfc2eecbf2"
+        "--plain-http"
+        "--base"
+        "http://127.0.0.1:27123"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["typed-obsidian-token"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-obsidian-plain-http.json"
+        calls: []
+        prompts: ["token for obsidian"]
+        files: {
+          "station.json": "spec/written/connections/add-obsidian-plain-http/station.json"
+          "likeness.json": "spec/written/connections/add-obsidian-plain-http/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey" "obsidian.apikey"]
+        }
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-plain-http-needs-an-http-base"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "v1"
+        "--plain-http"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: []
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-obsidian-plain-http-needs-an-http-base.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-http-base-undeclared"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "v1"
+        "--base"
+        "http://127.0.0.1:27123"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: []
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-obsidian-http-base-undeclared.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-plain-http-pins-nothing"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "v1"
+        "--plain-http"
+        "--base"
+        "http://127.0.0.1:27123"
+        "--fingerprint"
+        "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: []
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-obsidian-plain-http-pins-nothing.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-fingerprint-malformed"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "v1"
+        "--fingerprint"
+        "sha256:5589"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: []
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-obsidian-fingerprint-malformed.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-needs-a-source"
+      args: ["sources" "add" "--account" "local" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-needs-a-source.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-one-source"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--source"
+        "notion"
+        "--account"
+        "local"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-one-source.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-unknown-source"
+      args: ["sources" "add" "--source" "evernote" "--account" "local" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-unknown-source.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-no-adapter"
+      args: ["sources" "add" "--source" "linear" "--account" "acme" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/connections/add-no-adapter.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-flag-for-another-source"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--account"
+        "local"
+        "--fingerprint"
+        "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-flag-for-another-source.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-instance-of-another-api"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "notion$work"
+        "--account"
+        "local"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-instance-of-another-api.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-one-instance"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "a"
+        "--instance"
+        "b"
+        "--account"
+        "local"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-one-instance.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-joplin-needs-an-account"
+      # No wired SDK can name its account yet, so --account is required, and the refusal says why.
+      args: ["sources" "add" "--source" "joplin" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-joplin-needs-an-account.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-notion-needs-an-account"
+      args: ["sources" "add" "--source" "notion" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-notion-needs-an-account.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-obsidian-needs-an-account"
+      args: ["sources" "add" "--source" "obsidian" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-obsidian-needs-an-account.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-empty-account"
+      args: ["sources" "add" "--source" "joplin" "--account=" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-empty-account.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-base-with-credentials"
+      # A base that would carry a credential into station.json is refused, and not repeated.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--account"
+        "local"
+        "--base"
+        "http://me:s3cr3t@127.0.0.1:41184"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-base-with-credentials.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-base-with-a-query"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--account"
+        "local"
+        "--base"
+        "http://127.0.0.1:41184/?token=s3cr3t"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-base-with-a-query.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-token-needs-a-terminal"
+      # A token is never an argument: it is typed at a prompt, or already in the vault and named with --secret.
+      args: ["sources" "add" "--source" "joplin" "--account" "local" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        stdin: "piped-token\n"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-token-needs-a-terminal.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-reads-no-token-from-the-environment"
+      # A plausible token in the environment is never read: a connection's token is typed, or named in the vault.
+      args: ["sources" "add" "--source" "joplin" "--account" "local" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: {
+          LIKENESS_PASSPHRASE: "fixture master passphrase"
+          JOPLIN_TOKEN: "ambient-joplin-token"
+          JOPLIN_APIKEY: "ambient-joplin-token"
+        }
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-reads-no-token-from-the-environment.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-exists"
+      # A connection is never overwritten, nor the account its notes' identity derives from.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "work"
+        "--account"
+        "other"
+        "--secret"
+        "joplin.apikey"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+          "likeness.skmv": "fixtures/vault/likeness.skmv"
+        }
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/connections/add-exists.json"
+        calls: []
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/add-collides"
+      # Station refuses instances that derive one secret name, and so does `sources add`, before any prompt.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "a--b"
+        "--account"
+        "other"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+          "likeness.skmv": "fixtures/vault/likeness.skmv"
+        }
+        tty: []
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-collides.json"
+        calls: []
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-token-already-stored"
+      # A token in the vault is never overwritten: it is used by naming it, or dropped first.
+      args: ["sources" "add" "--source" "joplin" "--account" "local" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: []
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/connections/add-token-already-stored.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-with-a-stored-secret"
+      # A secret already stored is named in the block, and nothing is typed.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "notion"
+        "--instance"
+        "wiki"
+        "--account"
+        "acme-wiki"
+        "--secret"
+        "notion.apikey"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+          "likeness.skmv": "fixtures/vault/likeness.skmv"
+        }
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-with-a-stored-secret.json"
+        calls: []
+        files: {
+          "station.json": "spec/written/connections/add-with-a-stored-secret/station.json"
+          "likeness.json": "spec/written/connections/add-with-a-stored-secret/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-secret-that-is-a-value"
+      # A token given where a secret's name belongs is refused by station's own rule, and not repeated.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "work"
+        "--account"
+        "local"
+        "--secret"
+        "a3f9c2e8b7d6a1f0c9e8b7d6a5f4e3d2"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-secret-that-is-a-value.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-secret-not-stored"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "work"
+        "--account"
+        "local"
+        "--secret"
+        "joplin_work.apikey"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/connections/add-secret-not-stored.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-restricted-key"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "work"
+        "--account"
+        "local"
+        "--vault-key"
+        "ci"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture ci passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: []
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/connections/add-restricted-key.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-no-vault"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--account"
+        "local"
+        "--secret"
+        "joplin.apikey"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-no-vault.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-wrong-passphrase"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "work"
+        "--account"
+        "local"
+        "--secret"
+        "joplin.apikey"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "not the passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-wrong-passphrase.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/add-passphrase-typed"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "work"
+        "--account"
+        "local"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: ["fixture master passphrase" "typed-joplin-token"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-passphrase-typed.json"
+        calls: []
+        prompts: ["passphrase for master" "token for joplin$work"]
+        files: {
+          "station.json": "spec/written/connections/add-joplin/station.json"
+          "likeness.json": "spec/written/connections/add-joplin/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "joplin_work.apikey" "notion.apikey"]
+        }
+      }
+    }
+
+    {
+      id: "connections/add-empty-token"
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "work"
+        "--account"
+        "local"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+        tty: [""]
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-empty-token.json"
+        calls: []
+        prompts: ["token for joplin$work"]
+        absent: ["station.json" "likeness.json"]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-keeps-the-file"
+      # Both files keep everything the write does not change, in their own order, each laid out as JSON is.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "joplin"
+        "--instance"
+        "home"
+        "--account"
+        "kitchen"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: LIKENESS_PASSPHRASE: "fixture master passphrase"
+        files: {
+          "station.json": "fixtures/config/kept/station.json"
+          "likeness.json": "fixtures/config/kept/likeness.json"
+          "likeness.skmv": "fixtures/vault/likeness.skmv"
+        }
+        tty: ["typed-joplin-token"]
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-keeps-the-file.json"
+        calls: []
+        prompts: ["token for joplin$home"]
+        files: {
+          "station.json": "spec/written/connections/add-keeps-the-file/station.json"
+          "likeness.json": "spec/written/connections/add-keeps-the-file/likeness.json"
+        }
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "joplin_home.apikey" "notion.apikey"]
+        }
+      }
+    }
+
+    {
+      id: "connections/add-under-a-profile"
+      # Under a profile its account is recorded under that profile, and its token goes to that profile's vault.
+      args: [
+        "sources"
+        "add"
+        "--source"
+        "obsidian"
+        "--account"
+        "work-vault"
+        "--fingerprint"
+        "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: {
+          LIKENESS_PASSPHRASE: "fixture master passphrase"
+          VOXGIG_STATION_PROFILE: "work"
+        }
+        files: {
+          "station.json": "fixtures/config/kept/station.json"
+          "likeness.json": "fixtures/config/kept/likeness.json"
+          "work.skmv": "fixtures/vault/empty.skmv"
+        }
+        tty: ["typed-work-token"]
+        presents: "127.0.0.1:27124": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/add-under-a-profile.json"
+        calls: []
+        prompts: ["token for obsidian"]
+        files: {
+          "station.json": "spec/written/connections/add-under-a-profile/station.json"
+          "likeness.json": "spec/written/connections/add-under-a-profile/likeness.json"
+        }
+        vault: {
+          file: "work.skmv"
+          passphrase: "fixture master passphrase"
+          names: ["obsidian.apikey"]
+          values: "obsidian.apikey": "typed-work-token"
+        }
+      }
+    }
+
+    {
+      id: "connections/remove"
+      # The connection and its account go together; the vault keeps its token.
+      args: ["sources" "remove" "joplin$work" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/remove.json"
+        calls: []
+        files: {
+          "station.json": "spec/written/connections/remove/station.json"
+          "likeness.json": "spec/written/connections/remove/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/remove-human"
+      args: ["sources" "remove" "joplin$work"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/remove-human.txt"
+        calls: []
+        files: {
+          "station.json": "spec/written/connections/remove/station.json"
+          "likeness.json": "spec/written/connections/remove/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/remove-without-an-account"
+      args: ["sources" "remove" "joplin$a-b" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/remove-without-an-account.json"
+        calls: []
+        files: {
+          "station.json": "spec/written/connections/remove-without-an-account/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/remove-unknown"
+      args: ["sources" "remove" "joplin$gone" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/remove-unknown.json"
+        calls: []
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/remove-nothing-configured"
+      args: ["sources" "remove" "joplin" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/remove-nothing-configured.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
+    }
+
+    {
+      id: "connections/remove-inherited"
+      # A profile cannot remove what it inherits from the default profile.
+      args: ["sources" "remove" "obsidian" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/kept/station.json"
+          "likeness.json": "fixtures/config/kept/likeness.json"
+        }
+        env: VOXGIG_STATION_PROFILE: "work"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/remove-inherited.json"
+        calls: []
+        files: {
+          "station.json": "fixtures/config/kept/station.json"
+          "likeness.json": "fixtures/config/kept/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/remove-would-remain"
+      args: ["sources" "remove" "joplin" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/kept/station.json"
+          "likeness.json": "fixtures/config/kept/likeness.json"
+        }
+        env: VOXGIG_STATION_PROFILE: "work"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/remove-would-remain.json"
+        calls: []
+        files: {
+          "station.json": "fixtures/config/kept/station.json"
+          "likeness.json": "fixtures/config/kept/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/rename"
+      # The account moves with the ref, so no note's identity changes, and the secret name it derived is written into the block.
+      args: ["sources" "rename" "joplin$work" "joplin$office" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/rename.json"
+        calls: []
+        files: {
+          "station.json": "spec/written/connections/rename/station.json"
+          "likeness.json": "spec/written/connections/rename/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/rename-human"
+      args: ["sources" "rename" "joplin$work" "joplin$office"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/rename-human.txt"
+        calls: []
+        files: {
+          "station.json": "spec/written/connections/rename/station.json"
+          "likeness.json": "spec/written/connections/rename/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/rename-keeps-a-named-secret"
+      args: ["sources" "rename" "notion$docs" "notion$wiki" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/rename-keeps-a-named-secret.json"
+        calls: []
+        files: {
+          "station.json": "spec/written/connections/rename-keeps-a-named-secret/station.json"
+          "likeness.json": "spec/written/connections/rename-keeps-a-named-secret/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/rename-keeps-the-file"
+      args: ["sources" "rename" "obsidian" "obsidian$home" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/kept/station.json"
+          "likeness.json": "fixtures/config/kept/likeness.json"
+        }
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/rename-keeps-the-file.json"
+        calls: []
+        files: {
+          "station.json": "spec/written/connections/rename-keeps-the-file/station.json"
+          "likeness.json": "spec/written/connections/rename-keeps-the-file/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/rename-to-a-ref-in-use"
+      args: ["sources" "rename" "joplin$work" "joplin" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 4
+        stdout: "spec/expect/connections/rename-to-a-ref-in-use.json"
+        calls: []
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/rename-across-apis"
+      args: ["sources" "rename" "joplin$work" "notion$work" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/rename-across-apis.json"
+        calls: []
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/rename-to-itself"
+      args: ["sources" "rename" "joplin$work" "joplin$work" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/rename-to-itself.json"
+        calls: []
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/rename-unknown"
+      args: ["sources" "rename" "joplin$gone" "joplin$back" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/rename-unknown.json"
+        calls: []
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
+      }
+    }
+
+    {
+      id: "connections/test-one"
+      # Doctor's row, for the connections named.
+      args: ["sources" "test" "joplin" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          {
+            instance: "joplin"
+            account: "local"
+            block: base: "http://127.0.0.1:41184"
+          }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/test-one.json"
+        calls: [{ instance:"joplin" method:"GET" path:"/notes" }]
+      }
+    }
+
+    {
+      id: "connections/test-every-one"
+      args: ["sources" "test" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          {
+            instance: "joplin"
+            account: "local"
+            block: base: "http://127.0.0.1:41184"
+          }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/test-every-one.json"
+        calls: [
+          { instance:"joplin" method:"GET" path:"/notes" }
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/00000000-0000-0000-0000-000000000000"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "connections/test-human"
+      args: ["sources" "test" "notion"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          {
+            instance: "joplin"
+            account: "local"
+            block: base: "http://127.0.0.1:41184"
+          }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/test-human.txt"
+        calls: [
+          {
+            instance: "notion"
+            method: "GET"
+            path: "/v1/pages/00000000-0000-0000-0000-000000000000"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "connections/test-unknown"
+      args: ["sources" "test" "joplin$gone" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: [
+          {
+            instance: "joplin"
+            account: "local"
+            block: base: "http://127.0.0.1:41184"
+          }
+          {
+            instance: "notion"
+            account: "acme-workspace"
+            fixture: "notion"
+            block: options: headers: "notion-version": "2022-06-28"
+          }
+        ]
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/test-unknown.json"
+        calls: []
+      }
+    }
+  ]
 }

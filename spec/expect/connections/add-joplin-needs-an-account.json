@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"invalid-argument","data":null,"error":{"message":"joplin's account cannot be discovered: Joplin's data API names no profile id","remedy":"give --account with the Joplin profile id; every note's identity derives from it"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

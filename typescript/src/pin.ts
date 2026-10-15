@@ -63,6 +63,14 @@ function presented (at: Endpoint): Promise<X509Certificate> {
   })
 }
 
+// The fingerprint of the certificate an https base presents, by the same
+// probe, so pinning it writes nothing to the server either.
+export async function presentedFingerprint (base: string): Promise<string> {
+  const url = new URL(base)
+  if ('https:' !== url.protocol) throw new CertificateError('invalid')
+  return fingerprintOf((await presented(endpointOf(url))).raw)
+}
+
 // Verified by Node against the pinned certificate as the only trust anchor,
 // with its own host check, and then against the pin itself.
 function verified (at: Endpoint, anchor: string, pin: string): Promise<tls.TLSSocket> {

@@ -69,6 +69,19 @@ def configure(instance: str, block: dict[str, Any]) -> dict[str, str]:
     return {'version': version}
 
 
+def setup(_instance: str, given: dict[str, Any], _ask: Any) -> dict[str, Any]:
+    """The block `sources add` writes: the pinned version, and the base when one is given."""
+    version = given.get('notion-version')
+    if not isinstance(version, str) or _VERSION.fullmatch(version) is None:
+        raise LikenessError('invalid-argument', '--notion-version is not a date such as 2022-06-28',
+                            'give the API version as YYYY-MM-DD, as Notion publishes it')
+    block: dict[str, Any] = {}
+    if 'base' in given:
+        block['base'] = given['base']
+    block['options'] = {'headers': {'notion-version': version}}
+    return block
+
+
 def connect(station: Any, conn: Any, config: dict[str, str], seed: dict[str, Any] | None = None) -> Any:
     """The ref goes in the station feature's options: the SDK refuses a top-level instance option."""
     from notion_sdk import NotionSDK

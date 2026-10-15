@@ -24,6 +24,15 @@ Limits: type(close({
   version_token: boolean
 }))
 
+Account: type(close({ term:string discover:boolean why?:string }))
+
+# How `sources add` connects a source: flag defaults, its own flags, its account.
+Connect: type(close({
+  default: { &: string }
+  flag: [&: $.Ident]
+  account: $.Account
+}))
+
 SourceCaps: type(close({
   # Must name a source declared in the source registry. The registry is the
   # list of SDKs likeness is built against, so a capability row for a source
@@ -39,6 +48,7 @@ SourceCaps: type(close({
   }
 
   limit: $.Limits
+  connect: $.Connect
 }))
 
 capability: { &: $.SourceCaps }
