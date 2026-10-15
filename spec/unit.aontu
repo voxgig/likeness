@@ -997,6 +997,19 @@ primary: unit: {
       }
       err: "instance \"joplin\" has no account in likeness.json under profile \"work\""
     }
+
+    {
+      id: "config/profiles-read-only-as-an-object"
+      # An array's indices are not profile names, so a profile named "0" finds
+      # no account in an array of profiles.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"0\":{\"sdk\":{\"joplin\":{}}}}}"
+        likeness: "{\"likeness\":1,\"profiles\":[{\"instances\":{\"joplin\":{\"account\":\"zero\"}}}]}"
+        profile: "0"
+      }
+      err: "instance \"joplin\" has no account in likeness.json under profile \"0\""
+    }
   ]
 
   # The vault station.json names, resolved for a home of /home/u and a

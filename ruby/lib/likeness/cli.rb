@@ -62,19 +62,16 @@ module Likeness
     doc
   end
 
-  # Read as JavaScript reads `value[key]`, so a malformed file is never a crash.
+  # Read only from an object, so a malformed file is never a crash and an
+  # array's indices never stand for names.
   def member_of(value, key)
-    return value[key] if value.is_a?(Hash)
-    return nil unless value.is_a?(Array) && /\A(?:0|[1-9][0-9]*)\z/.match?(key) && Integer(key, 10) < value.length
-
-    value[Integer(key, 10)]
+    value.is_a?(Hash) ? value[key] : nil
   end
 
   # The account each instance ref of one station profile belongs to, from
   # likeness.json. A profile reads only its own: none is inherited.
   def parse_accounts(source, path, profile)
     instances = member_of(member_of(member_of(parse_json(source, path), 'profiles'), profile), 'instances')
-    instances = instances.each_with_index.to_h { |v, i| [i.to_s, v] } if instances.is_a?(Array)
     return {} unless instances.is_a?(Hash)
 
     instances.keys.sort { |a, b| compare_code_points(a, b) }.each_with_object({}) do |ref, out|

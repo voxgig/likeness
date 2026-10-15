@@ -51,10 +51,16 @@ export function parseStation (source: string, path: string): unknown {
   return doc
 }
 
+function object (v: unknown): Record<string, unknown> | undefined {
+  return null !== v && 'object' === typeof v && !Array.isArray(v) ? v as Record<string, unknown> : undefined
+}
+
 // The account each instance ref of one station profile belongs to, from
-// likeness.json. A profile reads only its own: none is inherited.
+// likeness.json. A profile reads only its own: none is inherited. Each level
+// is read only as an object, so an array's indices never stand for names.
 export function parseAccounts (source: string, path: string, profile: string): Record<string, string> {
-  const instances = parseJson(source, path).profiles?.[profile]?.instances ?? {}
+  const instances: Record<string, any> =
+    object(object(object(parseJson(source, path).profiles)?.[profile])?.instances) ?? {}
   const out: Record<string, string> = {}
   for (const ref of Object.keys(instances).sort(compareCodePoints)) {
     const account = instances[ref]?.account

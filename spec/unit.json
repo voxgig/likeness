@@ -695,6 +695,16 @@
               "profile": "work",
               "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}},\"work\":{}}}"
             }
+          },
+          {
+            "err": "instance \"joplin\" has no account in likeness.json under profile \"0\"",
+            "fn": "connections",
+            "id": "config/profiles-read-only-as-an-object",
+            "in": {
+              "likeness": "{\"likeness\":1,\"profiles\":[{\"instances\":{\"joplin\":{\"account\":\"zero\"}}}]}",
+              "profile": "0",
+              "station": "{\"station\":1,\"profiles\":{\"0\":{\"sdk\":{\"joplin\":{}}}}}"
+            }
           }
         ]
       },
