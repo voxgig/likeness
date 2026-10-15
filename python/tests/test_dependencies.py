@@ -10,7 +10,7 @@ from tests.harness import ROOT
 
 # Its own package, station, sekreto for the vault, and the generated SDK each
 # adapter reaches its source through.
-ALLOWED = {'likeness', 'voxgig_station', 'voxgig_sekreto', 'joplin_sdk'}
+ALLOWED = {'likeness', 'voxgig_station', 'voxgig_sekreto', 'joplin_sdk', 'notion_sdk', 'obsidian_sdk'}
 
 
 def imported(source: str) -> set[str]:

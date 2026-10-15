@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 from typing import Any
 
-from joplin_sdk import JoplinSDK
-
+from likeness.adapter import Check
 from likeness.caps import page_max
 from likeness.envelope import render_raw
 from likeness.errors import LikenessError
@@ -21,13 +19,6 @@ SUPPLIES = ['source', 'instance', 'space', 'title', 'body', 'created', 'updated'
 # Joplin answers id, parent_id and title unless asked. The wire name is
 # `fields`; the client declares `field`, which Joplin ignores.
 FIELDS = 'id,parent_id,title,body,created_time,updated_time'
-
-
-@dataclass(frozen=True)
-class Check:
-    ok: bool
-    detail: str
-    code: str | None = None
 
 
 def _text(v: Any) -> str:
@@ -46,9 +37,10 @@ def _ms(v: Any) -> int:
     return 0
 
 
-def connect(station: Any, instance: str, seed: dict[str, Any] | None = None) -> JoplinSDK:
+def connect(station: Any, conn: Any, _config: Any, seed: dict[str, Any] | None = None) -> Any:
     """The ref rides the station feature's options: beside them the SDK would refuse it."""
-    feature: dict[str, Any] = {'station': {'instance': instance}}
+    from joplin_sdk import JoplinSDK
+    feature: dict[str, Any] = {'station': {'instance': conn.instance}}
     if seed is not None:
         feature['test'] = {**seed, 'active': True}
     return station.connect(JoplinSDK, {'feature': feature})
@@ -99,7 +91,7 @@ def _data(entity: Any) -> Any:
     return getter() if callable(getter) else entity
 
 
-def list_notes(client: JoplinSDK, conn: Any, with_raw: bool) -> tuple[list[Note], bool]:
+def list_notes(client: Any, conn: Any, with_raw: bool) -> tuple[list[Note], bool]:
     found = client.Note().list({'fields': FIELDS})
     rows = [_data(e) for e in (found or [])]
     limit = page_max(SOURCE)
@@ -107,7 +99,7 @@ def list_notes(client: JoplinSDK, conn: Any, with_raw: bool) -> tuple[list[Note]
     return notes, 0 < limit <= len(rows)
 
 
-def load_note(client: JoplinSDK, conn: Any, id: str, with_raw: bool) -> Note | None:
+def load_note(client: Any, conn: Any, id: str, with_raw: bool) -> Note | None:
     try:
         row = _data(client.Note().load({'id': id, 'fields': FIELDS}))
     except Exception as err:
@@ -119,7 +111,7 @@ def load_note(client: JoplinSDK, conn: Any, id: str, with_raw: bool) -> Note | N
     return project(row, conn.instance, conn.account, with_raw)
 
 
-def check(client: JoplinSDK) -> Check:
+def check(client: Any) -> Check:
     """Reachability for `doctor`, telling apart the failures whose remedies differ."""
     try:
         client.Note().list({'fields': FIELDS})
