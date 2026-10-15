@@ -560,8 +560,7 @@ type Fs struct {
 
 var osFs = Fs{WriteFile: writeNew, Rename: os.Rename, Remove: os.Remove}
 
-// writeNew creates path, which must not exist yet, and leaves nothing there if
-// the write does not complete.
+// writeNew creates path, which must not exist yet.
 func writeNew(path string, data []byte, mode os.FileMode) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
 	if nil != err {
@@ -570,9 +569,6 @@ func writeNew(path string, data []byte, mode os.FileMode) error {
 	_, err = f.Write(data)
 	if cerr := f.Close(); nil == err {
 		err = cerr
-	}
-	if nil != err {
-		_ = os.Remove(path)
 	}
 	return err
 }
@@ -623,6 +619,10 @@ func writeAll(writes []fileWrite, fs Fs) error {
 	place := func(path string, data []byte, mode os.FileMode) (string, error) {
 		t := tempOf(path)
 		if err := fs.WriteFile(t, data, mode); nil != err {
+			// A write that fails leaves the file the exclusive open made; EEXIST means it made none.
+			if !errors.Is(err, os.ErrExist) {
+				_ = fs.Remove(t)
+			}
 			return "", err
 		}
 		temps = append(temps, t)

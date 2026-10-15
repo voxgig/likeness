@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -32,6 +33,24 @@ func failing(nth int) *Fs {
 			return &os.LinkError{Op: "rename", Old: from, New: to, Err: syscall.ENOSPC}
 		}
 		return os.Rename(from, to)
+	}
+	return &fs
+}
+
+// failingWrite is the disk's own file operations, but for the nth write, which
+// creates its file and then fails, as a full disk does.
+func failingWrite(nth int) *Fs {
+	writes := 0
+	fs := osFs
+	fs.WriteFile = func(path string, data []byte, mode os.FileMode) error {
+		writes++
+		if nth == writes {
+			if err := writeNew(path, nil, mode); nil != err {
+				return err
+			}
+			return &os.PathError{Op: "write", Path: path, Err: syscall.ENOSPC}
+		}
+		return writeNew(path, data, mode)
 	}
 	return &fs
 }
@@ -127,6 +146,48 @@ func TestWriteAllPutsTheFirstFileBackWhenTheSecondRenameFails(t *testing.T) {
 	}
 	same(t, "files", []any{readAt(t, likeness), readAt(t, station)}, []any{"old likeness\n", "old station\n"})
 	same(t, "directory", strList(listing(t, dir)), []any{"likeness.json", "station.json"})
+}
+
+func TestWriteAllLeavesNoTemporaryFileWhenAWriteFailsAfterCreatingIt(t *testing.T) {
+	dir := folder(t, map[string]string{"likeness.json": "old likeness\n", "station.json": "old station\n"})
+	likeness, station := filepath.Join(dir, "likeness.json"), filepath.Join(dir, "station.json")
+	for nth := 1; nth <= 4; nth++ {
+		err := writeAll([]fileWrite{
+			{path: likeness, text: "new likeness\n", was: heldAt(t, likeness)},
+			{path: station, text: "new station\n", was: heldAt(t, station)},
+		}, *failingWrite(nth))
+		var we *writeError
+		if !errors.As(err, &we) || !we.restored {
+			t.Fatalf("write %d: not a restored failure: %#v", nth, err)
+		}
+		at := "write " + strconv.Itoa(nth)
+		same(t, at+" directory", strList(listing(t, dir)), []any{"likeness.json", "station.json"})
+		same(t, at+" files", []any{readAt(t, likeness), readAt(t, station)}, []any{"old likeness\n", "old station\n"})
+	}
+}
+
+// A temporary name some other file already holds is refused by the exclusive
+// open, and that file is left as it was.
+func TestWriteAllLeavesAFileItDidNotMakeWhereItsTemporaryNameWas(t *testing.T) {
+	dir := folder(t, map[string]string{"station.json": "old station\n"})
+	station := filepath.Join(dir, "station.json")
+	taken := ""
+	fs := osFs
+	fs.WriteFile = func(path string, data []byte, mode os.FileMode) error {
+		if "" == taken {
+			taken = path
+			if err := os.WriteFile(path, []byte("not this write's\n"), 0o600); nil != err {
+				t.Fatal(err)
+			}
+		}
+		return writeNew(path, data, mode)
+	}
+	var we *writeError
+	if err := writeAll([]fileWrite{{path: station, text: "new station\n", was: heldAt(t, station)}}, fs); !errors.As(err, &we) {
+		t.Fatalf("not a write failure: %#v", err)
+	}
+	same(t, "the other file", readAt(t, taken), "not this write's\n")
+	same(t, "station.json", readAt(t, station), "old station\n")
 }
 
 func TestWriteAllTakesAFileNotThereBeforeAwayWhenTheRenameAfterItFails(t *testing.T) {
