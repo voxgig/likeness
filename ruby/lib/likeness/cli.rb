@@ -17,11 +17,60 @@ module Likeness
 
   module_function
 
+  # A number past a double's range: JSON.parse reads it as an infinity, or as an
+  # integer no double holds, and the canonical port reads every number as one.
+  def finite?(doc)
+    pending = [doc]
+    until pending.empty?
+      value = pending.pop
+      case value
+      when Float then return false unless value.finite?
+      when Integer then return false unless value.to_f.finite?
+      when Hash then pending.concat(value.values)
+      when Array then pending.concat(value)
+      end
+    end
+    true
+  end
+
+  CONFIG_DEPTH = 64
+
+  # Counted on the text before it is parsed: each port's parser, and the copy
+  # made of station.json, recurse, and each would give out at its own depth.
+  def too_deep?(source)
+    bytes = source.b
+    depth = 0
+    quoted = false
+    i = 0
+    while i < bytes.bytesize
+      c = bytes.getbyte(i)
+      if quoted
+        if 0x5c == c
+          i += 1
+        elsif 0x22 == c
+          quoted = false
+        end
+      elsif 0x22 == c
+        quoted = true
+      elsif 0x5b == c || 0x7b == c
+        depth += 1
+        return true if CONFIG_DEPTH < depth
+      elsif (0x5d == c || 0x7d == c) && depth.positive?
+        depth -= 1
+      end
+      i += 1
+    end
+    false
+  end
+
   def parse_json(source, path)
+    raise ConfigError, "#{path} is nested more than #{CONFIG_DEPTH} deep" if too_deep?(source)
+
     begin
       raise JSON::ParserError if source.scan(NOT_JSON).any? { |escape, slash| escape || slash }
 
       doc = JSON.parse(source)
+      raise JSON::ParserError unless finite?(doc)
     rescue JSON::ParserError
       raise ConfigError, "#{path} is not valid JSON"
     end
@@ -45,19 +94,16 @@ module Likeness
     doc
   end
 
-  # Read as JavaScript reads `value[key]`, so a malformed file is never a crash.
+  # Read only from an object, so a malformed file is never a crash and an
+  # array's indices never stand for names.
   def member_of(value, key)
-    return value[key] if value.is_a?(Hash)
-    return nil unless value.is_a?(Array) && /\A(?:0|[1-9][0-9]*)\z/.match?(key) && Integer(key, 10) < value.length
-
-    value[Integer(key, 10)]
+    value.is_a?(Hash) ? value[key] : nil
   end
 
   # The account each instance ref of one station profile belongs to, from
   # likeness.json. A profile reads only its own: none is inherited.
   def parse_accounts(source, path, profile)
     instances = member_of(member_of(member_of(parse_json(source, path), 'profiles'), profile), 'instances')
-    instances = instances.each_with_index.to_h { |v, i| [i.to_s, v] } if instances.is_a?(Array)
     return {} unless instances.is_a?(Hash)
 
     instances.keys.sort { |a, b| compare_code_points(a, b) }.each_with_object({}) do |ref, out|
@@ -66,16 +112,26 @@ module Likeness
     end
   end
 
-  def read_text(path)
-    File.read(path, encoding: 'UTF-8').scrub
+  # nil when the file is not there. One that is there and cannot be read as a
+  # file, such as a directory, is refused rather than taken for absent.
+  def read_config(path)
+    return nil unless File.exist?(path)
+
+    begin
+      File.read(path, encoding: 'UTF-8').scrub
+    rescue SystemCallError, IOError
+      raise ConfigError, "#{path} cannot be read"
+    end
   end
 
   def load_config(path, profile)
-    return [nil, {}] unless File.exist?(path)
+    source = read_config(path)
+    return [nil, {}] if source.nil?
 
-    station = parse_station(read_text(path), path)
+    station = parse_station(source, path)
     lpath = File.join(File.dirname(path), 'likeness.json')
-    [station, File.exist?(lpath) ? parse_accounts(read_text(lpath), lpath, profile) : {}]
+    lsource = read_config(lpath)
+    [station, lsource.nil? ? {} : parse_accounts(lsource, lpath, profile)]
   end
 
   def probe_path(env)
@@ -140,11 +196,14 @@ module Likeness
     { 'rest' => argv[0...at] + argv[(at + width)..], 'value' => value }
   end
 
-  # One line from the terminal with echo off; nil at the end of input.
+  # One line from the terminal with echo off; nil at the end of input. Echo goes
+  # off before the label shows, or an answer typed the moment it appears is echoed.
   def prompt(label, stdin, stderr)
-    stderr.write("#{label}: ")
-    stderr.flush
-    line = stdin.noecho(&:gets)
+    line = stdin.noecho do |io|
+      stderr.write("#{label}: ")
+      stderr.flush
+      io.gets
+    end
     line&.chomp&.force_encoding(Encoding::UTF_8)&.scrub
   rescue Interrupt
     exit 130

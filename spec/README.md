@@ -43,10 +43,10 @@ positional repeats, a valued flag names its value, a range belongs to an integer
 and every exit is a registered code.
 
 A transcript entry runs in a home directory of its own, with the configuration
-directory at `~/.config/likeness`. Each of its connections is an instance in
-`station.json` and an account in `likeness.json`; a connection may name its own
-fixture and the block `station.json` declares for its instance, and otherwise
-takes the entry's fixture and an empty block. It may bring files into it (the fixture vault,
+directory at `~/.config/likeness`. Each of its connections is an instance under
+`sdk` in station.json, whose block there is the connection's `block`, or `{}`
+when it gives none, and whose seed is its own `fixture`, or the entry's when it
+names none. It may bring files into the directory (the fixture vault,
 `fixtures/vault/likeness.skmv`, which every port's sekreto reads), give stdin,
 and stand in for a terminal with the answers typed at its prompts. It then
 asserts the prompts shown and, for a vault command, what the vault holds

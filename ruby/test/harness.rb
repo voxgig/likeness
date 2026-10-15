@@ -36,9 +36,10 @@ module Harness
     Marshal.load(Marshal.dump(value))
   end
 
-  # Each connection becomes a declared station instance, its account the
-  # likeness.json entry beside it, and its seed the SDK's offline transport.
-  # Every run gets a home of its own, holding the entry's files.
+  # Each connection becomes a declared station instance, its block the one the
+  # entry gives, its account the likeness.json entry beside it, and its seed
+  # the SDK's offline transport. Every run gets a home of its own, holding the
+  # entry's files.
   def build_ctx(entry)
     ectx = entry['ctx']
     seed = JSON.parse(read("fixtures/sources/#{ectx['fixture']}/seed.json"))
@@ -48,7 +49,7 @@ module Harness
     accounts = {}
     fixture = {}
     ectx['connections'].each do |c|
-      sdk[c['instance']] = {}
+      sdk[c['instance']] = deep_copy(c['block'] || {})
       accounts[c['instance']] = c['account']
       own = deep_copy(seed)
       own['net'] = c['net'] if c.key?('net')

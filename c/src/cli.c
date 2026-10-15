@@ -167,8 +167,6 @@ static str home_dir(arena *a) {
   return u8_sanitize(a, pw->pw_dir, strlen(pw->pw_dir));
 }
 
-/* A file that exists and cannot be read counts as absent, as the Go port
- * counts it. */
 static int read_text(arena *a, str path, str *out) {
   FILE *f = fopen(ar_copy(a, path.p, path.n), "rb");
   sbuf b;
@@ -190,16 +188,43 @@ static int exists(arena *a, str path) {
   return 0 == stat(ar_copy(a, path.p, path.n), &st);
 }
 
+#define CONFIG_DEPTH 64
+
+/* Counted on the text before it is parsed: each port's parser, and the copy
+ * made of station.json, recurse, and each would give out at its own depth. */
+static int too_deep(str text) {
+  size_t i;
+  int depth = 0;
+  int quoted = 0;
+  for (i = 0; i < text.n; i++) {
+    char c = text.p[i];
+    if (quoted) {
+      if ('\\' == c) i++;
+      else if ('"' == c) quoted = 0;
+    } else if ('"' == c) {
+      quoted = 1;
+    } else if ('[' == c || '{' == c) {
+      if (CONFIG_DEPTH < ++depth) return 1;
+    } else if ((']' == c || '}' == c) && 0 < depth) {
+      depth--;
+    }
+  }
+  return 0;
+}
+
 /* Only that each file is a JSON object: station's own validation of
- * station.json waits on its C library reading it. */
+ * station.json waits on its C library reading it. A file that is not there is
+ * absent; one that is there and cannot be read as a file is refused. */
 static int json_object_fault(arena *a, str path, str *why) {
   str text;
   jval *doc = NULL;
   sbuf m;
-  if (!exists(a, path) || 0 != read_text(a, path, &text)) return 0;
+  if (!exists(a, path)) return 0;
   sb_init(&m, a);
   sb_str(&m, path);
-  if (NULL != json_parse(a, text.p, text.n, &doc)) sb_puts(&m, " is not valid JSON");
+  if (0 != read_text(a, path, &text)) sb_puts(&m, " cannot be read");
+  else if (too_deep(text)) sb_puts(&m, " is nested more than 64 deep");
+  else if (NULL != json_parse_finite(a, text.p, text.n, &doc)) sb_puts(&m, " is not valid JSON");
   else if (!jv_is(doc, J_OBJECT)) sb_puts(&m, " is not a JSON object");
   else return 0;
   *why = sb_done(&m);

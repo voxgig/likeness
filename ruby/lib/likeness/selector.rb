@@ -178,11 +178,16 @@ module Likeness
 
   # Recursive descent: OR binds loosest, then AND (adjacency implies it), then
   # NOT, then the atom.
+  # Each group and each negation opens one level. The token that would open a
+  # level past this is refused, so no input can exhaust a port's stack.
+  MAX_DEPTH = 64
+
   class SelectorParser
     def initialize(toks, finish)
       @toks = toks
       @pos = 0
       @finish = finish
+      @depth = 0
     end
 
     def peek
@@ -205,6 +210,11 @@ module Likeness
       raise SelectorError.new(message, @finish, '') if tok.nil?
 
       raise SelectorError.new(message, tok.offset, tok.text)
+    end
+
+    def enter(tok)
+      refuse("nested more than #{MAX_DEPTH} deep", tok) if MAX_DEPTH <= @depth
+      @depth += 1
     end
 
     def parse_or
@@ -235,9 +245,12 @@ module Likeness
     def parse_not
       tok = peek
       if Likeness.keyword?(tok, 'NOT', 'not') || (!tok.nil? && 'dash' == tok.kind)
+        enter(tok)
         take
         refuse('NOT must be followed by a term') if at_end?
-        return { 't' => 'not', 'kid' => parse_not }
+        kid = parse_not
+        @depth -= 1
+        return { 't' => 'not', 'kid' => kid }
       end
       parse_atom
     end
@@ -248,10 +261,12 @@ module Likeness
 
       case tok.kind
       when 'lparen'
+        enter(tok)
         inner = parse_or
         close = take
         refuse('unclosed group') if close.nil?
         refuse('expected )', close) unless 'rparen' == close.kind
+        @depth -= 1
         return inner
       when 'rparen' then refuse('unmatched )', tok)
       when 'op' then refuse('operator with no field', tok)

@@ -86,16 +86,16 @@ function seedOf (name: string): Record<string, unknown> {
   return seed
 }
 
-// Each connection becomes a declared station instance with its own block, its
-// account the likeness.json entry beside it, and its seed, the entry's or its
-// own, the SDK's offline transport. Every run gets a home of its own, holding
-// the entry's files.
+// Each connection becomes a declared station instance, its block the one the
+// entry gives, its account the likeness.json entry beside it, and its seed,
+// its own or the entry's, the SDK's offline transport. Every run gets a home of
+// its own, holding the entry's files.
 export function buildCtx (e: CliEntry): Ctx {
   const sdk: Record<string, unknown> = {}
   const accounts: Record<string, string> = {}
   const fixture: Record<string, unknown> = {}
   for (const c of e.ctx.connections) {
-    sdk[c.instance] = c.block ?? {}
+    sdk[c.instance] = JSON.parse(JSON.stringify(c.block ?? {}))
     accounts[c.instance] = c.account
     const own = seedOf(c.fixture ?? e.ctx.fixture)
     if (undefined !== c.net) own.net = c.net

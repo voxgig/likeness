@@ -695,6 +695,70 @@
               "profile": "work",
               "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}},\"work\":{}}}"
             }
+          },
+          {
+            "err": "instance \"joplin\" has no account in likeness.json under profile \"0\"",
+            "fn": "connections",
+            "id": "config/profiles-read-only-as-an-object",
+            "in": {
+              "likeness": "{\"likeness\":1,\"profiles\":[{\"instances\":{\"joplin\":{\"account\":\"zero\"}}}]}",
+              "profile": "0",
+              "station": "{\"station\":1,\"profiles\":{\"0\":{\"sdk\":{\"joplin\":{}}}}}"
+            }
+          },
+          {
+            "err": "station.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/station-nested-past-the-limit",
+            "in": {
+              "likeness": "{}",
+              "station": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"
+            }
+          },
+          {
+            "err": "likeness.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/likeness-nested-past-the-limit",
+            "in": {
+              "likeness": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            }
+          },
+          {
+            "fn": "connections",
+            "id": "config/nested-to-the-limit-is-read",
+            "in": {
+              "likeness": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            },
+            "out": []
+          },
+          {
+            "err": "likeness.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/objects-and-arrays-nest-together",
+            "in": {
+              "likeness": "{\"a\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":0}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            }
+          },
+          {
+            "err": "station.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/nesting-refused-before-the-syntax",
+            "in": {
+              "likeness": "{}",
+              "station": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+            }
+          },
+          {
+            "fn": "connections",
+            "id": "config/brackets-in-a-string-are-not-nesting",
+            "in": {
+              "likeness": "{\"a\":\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            },
+            "out": []
           }
         ]
       },
@@ -1445,6 +1509,65 @@
                 "v": "2000-02-29"
               }
             }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/nesting-64-groups-is-the-most",
+            "in": "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "field": "tag",
+              "op": ":",
+              "t": "cmp",
+              "value": {
+                "k": "word",
+                "v": "a"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/nesting-counts-groups-and-negations-together",
+            "in": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((NOT tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "kid": {
+                "field": "tag",
+                "op": ":",
+                "t": "cmp",
+                "value": {
+                  "k": "word",
+                  "v": "a"
+                }
+              },
+              "t": "not"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/nesting-is-depth-not-count",
+            "in": "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:b))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "kids": [
+                {
+                  "field": "tag",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "a"
+                  }
+                },
+                {
+                  "field": "tag",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "b"
+                  }
+                }
+              ],
+              "t": "and"
+            }
           }
         ]
       },
@@ -1646,6 +1769,42 @@
             "out": {
               "offset": 4,
               "token": "<"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-65-groups",
+            "in": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "offset": 64,
+              "token": "("
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-65-negations",
+            "in": "NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT tag:a",
+            "out": {
+              "offset": 256,
+              "token": "NOT"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-64-groups-and-a-negation",
+            "in": "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((-tag:a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "offset": 64,
+              "token": "-"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-refused-before-the-end-is-read",
+            "in": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a",
+            "out": {
+              "offset": 64,
+              "token": "("
             }
           }
         ]

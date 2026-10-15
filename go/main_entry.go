@@ -103,7 +103,39 @@ func optText(m map[string]any, k string) string {
 	return ""
 }
 
+const configDepth = 64
+
+// tooDeep counts nesting on the text before it is parsed: each port's parser,
+// and the copy made of station.json, recurse, and each would give out at its
+// own depth.
+func tooDeep(text string) bool {
+	depth := 0
+	quoted := false
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		switch {
+		case quoted && '\\' == c:
+			i++
+		case quoted:
+			quoted = '"' != c
+		case '"' == c:
+			quoted = true
+		case '[' == c || '{' == c:
+			depth++
+			if configDepth < depth {
+				return true
+			}
+		case (']' == c || '}' == c) && 0 < depth:
+			depth--
+		}
+	}
+	return false
+}
+
 func parseJSON(text, path string) (map[string]any, error) {
+	if tooDeep(text) {
+		return nil, fmt.Errorf("%s is nested more than %d deep", path, configDepth)
+	}
 	var parsed any
 	if err := json.Unmarshal([]byte(wellFormed(text)), &parsed); nil != err {
 		return nil, fmt.Errorf("%s is not valid JSON", path)
@@ -151,37 +183,99 @@ func parseAccounts(text, path, profile string) (map[string]string, error) {
 	return out, nil
 }
 
-func loadConfig(path, profile string) (map[string]any, map[string]string, error) {
+// readConfig reads one configuration file. A file that is not there is absent;
+// one that is there and cannot be read as a file, such as a directory, is
+// refused rather than taken for absent.
+func readConfig(path string) (string, bool, error) {
+	if _, err := os.Stat(path); nil != err {
+		return "", false, nil
+	}
 	raw, err := os.ReadFile(path)
 	if nil != err {
-		return nil, map[string]string{}, nil
+		return "", false, fmt.Errorf("%s cannot be read", path)
 	}
-	doc, err := parseStation(string(raw), path)
+	return string(raw), true, nil
+}
+
+func loadConfig(path, profile string) (map[string]any, map[string]string, error) {
+	text, found, err := readConfig(path)
+	if nil != err || !found {
+		return nil, map[string]string{}, err
+	}
+	doc, err := parseStation(text, path)
 	if nil != err {
 		return nil, nil, err
 	}
 	lpath := filepath.Join(filepath.Dir(path), "likeness.json")
-	lraw, err := os.ReadFile(lpath)
+	ltext, found, err := readConfig(lpath)
 	if nil != err {
+		return nil, nil, err
+	}
+	if !found {
 		return doc, map[string]string{}, nil
 	}
-	accounts, err := parseAccounts(string(lraw), lpath, profile)
+	accounts, err := parseAccounts(ltext, lpath, profile)
 	if nil != err {
 		return nil, nil, err
 	}
 	return doc, accounts, nil
 }
 
+// afterCR holds across prompts: a line typed ahead ends in \n, Enter in raw
+// mode is \r, so a \n straight after the \r that ended a line is that end.
+var afterCR bool
+
 // prompt reads one line from the terminal with echo off; false at end of
-// input.
+// input. It reads raw, as the canonical port does: echo goes off before the
+// label shows, or an answer typed the moment it appears is echoed.
 func prompt(label string) (string, bool) {
-	fmt.Fprint(os.Stderr, label+": ")
-	typed, err := term.ReadPassword(int(os.Stdin.Fd()))
-	fmt.Fprint(os.Stderr, "\n")
+	fd := int(os.Stdin.Fd())
+	saved, err := term.MakeRaw(fd)
 	if nil != err {
 		return "", false
 	}
-	return string(typed), true
+	fmt.Fprint(os.Stderr, label+": ")
+	typed, ok, interrupted := readTyped(os.Stdin)
+	_ = term.Restore(fd, saved)
+	fmt.Fprint(os.Stderr, "\n")
+	if interrupted {
+		os.Exit(130)
+	}
+	return typed, ok
+}
+
+// readTyped takes one byte at a time, so what was typed past the line end is
+// left for the prompt that follows.
+func readTyped(in io.Reader) (typed string, ok bool, interrupted bool) {
+	var line []byte
+	one := make([]byte, 1)
+	for {
+		n, err := in.Read(one)
+		if 0 == n {
+			if nil != err {
+				return wellFormed(string(line)), 0 < len(line), false
+			}
+			continue
+		}
+		ch := one[0]
+		lf := afterCR && '\n' == ch
+		afterCR = false
+		switch {
+		case lf:
+		case '\r' == ch || '\n' == ch:
+			afterCR = '\r' == ch
+			return wellFormed(string(line)), true, false
+		case 0x04 == ch:
+			return wellFormed(string(line)), 0 < len(line), false
+		case 0x03 == ch:
+			return "", false, true
+		case 0x7f == ch || '\b' == ch:
+			_, size := utf8.DecodeLastRune(line)
+			line = line[:len(line)-size]
+		default:
+			line = append(line, ch)
+		}
+	}
 }
 
 func readStdin() (string, error) {

@@ -244,8 +244,158 @@ int main(int argc, char **argv) {
 
     args[2] = dir;
     r = spawn(a, home, home, "", args, 0);
-    expect(&t, "a configuration that cannot be read counts as absent, as the Go port counts it",
-      0 == r.status && 0 < r.out.n, described(a, r));
+    sb_init(&want, a);
+    sb_puts(&want, "error: invalid-project\n  ");
+    sb_puts(&want, dir);
+    sb_puts(&want, " cannot be read\n  remedy  fix the file, or point --config at another\n");
+    expect(&t, "a configuration that cannot be read as a file is refused, not taken for absent",
+      3 == r.status && 0 == r.out.n && str_eq(r.err, sb_done(&want)), described(a, r));
+  }
+
+  {
+    const char *dir = joinpath(a, home, str_of("cfg2"));
+    const char *args[4];
+    sbuf want;
+    mkdir(dir, 0700);
+    mkdir(joinpath(a, dir, str_of("likeness.json")), 0700);
+    write_text(a, dir, "station.json", "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}");
+    args[0] = "version";
+    args[1] = "--config";
+    args[2] = joinpath(a, dir, str_of("station.json"));
+    args[3] = NULL;
+    sb_init(&want, a);
+    sb_puts(&want, "error: invalid-project\n  ");
+    sb_puts(&want, joinpath(a, dir, str_of("likeness.json")));
+    sb_puts(&want, " cannot be read\n  remedy  fix the file, or point --config at another\n");
+    r = spawn(a, home, home, "", args, 0);
+    expect(&t, "likeness.json beside the configuration is refused when it cannot be read as a file",
+      3 == r.status && 0 == r.out.n && str_eq(r.err, sb_done(&want)), described(a, r));
+  }
+
+  {
+    const char *dir = joinpath(a, home, str_of("cfg4"));
+    const char *station = joinpath(a, dir, str_of("station.json"));
+    const char *likeness = joinpath(a, dir, str_of("likeness.json"));
+    const char *args[4];
+    sbuf big;
+    sbuf want_station;
+    sbuf want_likeness;
+    proc s;
+    proc l;
+    proc z;
+    mkdir(dir, 0700);
+    args[0] = "version";
+    args[1] = "--config";
+    args[2] = station;
+    args[3] = NULL;
+    sb_init(&want_station, a);
+    sb_puts(&want_station, "error: invalid-project\n  ");
+    sb_puts(&want_station, station);
+    sb_puts(&want_station, " is not valid JSON\n  remedy  fix the file, or point --config at another\n");
+    sb_init(&want_likeness, a);
+    sb_puts(&want_likeness, "error: invalid-project\n  ");
+    sb_puts(&want_likeness, likeness);
+    sb_puts(&want_likeness, " is not valid JSON\n  remedy  fix the file, or point --config at another\n");
+    write_text(a, dir, "station.json", "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{\"options\":{\"n\":1e400}}}}}}");
+    s = spawn(a, home, home, "", args, 0);
+    write_text(a, dir, "station.json", "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}");
+    write_text(a, dir, "likeness.json", "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":-1e400}}}}}");
+    l = spawn(a, home, home, "", args, 0);
+    sb_init(&big, a);
+    sb_puts(&big, "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":1");
+    {
+      int k;
+      for (k = 0; k < 400; k++) sb_putc(&big, '0');
+    }
+    sb_puts(&big, "}}}}}");
+    write_text(a, dir, "likeness.json", sb_done(&big).p);
+    r = spawn(a, home, home, "", args, 0);
+    write_text(a, dir, "likeness.json", "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":1e-400}}}}}");
+    z = spawn(a, home, home, "", args, 0);
+    expect(&t, "a number no double can hold is not valid JSON, in either file, and one too small to hold is zero",
+      3 == s.status && 0 == s.out.n && str_eq(s.err, sb_done(&want_station)) &&
+      3 == l.status && 0 == l.out.n && str_eq(l.err, sb_done(&want_likeness)) &&
+      3 == r.status && 0 == r.out.n && str_eq(r.err, sb_done(&want_likeness)) && 0 == z.status,
+      described(a, 0 != z.status ? z : 3 != r.status ? r : 3 != l.status ? l : s));
+  }
+
+  {
+    const char *dir = joinpath(a, home, str_of("cfg5"));
+    const char *station = joinpath(a, dir, str_of("station.json"));
+    const char *likeness = joinpath(a, dir, str_of("likeness.json"));
+    const char *args[4];
+    sbuf deep;
+    sbuf limit;
+    sbuf want_station;
+    sbuf want_likeness;
+    proc s;
+    proc l;
+    proc ok;
+    int k;
+    mkdir(dir, 0700);
+    args[0] = "version";
+    args[1] = "--config";
+    args[2] = station;
+    args[3] = NULL;
+    sb_init(&deep, a);
+    sb_init(&limit, a);
+    sb_puts(&deep, "{\"a\":");
+    sb_puts(&limit, "{\"a\":");
+    for (k = 0; k < 64; k++) sb_putc(&deep, '[');
+    for (k = 0; k < 64; k++) sb_putc(&deep, ']');
+    for (k = 0; k < 63; k++) sb_putc(&limit, '[');
+    for (k = 0; k < 63; k++) sb_putc(&limit, ']');
+    sb_putc(&deep, '}');
+    sb_putc(&limit, '}');
+    sb_init(&want_station, a);
+    sb_puts(&want_station, "error: invalid-project\n  ");
+    sb_puts(&want_station, station);
+    sb_puts(&want_station, " is nested more than 64 deep\n  remedy  fix the file, or point --config at another\n");
+    sb_init(&want_likeness, a);
+    sb_puts(&want_likeness, "error: invalid-project\n  ");
+    sb_puts(&want_likeness, likeness);
+    sb_puts(&want_likeness, " is nested more than 64 deep\n  remedy  fix the file, or point --config at another\n");
+    write_text(a, dir, "station.json", sb_done(&deep).p);
+    s = spawn(a, home, home, "", args, 0);
+    write_text(a, dir, "station.json", "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}");
+    write_text(a, dir, "likeness.json", sb_done(&limit).p);
+    ok = spawn(a, home, home, "", args, 0);
+    write_text(a, dir, "likeness.json", sb_done(&deep).p);
+    l = spawn(a, home, home, "", args, 0);
+    expect(&t, "a configuration nested past 64 levels is refused, in either file, and one at the limit is read",
+      3 == s.status && 0 == s.out.n && str_eq(s.err, sb_done(&want_station)) &&
+      3 == l.status && 0 == l.out.n && str_eq(l.err, sb_done(&want_likeness)) && 0 == ok.status,
+      described(a, 0 != ok.status ? ok : 3 != l.status ? l : s));
+  }
+
+  {
+    const char *dir = joinpath(a, home, str_of("cfg3"));
+    const char *station;
+    const char *args[4];
+    const char *name = "a configuration this process has no permission to read is refused";
+    FILE *probe;
+    sbuf want;
+    mkdir(dir, 0700);
+    write_text(a, dir, "station.json", "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}");
+    station = joinpath(a, dir, str_of("station.json"));
+    chmod(station, 0);
+    probe = fopen(station, "rb");
+    if (NULL != probe) {
+      fclose(probe);
+      tap_skip(&t, str_of(name), "this process reads a file without permission to, so the refusal cannot be shown here");
+    }
+    else {
+      args[0] = "version";
+      args[1] = "--config";
+      args[2] = station;
+      args[3] = NULL;
+      sb_init(&want, a);
+      sb_puts(&want, "error: invalid-project\n  ");
+      sb_puts(&want, station);
+      sb_puts(&want, " cannot be read\n  remedy  fix the file, or point --config at another\n");
+      r = spawn(a, home, home, "", args, 0);
+      expect(&t, name, 3 == r.status && 0 == r.out.n && str_eq(r.err, sb_done(&want)), described(a, r));
+    }
   }
 
   {

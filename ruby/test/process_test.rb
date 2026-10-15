@@ -10,8 +10,76 @@ require_relative 'harness'
 class ProcessTest < Minitest::Test
   BIN = File.join(Harness::ROOT, 'ruby', 'bin', 'likeness-rb')
 
+  STATION = '{"station":1,"profiles":{"default":{"sdk":{}}}}'
+
   def bare_env(home)
     { 'HOME' => home, 'PATH' => ENV.fetch('PATH', '') }
+  end
+
+  def refusal(path, why)
+    "error: invalid-project\n  #{path} #{why}\n  remedy  fix the file, or point --config at another\n"
+  end
+
+  def version(home, config)
+    Open3.capture3(bare_env(home), RbConfig.ruby, BIN, 'version', '--json', '--config', config,
+                   chdir: home, unsetenv_others: true)
+  end
+
+  def test_a_configuration_that_cannot_be_read_as_a_file_is_refused_not_taken_for_absent
+    Dir.mktmpdir('likeness-') do |home|
+      dir = File.join(home, 'cfg')
+      FileUtils.mkdir_p(File.join(dir, 'likeness.json'))
+      File.write(File.join(dir, 'station.json'), STATION)
+      [[dir, dir], [File.join(dir, 'station.json'), File.join(dir, 'likeness.json')]].each do |config, named|
+        out, err, status = version(home, config)
+        assert_equal 3, status.exitstatus, "#{config}\n#{err}"
+        assert_equal '', out
+        assert_equal refusal(named, 'cannot be read'), err
+      end
+    end
+  end
+
+  def test_a_number_no_double_can_hold_is_not_valid_json_in_either_file
+    Dir.mktmpdir('likeness-') do |home|
+      station = File.join(home, 'station.json')
+      likeness = File.join(home, 'likeness.json')
+      File.write(station, '{"station":1,"profiles":{"default":{"sdk":{"joplin":{"options":{"n":1e400}}}}}}')
+      _, err, status = version(home, station)
+      assert_equal 3, status.exitstatus, err
+      assert_equal refusal(station, 'is not valid JSON'), err
+      File.write(station, '{"station":1,"profiles":{"default":{"sdk":{"joplin":{}}}}}')
+      ['-1e400', "1#{'0' * 400}"].each do |account|
+        File.write(likeness, "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":#{account}}}}}}")
+        out, err, status = version(home, station)
+        assert_equal 3, status.exitstatus, "#{account[0, 8]}\n#{err}"
+        assert_equal '', out
+        assert_equal refusal(likeness, 'is not valid JSON'), err
+      end
+      # Too small to hold is zero, which is a number.
+      File.write(likeness, '{"likeness":1,"profiles":{"default":{"instances":{"joplin":{"account":1e-400}}}}}')
+      _, err, status = version(home, station)
+      assert_equal 0, status.exitstatus, err
+    end
+  end
+
+  def test_a_configuration_this_process_has_no_permission_to_read_is_refused
+    Dir.mktmpdir('likeness-') do |home|
+      config = File.join(home, 'station.json')
+      File.write(config, STATION)
+      File.chmod(0, config)
+      readable = begin
+        File.binread(config)
+        true
+      rescue Errno::EACCES
+        false
+      end
+      skip 'this process reads a file without permission to, so the refusal cannot be shown here' if readable
+
+      out, err, status = version(home, config)
+      assert_equal 3, status.exitstatus, err
+      assert_equal '', out
+      assert_equal refusal(config, 'cannot be read'), err
+    end
   end
 
   def test_a_malformed_configuration_is_refused_the_same_way_through_both_flag_forms

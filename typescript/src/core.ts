@@ -536,12 +536,29 @@ export function withChain (config: unknown, chain: unknown[]): unknown {
   return copy
 }
 
+const STATION_REMEDY = 'fix station.json; station validates it against its own shape'
+
+// Any refusal of station's own as it opens on the configuration is the
+// project's, whatever its code: no source has been asked anything yet.
+function openConfigured (ctx: Ctx): Station {
+  try {
+    return openStation(withChain(ctx.station, []), ctx.env)
+  }
+  catch (err) {
+    const code = (err as { code?: unknown })?.code
+    if ('string' === typeof code && code.startsWith('station_')) {
+      throw new LikenessError('invalid-project', String((err as Error).message), STATION_REMEDY)
+    }
+    throw err
+  }
+}
+
 // One station per run: every client is connected through it lazily, and the
 // calls a command made are the requests it observed. A live run with a
 // connection to make opens it on the vault.
 async function openSession (ctx: Ctx, flags: Flags): Promise<Session> {
   const entry = entryOf(ctx, flags)
-  let station = openStation(withChain(ctx.station, []), ctx.env)
+  let station = openConfigured(ctx)
   const conns = connectionsOf(station, ctx.accounts ?? {}, profileOf(ctx.env))
   const configs = configured(station, conns)
   if (undefined === ctx.fixture && 0 < conns.length) {
@@ -594,7 +611,7 @@ function errorEnvelope (name: string, err: unknown, calls: Calls): Envelope {
   if ('station_config_invalid' === (err as { code?: string })?.code) {
     return envelope([name], 'invalid-project', null, { calls: calls.count() }, {
       message: String((err as Error).message),
-      remedy: 'fix station.json; station validates it against its own shape',
+      remedy: STATION_REMEDY,
     })
   }
   const anyErr = err as { status?: number, message?: string }
