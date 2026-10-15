@@ -2,7 +2,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, delimiter, dirname } from 'node:path'
 import { homedir } from 'node:os'
-import { run, openStation, withChain, type Ctx, PORT, VERSION } from './core.js'
+import { run, openStation, profileOf, withChain, type Ctx, PORT, VERSION } from './core.js'
 import { rfc3339 } from './identity.js'
 import { renderRaw } from './envelope.js'
 import { compareCodePoints } from './note.js'
@@ -38,9 +38,10 @@ export function parseStation (source: string, path: string): unknown {
   return doc
 }
 
-// The account each instance ref belongs to, from likeness.json.
-export function parseAccounts (source: string, path: string): Record<string, string> {
-  const instances = parseJson(source, path).instances ?? {}
+// The account each instance ref of one station profile belongs to, from
+// likeness.json. A profile reads only its own: none is inherited.
+export function parseAccounts (source: string, path: string, profile: string): Record<string, string> {
+  const instances = parseJson(source, path).profiles?.[profile]?.instances ?? {}
   const out: Record<string, string> = {}
   for (const ref of Object.keys(instances).sort(compareCodePoints)) {
     const account = instances[ref]?.account
@@ -49,13 +50,18 @@ export function parseAccounts (source: string, path: string): Record<string, str
   return out
 }
 
-function loadConfig (path: string): { station: unknown, accounts: Record<string, string> } {
+function loadConfig (path: string, profile: string): { station: unknown, accounts: Record<string, string> } {
   if (!existsSync(path)) return { station: null, accounts: {} }
   const station = parseStation(readFileSync(path, 'utf8'), path)
   const lpath = join(dirname(path), 'likeness.json')
-  const accounts = existsSync(lpath) ? parseAccounts(readFileSync(lpath, 'utf8'), lpath) : {}
+  const accounts = existsSync(lpath) ? parseAccounts(readFileSync(lpath, 'utf8'), lpath, profile) : {}
   return { station, accounts }
 }
+
+// What was typed past a line end, kept for the prompt that follows. A line
+// typed ahead arrives ending in \n; Enter in raw mode is \r, so \r\n is one end.
+let ahead = ''
+let afterCr = false
 
 // One line from the terminal with echo off; undefined at end of input.
 function prompt (label: string): Promise<string | undefined> {
@@ -69,10 +75,22 @@ function prompt (label: string): Promise<string | undefined> {
       process.stderr.write('\n')
       resolve(value)
     }
-    const onData = (chunk: Buffer): void => {
-      for (const ch of chunk.toString('utf8')) {
-        if ('\r' === ch || '\n' === ch) return done(typed)
-        if ('\u0004' === ch) return done('' === typed ? undefined : typed)
+    const take = (text: string): void => {
+      const chars = Array.from(text)
+      for (let i = 0; i < chars.length; i++) {
+        const ch = chars[i]
+        const lf = afterCr && '\n' === ch
+        afterCr = false
+        if (lf) continue
+        if ('\r' === ch || '\n' === ch) {
+          afterCr = '\r' === ch
+          ahead = chars.slice(i + 1).join('')
+          return done(typed)
+        }
+        if ('\u0004' === ch) {
+          ahead = chars.slice(i + 1).join('')
+          return done('' === typed ? undefined : typed)
+        }
         if ('\u0003' === ch) {
           input.setRawMode(false)
           process.stderr.write('\n')
@@ -82,10 +100,14 @@ function prompt (label: string): Promise<string | undefined> {
         else typed += ch
       }
     }
+    const onData = (chunk: Buffer): void => { take(chunk.toString('utf8')) }
     process.stderr.write(label + ': ')
     input.setRawMode(true)
     input.resume()
     input.on('data', onData)
+    const pending = ahead
+    ahead = ''
+    if ('' !== pending) take(pending)
   })
 }
 
@@ -163,7 +185,7 @@ export async function main (argv: string[]): Promise<number> {
 
   let config: { station: unknown, accounts: Record<string, string> }
   try {
-    config = loadConfig(path)
+    config = loadConfig(path, profileOf(env))
   }
   catch (err) {
     if (err instanceof ConfigError) {

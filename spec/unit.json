@@ -625,7 +625,7 @@
             "fn": "connections",
             "id": "config/connections-in-name-order",
             "in": {
-              "likeness": "{\"likeness\":1,\"instances\":{\"joplin$zed\":{\"account\":\"z\"},\"joplin\":{\"account\":\"local\"},\"joplin$abe\":{\"account\":\"a\"}}}",
+              "likeness": "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin$zed\":{\"account\":\"z\"},\"joplin\":{\"account\":\"local\"},\"joplin$abe\":{\"account\":\"a\"}}}}}",
               "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin$zed\":{},\"joplin\":{},\"joplin$abe\":{\"base\":\"http://x\"}}}}}"
             },
             "out": [
@@ -650,7 +650,7 @@
             "fn": "connections",
             "id": "config/inactive-instance-omitted",
             "in": {
-              "likeness": "{\"likeness\":1,\"instances\":{\"joplin$on\":{\"account\":\"on\"}}}",
+              "likeness": "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin$on\":{\"account\":\"on\"}}}}}",
               "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{\"active\":false},\"joplin$on\":{}}}}}"
             },
             "out": [
@@ -662,12 +662,38 @@
             ]
           },
           {
-            "err": "instance \"joplin\" has no account in likeness.json",
+            "err": "instance \"joplin\" has no account in likeness.json under profile \"default\"",
             "fn": "connections",
             "id": "config/instance-without-account",
             "in": {
-              "likeness": "{\"likeness\":1,\"instances\":{}}",
+              "likeness": "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{}}}}",
               "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
+            }
+          },
+          {
+            "fn": "connections",
+            "id": "config/account-follows-the-profile",
+            "in": {
+              "likeness": "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":\"home\"}}},\"work\":{\"instances\":{\"joplin\":{\"account\":\"office\"}}}}}",
+              "profile": "work",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}},\"work\":{\"sdk\":{\"joplin\":{\"base\":\"http://127.0.0.1:41185\"}}}}}"
+            },
+            "out": [
+              {
+                "account": "office",
+                "instance": "joplin",
+                "source": "joplin"
+              }
+            ]
+          },
+          {
+            "err": "instance \"joplin\" has no account in likeness.json under profile \"work\"",
+            "fn": "connections",
+            "id": "config/profile-inherits-no-account",
+            "in": {
+              "likeness": "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":\"home\"}}}}}",
+              "profile": "work",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}},\"work\":{}}}"
             }
           }
         ]

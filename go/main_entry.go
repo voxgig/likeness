@@ -130,13 +130,16 @@ func parseStation(text, path string) (map[string]any, error) {
 	return doc, nil
 }
 
-// parseAccounts reads the account each instance ref belongs to.
-func parseAccounts(text, path string) (map[string]string, error) {
+// parseAccounts reads the account each instance ref of one station profile
+// belongs to. A profile reads only its own: none is inherited.
+func parseAccounts(text, path, profile string) (map[string]string, error) {
 	doc, err := parseJSON(text, path)
 	if nil != err {
 		return nil, err
 	}
-	instances, _ := doc["instances"].(map[string]any)
+	profiles, _ := doc["profiles"].(map[string]any)
+	scoped, _ := profiles[profile].(map[string]any)
+	instances, _ := scoped["instances"].(map[string]any)
 	out := map[string]string{}
 	for ref, v := range instances {
 		e, _ := v.(map[string]any)
@@ -147,7 +150,7 @@ func parseAccounts(text, path string) (map[string]string, error) {
 	return out, nil
 }
 
-func loadConfig(path string) (map[string]any, map[string]string, error) {
+func loadConfig(path, profile string) (map[string]any, map[string]string, error) {
 	raw, err := os.ReadFile(path)
 	if nil != err {
 		return nil, map[string]string{}, nil
@@ -161,7 +164,7 @@ func loadConfig(path string) (map[string]any, map[string]string, error) {
 	if nil != err {
 		return doc, map[string]string{}, nil
 	}
-	accounts, err := parseAccounts(string(lraw), lpath)
+	accounts, err := parseAccounts(string(lraw), lpath, profile)
 	if nil != err {
 		return nil, nil, err
 	}
@@ -209,7 +212,7 @@ func Main(argv []string) int {
 		path = filepath.Join(home, ".config", "likeness", "station.json")
 	}
 
-	config, accounts, cerr := loadConfig(path)
+	config, accounts, cerr := loadConfig(path, profileOf(env))
 	if nil != cerr {
 		fmt.Fprint(os.Stderr, "error: invalid-project\n  "+cerr.Error()+"\n  remedy  "+configRemedy+"\n")
 		return 3

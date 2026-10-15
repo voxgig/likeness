@@ -84,15 +84,19 @@ func unitRegistry() map[string]unitFn {
 			if nil != err {
 				return nil, err
 			}
-			accounts, err := parseAccounts(str(m, "likeness"), "likeness.json")
+			env := map[string]string{}
+			if p, ok := m["profile"].(string); ok {
+				env["VOXGIG_STATION_PROFILE"] = p
+			}
+			accounts, err := parseAccounts(str(m, "likeness"), "likeness.json", profileOf(env))
 			if nil != err {
 				return nil, err
 			}
-			st, err := openStation(config, nil)
+			st, err := openStation(config, env)
 			if nil != err {
 				return nil, err
 			}
-			conns, err := connectionsOf(st, accounts)
+			conns, err := connectionsOf(st, accounts, profileOf(env))
 			if nil != err {
 				return nil, err
 			}

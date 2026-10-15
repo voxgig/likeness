@@ -10,7 +10,7 @@ import { partialCodes } from '../src/errors.js'
 import { foldCase } from '../src/evaluate.js'
 import { project } from '../src/adapter/joplin.js'
 import { takeConfigOption, parseStation, parseAccounts } from '../src/cli.js'
-import { openStation, connectionsOf } from '../src/core.js'
+import { openStation, connectionsOf, profileOf } from '../src/core.js'
 import { parseArgv } from '../src/args.js'
 import { vaultEntry } from '../src/vault.js'
 import { entries, type UnitEntry } from './harness.js'
@@ -52,9 +52,10 @@ const REGISTRY: Record<string, Fn> = {
   takeConfigOption: (argv) => takeConfigOption(argv as string[]),
   parseArgv: (argv) => parseArgv(argv as string[]),
   connections: (v) => {
-    const { station, likeness } = v as { station: string, likeness: string }
-    return connectionsOf(openStation(parseStation(station, 'station.json')),
-      parseAccounts(likeness, 'likeness.json'))
+    const { station, likeness, profile } = v as { station: string, likeness: string, profile?: string }
+    const env = undefined === profile ? undefined : { VOXGIG_STATION_PROFILE: profile }
+    return connectionsOf(openStation(parseStation(station, 'station.json'), env),
+      parseAccounts(likeness, 'likeness.json', profileOf(env)), profileOf(env))
   },
   projectJoplin: (v) => {
     const { raw, instance, account } = v as { raw: Record<string, unknown>, instance: string, account: string }

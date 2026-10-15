@@ -52,10 +52,14 @@ type Session = {
   client: (c: Connection) => any
 }
 
+export function profileOf (env?: Record<string, string>): string {
+  return env?.VOXGIG_STATION_PROFILE || 'default'
+}
+
 export function openStation (config: unknown, env?: Record<string, string>): Station {
   return new Station({
     config: (config ?? null) as any,
-    profile: env?.VOXGIG_STATION_PROFILE || 'default',
+    profile: profileOf(env),
     proxy: 'off',
     load: false,
   })
@@ -64,13 +68,13 @@ export function openStation (config: unknown, env?: Record<string, string>): Sta
 // Every declared instance, in station's name order, with the account its
 // notes' identity derives from. An instance with no account is refused:
 // identity may not be derived from the instance name.
-export function connectionsOf (station: Station, accounts: Record<string, string>): Connection[] {
+export function connectionsOf (station: Station, accounts: Record<string, string>, profile: string): Connection[] {
   return station.instances().filter(i => i.active).map(i => {
     const account = accounts[i.name]
     if ('string' !== typeof account || '' === account) {
       throw new LikenessError('invalid-project',
-        'instance "' + i.name + '" has no account in likeness.json',
-        'add `"' + i.name + '": { "account": "<id>" }` under `instances` in likeness.json')
+        'instance "' + i.name + '" has no account in likeness.json under profile "' + profile + '"',
+        'add `"' + i.name + '": { "account": "<id>" }` under `profiles.' + profile + '.instances` in likeness.json')
     }
     return { instance: i.name, source: i.api, account }
   })
@@ -417,7 +421,7 @@ function cmdHelp (args: string[]): { env: Envelope, text: string } {
 function entryOf (ctx: Ctx, flags: Flags): VaultEntry {
   const home = ctx.home ?? homedir()
   return vaultEntry(ctx.station, {
-    profile: ctx.env?.VOXGIG_STATION_PROFILE || 'default',
+    profile: profileOf(ctx.env),
     home,
     dir: ctx.dir ?? join(home, '.config', 'likeness'),
     key: flags.vaultKey,
@@ -506,7 +510,7 @@ export function withChain (config: unknown, chain: unknown[]): unknown {
 async function openSession (ctx: Ctx, flags: Flags): Promise<Session> {
   const entry = entryOf(ctx, flags)
   let station = openStation(withChain(ctx.station, []), ctx.env)
-  const conns = connectionsOf(station, ctx.accounts ?? {})
+  const conns = connectionsOf(station, ctx.accounts ?? {}, profileOf(ctx.env))
   if (undefined === ctx.fixture && 0 < conns.length) {
     const chain = await vaultChain(ctx, entry, flags)
     try {
