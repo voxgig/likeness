@@ -10,7 +10,8 @@ from typing import Any
 from likeness.adapter import notion, obsidian
 from likeness.adapter.joplin import project
 from likeness.args import parse_argv
-from likeness.cli import parse_accounts, parse_station, take_config_option
+from likeness.cli import take_config_option
+from likeness.config import parse_accounts, parse_station
 from likeness.core import connections_of, open_station, profile_of
 from likeness.envelope import compare_code_points, serialise
 from likeness.errors import partial_codes
@@ -18,6 +19,7 @@ from likeness.evaluate import fold_case
 from likeness.identity import CROCKFORD, lid, rfc3339
 from likeness.pin import fingerprint_of, parse_pin
 from likeness.selector import SelectorError, parse_selector
+from likeness.sources import ref_for, secret_name
 from likeness.vault import vault_entry
 from tests.harness import entries
 
@@ -104,6 +106,8 @@ REGISTRY: dict[str, Callable[[Any], Any]] = {
     'projectNotion': lambda v: notion.project(v['raw'], v['instance'], v['account'], False),
     'parsePin': parse_pin,
     'fingerprintOf': lambda digits: fingerprint_of(bytes.fromhex(digits)),
+    'secretName': secret_name,
+    'refFor': lambda v: ref_for(v['source'], v.get('instance')),
     'vaultEntry': _vault_entry,
 }
 

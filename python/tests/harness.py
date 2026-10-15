@@ -12,10 +12,13 @@ import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from likeness.calls import Call
+from likeness.config import load_config
 from likeness.core import PORT, Ctx, run
 from likeness.envelope import SerialiseError, serialise, strip_parity_exceptions
+from likeness.station import profile_of
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -60,11 +63,34 @@ def _seed(name: str) -> dict[str, Any]:
     return seed
 
 
+def located(ctx: Ctx, name: str) -> str:
+    """A file the entry names: under the home with `~/`, else in the configuration directory."""
+    assert ctx.home is not None and ctx.dir is not None
+    return os.path.join(ctx.home, name[2:]) if name.startswith('~/') else os.path.join(ctx.dir, name)
+
+
+_CONFIG_FILES = ('station.json', 'likeness.json')
+
+
+def _probe(presents: dict[str, str]) -> Callable[[str], str]:
+    """Keyed by host:port, the port written out even where it is the scheme's."""
+    def presented(base: str) -> str:
+        url = urlsplit(base)
+        host = url.hostname or ''
+        at = ('[' + host + ']' if ':' in host else host) + ':' + str(url.port or 443)
+        if at not in presents:
+            raise ConnectionRefusedError('nothing answers at ' + at)
+        return presents[at]
+    return presented
+
+
 def build_ctx(e: dict[str, Any]) -> Ctx:
     """Each connection becomes a declared station instance, its block the one
     the entry gives, its account the likeness.json entry beside it, and its
     seed, its own or the entry's, the SDK's offline transport. Every run gets a
-    home of its own, holding the entry's files."""
+    home of its own, holding the entry's files; an entry that brings
+    station.json or likeness.json is configured by them alone, read as the argv
+    shell reads them."""
     ectx = e['ctx']
 
     sdk: dict[str, Any] = {}
@@ -90,6 +116,12 @@ def build_ctx(e: dict[str, Any]) -> Ctx:
     profile: dict[str, Any] = {'sdk': sdk}
     if 'secrets' in ectx:
         profile['secrets'] = ectx['secrets']
+    station: Any = {'station': 1, 'profiles': {'default': profile}}
+    read = accounts
+    if any(name in _CONFIG_FILES for name in ectx.get('files', {})):
+        if ectx['connections'] or 'secrets' in ectx:
+            raise AssertionError(e['id'] + ': an entry that brings its configuration declares no connections or secrets')
+        station, read = load_config(os.path.join(dir, 'station.json'), profile_of(ectx.get('env')))
 
     stdin = ectx.get('stdin', '')
     ctx = Ctx(
@@ -97,15 +129,17 @@ def build_ctx(e: dict[str, Any]) -> Ctx:
         env=ectx.get('env'),
         clock=ectx['clock'],
         seed=ectx['seed'],
-        station={'station': 1, 'profiles': {'default': profile}},
-        accounts=accounts,
+        station=station,
+        accounts=read,
         fixture=fixture,
         # Absent stays absent: being told about nothing is a different case
         # from being told about an empty list.
         path=ectx.get('path'),
         home=home,
         dir=dir,
+        config=os.path.join(dir, 'station.json'),
         stdin=lambda: stdin,
+        presented=_probe(ectx.get('presents', {})),
     )
 
     if 'tty' in ectx:
@@ -120,9 +154,7 @@ def _vault_failures(e: dict[str, Any], ctx: Ctx, fail: Callable[[str], None]) ->
         return
     from voxgig_sekreto.plugins.minivault import openvault
 
-    named = want.get('file', 'likeness.skmv')
-    assert ctx.home is not None and ctx.dir is not None
-    file = os.path.join(ctx.home, named[2:]) if named.startswith('~/') else os.path.join(ctx.dir, named)
+    file = located(ctx, want.get('file', 'likeness.skmv'))
     try:
         vault = openvault({'file': file, 'key': want.get('key', 'master'), 'passphrase': want['passphrase']})
         names = vault.list()
@@ -141,6 +173,20 @@ def _vault_failures(e: dict[str, Any], ctx: Ctx, fail: Callable[[str], None]) ->
     for name, value in want.get('values', {}).items():
         if vault.get(name) != value:
             fail('vault value of ' + name + ' is not the one expected')
+
+
+def _file_failures(e: dict[str, Any], ctx: Ctx, fail: Callable[[str], None]) -> None:
+    """The configuration directory afterwards: each named file byte for byte,
+    and the absent ones not there."""
+    for name, want in e['out'].get('files', {}).items():
+        at = located(ctx, name)
+        if not os.path.exists(at):
+            fail(name + ' is not there afterwards, and ' + want + ' says what it holds')
+        elif Path(at).read_bytes() != (ROOT / want).read_bytes():
+            fail(name + ' differs from ' + want)
+    for name in e['out'].get('absent', []):
+        if os.path.exists(located(ctx, name)):
+            fail(name + ' is there afterwards, and the entry says it is not')
 
 
 def _compact(v: Any) -> str:
@@ -227,6 +273,7 @@ def check(e: dict[str, Any]) -> list[str]:
         fail('prompts ' + _compact(prompts) + ', expected ' + _compact(e['out'].get('prompts', [])))
 
     _vault_failures(e, ctx, fail)
+    _file_failures(e, ctx, fail)
     return failures
 
 

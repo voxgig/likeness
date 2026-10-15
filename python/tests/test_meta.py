@@ -150,6 +150,24 @@ class Meta(unittest.TestCase):
         f = stdout_failures(e, serialise(parsed))
         self.assertTrue(starts(f, 'data.port is'), f)
 
+    def test_a_written_file_that_differs_is_reported(self) -> None:
+        e = entry('connections/add-joplin')
+        e['out']['files']['station.json'] = 'fixtures/config/several/station.json'
+        f = check(e)
+        self.assertTrue(starts(f, 'station.json differs'), f)
+
+    def test_a_file_the_entry_says_is_not_there_written_is_reported(self) -> None:
+        e = entry('connections/add-joplin')
+        e['out']['absent'] = ['likeness.json']
+        f = check(e)
+        self.assertTrue(starts(f, 'likeness.json is there afterwards'), f)
+
+    def test_a_file_the_entry_names_never_written_is_reported(self) -> None:
+        e = entry('connections/add-joplin-needs-an-account')
+        e['out']['files'] = {'station.json': 'spec/written/connections/add-joplin/station.json'}
+        f = check(e)
+        self.assertTrue(starts(f, 'station.json is not there afterwards'), f)
+
     def test_net_options_reach_the_sdk(self) -> None:
         seed = {'entity': {'note': {'x1': {'id': 'x1'}}}, 'net': {'failTimes': 1, 'failStatus': 401}}
         r = joplin_check(JoplinSDK.test(seed))

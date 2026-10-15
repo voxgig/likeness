@@ -37,3 +37,14 @@ def term_of(source: str, entity: str) -> str:
     """The source's own word for one of likeness's entities, or the entity's name."""
     term = _entity(source, entity).get('term')
     return entity if term is None else term
+
+
+def connect_of(source: str) -> dict[str, Any] | None:
+    """How `sources add` connects a source, or None for one not registered."""
+    row = caps().get(source)
+    return None if row is None else row['connect']
+
+
+def source_flags() -> list[str]:
+    """The flags of `sources add` that some source alone reads, in code-point order."""
+    return sorted({f for row in caps().values() for f in row['connect']['flag']})

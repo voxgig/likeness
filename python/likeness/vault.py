@@ -116,7 +116,7 @@ def vault_entry(station: Any, profile: str, home: str, dir: str, key: str | None
     return VaultEntry(file, key, shown(file, home))
 
 
-def _present(entry: VaultEntry) -> None:
+def present(entry: VaultEntry) -> None:
     if not os.path.exists(entry.file):
         raise LikenessError('secret-backend-unavailable', 'no vault at ' + entry.shown,
                             'run `likeness secrets init` to create it, or point station.json at the vault')
@@ -127,7 +127,7 @@ def _env(ask: Any, name: str) -> str | None:
     return value if isinstance(value, str) and '' != value else None
 
 
-def _passphrase(ask: Any, flags: Any, key: str) -> str:
+def passphrase(ask: Any, flags: Any, key: str) -> str:
     """From the environment, else typed."""
     value = _env(ask, flags.passphrase_env if flags.passphrase_env is not None else PASSPHRASE_ENV)
     if value is not None:
@@ -174,7 +174,7 @@ def _new_passphrase(ask: Any, flagged: str | None, fallback: str, flag: str, lab
         'set that variable, or run on a terminal to be asked')
 
 
-def _opened(entry: VaultEntry, phrase: str) -> tuple[Any, dict[str, Any]]:
+def opened(entry: VaultEntry, phrase: str) -> tuple[Any, dict[str, Any]]:
     vault = _minivault().openvault({'file': entry.file, 'key': entry.key, 'passphrase': phrase})
     try:
         return vault, vault.open()
@@ -186,7 +186,7 @@ def _opened(entry: VaultEntry, phrase: str) -> tuple[Any, dict[str, Any]]:
             'check the passphrase, and the key --vault-key names') from None
 
 
-def _written(entry: VaultEntry, write: Callable[[], Any]) -> None:
+def written(entry: VaultEntry, write: Callable[[], Any]) -> None:
     try:
         write()
     except Exception:
@@ -211,11 +211,11 @@ def _role(k: dict[str, Any]) -> str:
     return 'master' if k['master'] else 'write' if k['write'] else 'read'
 
 
-def _mkdirs(path: str) -> None:
+def mkdirs(path: str) -> None:
     """Every directory made is private, not only the last, as in the other ports."""
     parent = os.path.dirname(path)
     if parent != path and not os.path.isdir(parent):
-        _mkdirs(parent)
+        mkdirs(parent)
     try:
         os.mkdir(path, 0o700)
     except FileExistsError:
@@ -226,9 +226,9 @@ def _mkdirs(path: str) -> None:
 def vault_chain(ask: Any, entry: VaultEntry, flags: Any) -> list[dict[str, str]]:
     """The chain station resolves a live connection's token through. Offline,
     the SDKs' test transport answers and nothing is resolved."""
-    _present(entry)
-    phrase = _passphrase(ask, flags, entry.key)
-    _opened(entry, phrase)[0].close()
+    present(entry)
+    phrase = passphrase(ask, flags, entry.key)
+    opened(entry, phrase)[0].close()
     return [{'kind': 'minivault', 'file': entry.file, 'vaultkey': entry.key, 'passphrase': phrase}]
 
 
@@ -240,10 +240,10 @@ def _init(entry: VaultEntry, ask: Any, flags: Any) -> Answer:
                              'new passphrase for ' + entry.key)
 
     def create() -> None:
-        _mkdirs(os.path.dirname(entry.file))
+        mkdirs(os.path.dirname(entry.file))
         _minivault().createvault({'file': entry.file, 'key': entry.key, 'passphrase': phrase}).close()
 
-    _written(entry, create)
+    written(entry, create)
     return Answer({'file': entry.shown, 'key': entry.key}, 1,
                   'created the vault ' + entry.shown + ', with the key ' + entry.key + '\n')
 
@@ -252,14 +252,14 @@ def secrets(action: str, args: list[str], entry: VaultEntry, ask: Any, flags: An
     if 'init' == action:
         return _init(entry, ask, flags)
 
-    _present(entry)
+    present(entry)
     name = args[0] if args else ''
     from_stdin = 1 < len(args) and '-' == args[1]
     if 'set' == action and not from_stdin and ask.tty is not True:
         raise LikenessError('invalid-argument', '`secrets set` reads the value from a terminal, or from stdin given as -',
                             'pipe the value in, with - after the name')
 
-    vault, info = _opened(entry, _passphrase(ask, flags, entry.key))
+    vault, info = opened(entry, passphrase(ask, flags, entry.key))
     try:
         if 'list' == action:
             names = sorted(vault.list())
@@ -295,14 +295,14 @@ def secrets(action: str, args: list[str], entry: VaultEntry, ask: Any, flags: An
             if '' == value:
                 raise LikenessError('invalid-argument', 'the value is empty',
                                     'a secret needs a value; `likeness secrets remove` drops one')
-            _written(entry, lambda: vault.set(name, value))
+            written(entry, lambda: vault.set(name, value))
             return Answer({'name': name}, 1, 'set ' + name + '\n')
 
         if 'remove' == action:
             _master(info, action)
             if name not in vault.list():
                 raise _not_readable(name, entry.key)
-            _written(entry, lambda: vault.remove(name))
+            written(entry, lambda: vault.remove(name))
             return Answer({'name': name}, 1, 'removed ' + name + '\n')
 
         if 'keys' == action:
@@ -324,8 +324,8 @@ def secrets(action: str, args: list[str], entry: VaultEntry, ask: Any, flags: An
                                     'revoke it first, or choose another name')
             phrase = _new_passphrase(ask, flags.new_passphrase_env, NEW_PASSPHRASE_ENV, 'new-passphrase-env',
                                      'passphrase for the new key ' + key)
-            _written(entry, lambda: vault.grant({'key': key, 'passphrase': phrase, 'names': names,
-                                                 'write': flags.write}))
+            written(entry, lambda: vault.grant({'key': key, 'passphrase': phrase, 'names': names,
+                                                'write': flags.write}))
             return Answer({'grants': names, 'key': key, 'write': flags.write}, 1,
                           'granted ' + key + ', ' + ('reading and writing ' if flags.write else 'reading ') +
                           ', '.join(names) + '\n')
@@ -339,13 +339,13 @@ def secrets(action: str, args: list[str], entry: VaultEntry, ask: Any, flags: An
             if not any(k['key'] == key for k in vault.keys()):
                 raise LikenessError('not-found', 'the vault has no key ' + key,
                                     'run `likeness secrets keys` for the keys there are')
-            _written(entry, lambda: vault.revoke(key))
+            written(entry, lambda: vault.revoke(key))
             return Answer({'key': key}, 1, 'revoked ' + key + '\n')
 
         if 'rotate' == action:
             _master(info, action)
             dropped = sorted(k['key'] for k in vault.keys() if k['key'] != entry.key)
-            _written(entry, vault.rotate)
+            written(entry, vault.rotate)
             return Answer({'dropped': dropped}, 1,
                           'rotated the vault' + ('; dropped ' + ', '.join(dropped) if dropped else '') + '\n')
 

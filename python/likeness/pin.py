@@ -77,6 +77,18 @@ def _presented(host: str, port: int, timeout: Any) -> bytes:
     return der
 
 
+def presented_fingerprint(base: str) -> str:
+    """The fingerprint of the certificate an https base presents, by the same
+    probe, so pinning it writes nothing to the server either."""
+    import socket
+    from urllib.parse import urlsplit
+
+    url = urlsplit(base)
+    if 'https' != url.scheme:
+        raise CertificateError('invalid')
+    return fingerprint_of(_presented(url.hostname or '', url.port or 443, socket.getdefaulttimeout()))
+
+
 def _verified(host: str, port: int, anchor: bytes, pin: str, timeout: Any) -> ssl.SSLSocket:
     """Verified by OpenSSL against the pinned certificate as the only trust
     anchor, with its own host check, and then against the pin itself."""
