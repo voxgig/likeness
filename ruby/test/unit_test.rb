@@ -31,6 +31,31 @@ class UnitCorpusTest < Minitest::Test
     },
     'projectJoplin' => ->(v) { Likeness::Joplin.project(v['raw'], v['instance'], v['account'], false) },
     'partialCodes' => ->(_) { Likeness.partial_codes },
+    'obsidianUrl' => ->(v) { Likeness::Obsidian.note_url(v['vault'], v['path']) },
+    'vaultEntries' => ->(listed) { Likeness::Obsidian.entries(listed) },
+    'vaultWalk' => lambda { |v|
+      steps = []
+      Likeness::Obsidian.walk_steps do |step|
+        steps << step
+        Likeness::Obsidian.entries(v['listings'][step['list']] || []) if step.key?('list')
+      end
+      steps
+    },
+    'obsidianTransport' => ->(v) { Likeness::Obsidian.transport(v['instance'], v['block']) },
+    'projectObsidian' => lambda { |v|
+      Likeness::Obsidian.project(v['raw'], v['path'], v['instance'], v['account'], false)
+    },
+    'notionVersion' => ->(v) { Likeness::Notion.configure(v['instance'], v['block']) },
+    'notionTitle' => ->(properties) { Likeness::Notion.title_of(properties) },
+    # Absent is `{}`: the corpus has no way to say "no value" but an empty record.
+    'notionSpace' => lambda { |parent|
+      space = Likeness::Notion.space_of(parent)
+      space.nil? ? {} : { 'space' => space }
+    },
+    'notionTime' => ->(v) { Likeness::Notion.stamp(v, 'created_time') },
+    'projectNotion' => ->(v) { Likeness::Notion.project(v['raw'], v['instance'], v['account'], false) },
+    'parsePin' => ->(text) { Likeness.parse_pin(text) },
+    'fingerprintOf' => ->(hex) { Likeness.fingerprint_of([hex].pack('H*')) },
     'vaultEntry' => lambda { |v|
       entry = Likeness.vault_entry(v['station'], profile: v['profile'] || 'default', home: '/home/u',
                                                  dir: '/home/u/.config/likeness', key: v['key'])

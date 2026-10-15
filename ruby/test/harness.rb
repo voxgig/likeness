@@ -36,22 +36,25 @@ module Harness
     Marshal.load(Marshal.dump(value))
   end
 
+  def seed_of(name)
+    seed = JSON.parse(read("fixtures/sources/#{name}/seed.json"))
+    seed.delete('_doc')
+    seed
+  end
+
   # Each connection becomes a declared station instance, its block the one the
-  # entry gives, its account the likeness.json entry beside it, and its seed
-  # the SDK's offline transport. Every run gets a home of its own, holding the
-  # entry's files.
+  # entry gives, its account the likeness.json entry beside it, and its seed,
+  # its own or the entry's, the SDK's offline transport. Every run gets a home
+  # of its own, holding the entry's files.
   def build_ctx(entry)
     ectx = entry['ctx']
-    seed = JSON.parse(read("fixtures/sources/#{ectx['fixture']}/seed.json"))
-    seed.delete('_doc')
-
     sdk = {}
     accounts = {}
     fixture = {}
     ectx['connections'].each do |c|
       sdk[c['instance']] = deep_copy(c['block'] || {})
       accounts[c['instance']] = c['account']
-      own = deep_copy(seed)
+      own = seed_of(c['fixture'] || ectx['fixture'])
       own['net'] = c['net'] if c.key?('net')
       fixture[c['instance']] = own
     end
@@ -171,6 +174,28 @@ module Harness
     end
   end
 
+  # The entries whose calls this port's SDK spells differently on the wire: its
+  # vendored VoxgigStruct.escurl percent-encodes the characters `!'()*` that
+  # encodeURIComponent keeps. Their calls are compared with that spelling
+  # applied, and an entry whose calls match outright fails, as it no longer differs.
+  ESCURL_DIVERGES = %w[obsidian/list-odd-values obsidian/list-odd-raw].freeze
+
+  def escurl(path)
+    path.gsub(/[!'()*]/) { |c| format('%%%02X', c.ord) }
+  end
+
+  def calls_failures(entry, got, failures)
+    want = entry['out']['calls']
+    if ESCURL_DIVERGES.include?(entry['id'])
+      if same_calls?(want, got)
+        failures << "calls match the expectation outright, so #{entry['id']} no longer belongs in ESCURL_DIVERGES"
+        return
+      end
+      want = want.map { |c| c.merge('path' => escurl(c['path'])) }
+    end
+    failures << "calls #{JSON.generate(got)}, expected #{JSON.generate(want)}" unless same_calls?(want, got)
+  end
+
   def check(entry)
     failures = []
     out = entry['out']
@@ -181,7 +206,7 @@ module Harness
     check_stdout(entry, r.stdout, failures)
     want_err = out['stderr'] || ''
     failures << "stderr #{JSON.generate(r.stderr)}, expected #{JSON.generate(want_err)}" if r.stderr != want_err
-    failures << "calls #{JSON.generate(r.calls)}, expected #{JSON.generate(out['calls'])}" unless same_calls?(out['calls'], r.calls)
+    calls_failures(entry, r.calls, failures)
     prompts = PROMPTS[ctx] || []
     want_prompts = out['prompts'] || []
     failures << "prompts #{JSON.generate(prompts)}, expected #{JSON.generate(want_prompts)}" if prompts != want_prompts

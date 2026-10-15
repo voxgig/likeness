@@ -90,6 +90,25 @@ class MetaTest < Minitest::Test
     assert_reported Harness.check(e), 'calls '
   end
 
+  # The escurl exception admits the one spelling and nothing else.
+  def test_an_entry_excepted_for_the_sdks_spelling_still_reports_another_call
+    e = entry('obsidian/list-odd-values')
+    e['out']['calls'][-1]['path'] = '/vault/odd%2Felsewhere.md'
+    assert_reported Harness.check(e), 'calls '
+  end
+
+  def test_the_sdks_spelling_is_reported_in_an_entry_not_excepted_for_it
+    e = entry('obsidian/list-odd-values')
+    e['id'] = 'obsidian/not-excepted'
+    assert_reported Harness.check(e), 'calls '
+  end
+
+  def test_an_excepted_entry_whose_calls_match_outright_is_reported
+    e = entry('obsidian/list-odd-values')
+    e['out']['calls'] = e['out']['calls'].map { |c| c.merge('path' => Harness.escurl(c['path'])) }
+    assert_reported Harness.check(e), 'calls match the expectation outright'
+  end
+
   def test_unexpected_stderr_is_reported
     e = entry('list/all')
     e['out']['stderr'] = "something the command never printed\n"

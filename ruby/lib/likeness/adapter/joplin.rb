@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
+require_relative '../sdk'
+
 # At load, before any station opens: station validates with whatever
 # VoxgigStruct is defined, and this SDK always loads its own copy.
-require 'Joplin_sdk'
+Likeness.require_sdk('Joplin_sdk')
 
 require_relative '../caps'
 require_relative '../envelope'
@@ -20,8 +22,8 @@ module Likeness
     module_function
 
     # The ref rides the station feature: a top-level `instance` or `as` reaches the SDK, which refuses it.
-    def connect(station, instance, seed = nil)
-      feature = { 'station' => { 'instance' => instance } }
+    def connect(station, conn, _config, seed = nil)
+      feature = { 'station' => { 'instance' => conn.instance } }
       feature['test'] = seed.merge('active' => true) unless seed.nil?
       station.connect(JoplinSDK, 'feature' => feature)
     end
@@ -100,12 +102,5 @@ module Likeness
       else { ok: false, code: 'source-unavailable', detail: 'the application did not answer' }
       end
     end
-  end
-
-  module_function
-
-  # The SDK's status, never its message text, which differs between ports.
-  def status_of(err)
-    err.respond_to?(:status) ? err.status : nil
   end
 end

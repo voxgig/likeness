@@ -95,6 +95,34 @@ class ProcessTest < Minitest::Test
     end
   end
 
+  # Three generated SDKs load into one process, and their redefinitions of
+  # each other's names reach neither stream.
+  def test_the_port_loads_its_three_sdks_and_writes_nothing_but_its_answer
+    Dir.mktmpdir('likeness-') do |home|
+      out, err, status = version(home, File.join(home, 'station.json'))
+      assert_equal 0, status.exitstatus, err
+      assert_equal '', err
+      assert_equal 'rb', JSON.parse(out)['port']
+    end
+  end
+
+  # Under -w each SDK's own lint is still shown, and no redefinition is
+  # shown that one SDK's file makes of another's.
+  def test_under_w_no_redefinition_crosses_from_one_sdk_to_another
+    Dir.mktmpdir('likeness-') do |home|
+      _out, err, status = Open3.capture3(bare_env(home), RbConfig.ruby, '-w', BIN, 'version', '--json',
+                                         chdir: home, unsetenv_others: true)
+      assert_equal 0, status.exitstatus, err
+      refute_match(/already initialized constant/, err)
+      lines = err.lines
+      lines.each_with_index.select { |line, _| line.include?('warning: method redefined') }.each do |head, i|
+        note = lines[i + 1].to_s
+        assert_includes note, 'previous definition of', head
+        assert_equal head[/\A[^:]+/], note[/\A[^:]+/], "#{head}#{note}"
+      end
+    end
+  end
+
   def test_a_broken_pipe_exits_quietly_with_0
     Dir.mktmpdir('likeness-') do |home|
       reader, writer = IO.pipe

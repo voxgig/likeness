@@ -252,6 +252,41 @@ on. That was `upstream/issue/09`. The regeneration that adds station's feature
 no longer warns. A missing target is still reported as a warning on every run,
 for any source, rather than found during a port's stage.
 
+### Three Ruby SDKs share one process
+
+A generated Ruby SDK declares its names at the top level
+([sdkgen#404](https://github.com/voxgig/sdkgen/issues/404)), so each SDK the
+Ruby port loads after the first redefines what the others declared, and Ruby
+warns on stderr before any command runs. At the pins, nothing redefined changes
+what a command does. All three SDKs vendor the same `VoxgigStruct`, byte for
+byte. Obsidian's typed models `Tag` and `TagListMatch` replace Joplin's, and no
+SDK and no adapter builds a typed model. `TagEntity` would be reopened by
+whichever `Tag` facade ran second, and no adapter calls one. The entities the
+adapters read, `NoteEntity`, `PageEntity` and `VaultEntity`, are each one SDK's
+alone.
+
+`ruby/lib/likeness/sdk.rb` loads each SDK, refuses one whose `VoxgigStruct`
+differs from the copy already loaded, since every SDK would run whichever loaded
+last, and drops only the warnings for those inert redefinitions.
+`ruby/test/sdks_test.rb` holds each claim, so a re-pin that breaks one fails
+there and not at a user's terminal.
+
+### What the Ruby SDKs send differently
+
+Two differences from the TypeScript SDKs reach the wire, both in sdkgen's
+templates:
+
+- The vendored `VoxgigStruct.escurl` percent-encodes `!'()*`, which
+  `encodeURIComponent` keeps, so a vault path holding one is spelled differently
+  in a call (`upstream/issue/12`). The transcript entries
+  `obsidian/list-odd-values` and `obsidian/list-odd-raw` differ in their `calls`
+  alone; `ruby/test/harness.rb` names them, and fails once they match.
+- A `list` builds an entity only for an item that is a record, so the plugin's
+  root listing, which names its entries as text, comes back as entities with no
+  data (`upstream/issue/13`). The offline transport lists records, so the corpus
+  is unaffected; a live vault cannot be walked from its root, and the wire
+  suite's walk is skipped, saying so.
+
 ### The feature is not yet identical across the ports
 
 The TypeScript implementation is the same 494 lines in all four SDKs, so there
