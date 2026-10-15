@@ -10,7 +10,8 @@ from typing import Any
 from likeness.adapter import notion, obsidian
 from likeness.adapter.joplin import project
 from likeness.args import parse_argv
-from likeness.cli import parse_accounts, parse_station, take_config_option
+from likeness.cli import take_config_option
+from likeness.config import parse_accounts, parse_station
 from likeness.core import connections_of, open_station, profile_of
 from likeness.envelope import compare_code_points, serialise
 from likeness.errors import partial_codes

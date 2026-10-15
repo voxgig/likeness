@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import os
 import time
 from collections.abc import Callable
@@ -15,12 +14,14 @@ from likeness.adapters import ADAPTERS
 from likeness.args import Parsed, command_def, command_words, help_rows, help_text, parse_argv
 from likeness.calls import Call, Calls
 from likeness.caps import supports, term_of
+from likeness.config import homedir
 from likeness.envelope import render, serialise
 from likeness.errors import LikenessError, exit_for
 from likeness.evaluate import evaluate
 from likeness.identity import parse_time
 from likeness.note import Note, sort_notes
 from likeness.selector import SelectorError, fields_of, parse_selector
+from likeness.station import Connection, connections_of, open_station, profile_of, with_chain
 from likeness.vault import VaultEntry, secrets, vault_chain, vault_entry
 
 if TYPE_CHECKING:
@@ -28,13 +29,6 @@ if TYPE_CHECKING:
 
 VERSION = '0.1.0'
 PORT = 'py'
-
-
-@dataclass(frozen=True)
-class Connection:
-    instance: str
-    source: str
-    account: str
 
 
 @dataclass
@@ -103,46 +97,6 @@ def _flags_of(parsed: Parsed) -> Flags:
         reveal=True is f.get('reveal'),
         write=True is f.get('write'),
     )
-
-
-def homedir() -> str:
-    """As the canonical port's os.homedir(): HOME whenever it is set, even empty."""
-    home = os.environ.get('HOME')
-    return home if home is not None else os.path.expanduser('~')
-
-
-def profile_of(env: dict[str, str] | None = None) -> str:
-    return (env or {}).get('VOXGIG_STATION_PROFILE') or 'default'
-
-
-def open_station(config: Any, env: dict[str, str] | None = None) -> Station:
-    # Imported on first use, like each adapter's SDK: `version` and `help`
-    # need neither, and loading them is most of a cold start.
-    from voxgig_station import Station
-    return Station({
-        'config': config,
-        'profile': profile_of(env),
-        'proxy': 'off',
-        'load': False,
-    })
-
-
-def connections_of(station: Station, accounts: dict[str, str], profile: str) -> list[Connection]:
-    """Every active declared instance, in station's ref order. An instance with
-    no account under the profile is refused: identity may not be derived from the ref."""
-    out = []
-    for i in station.instances():
-        if not i['active']:
-            continue
-        account = accounts.get(i['name'])
-        if not isinstance(account, str) or '' == account:
-            raise LikenessError(
-                'invalid-project',
-                'instance "' + i['name'] + '" has no account in likeness.json under profile "' + profile + '"',
-                'add `"' + i['name'] + '": { "account": "<id>" }` under `profiles.' + profile +
-                '.instances` in likeness.json')
-        out.append(Connection(i['name'], i['api'], account))
-    return out
 
 
 def _envelope(cmd: list[str], code: str, data: Any, count: int = 0, truncated: bool = False,
@@ -238,19 +192,6 @@ def _open_configured(ctx: Ctx) -> Station:
         if isinstance(code, str) and code.startswith('station_'):
             raise LikenessError('invalid-project', str(err), STATION_REMEDY) from None
         raise
-
-
-def with_chain(config: Any, chain: list[Any]) -> Any:
-    """station.json with its secret chain replaced, in every profile, by the one likeness decided on."""
-    if not isinstance(config, (dict, list)):
-        return config
-    out = copy.deepcopy(config)
-    profiles = out.get('profiles') if isinstance(out, dict) else None
-    members = profiles.values() if isinstance(profiles, dict) else profiles if isinstance(profiles, list) else []
-    for p in members:
-        if isinstance(p, dict):
-            p['secrets'] = {'providers': chain}
-    return out
 
 
 def _entry_of(ctx: Ctx, flags: Flags) -> VaultEntry:
