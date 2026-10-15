@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert'
 import {
-  copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync,
+  copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync,
+  symlinkSync, writeFileSync,
 } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import type { Socket } from 'node:net'
@@ -130,6 +131,25 @@ test('into a home with no configuration, a failed second rename leaves neither f
   assert.equal((await run(ctx)).exit, 3)
   assert.deepStrictEqual(readdirSync(ctx.dir as string), ['likeness.skmv'])
   assert.deepStrictEqual(vaultNames(ctx), ['joplin.apikey', 'notion.apikey'])
+})
+
+test('a configuration file that is a symlink is written where it points, and stays a symlink', async () => {
+  const ctx = buildCtx(entry('connections/add-keeps-the-file'))
+  const dotfiles = mkdtempSync(join(tmpdir(), 'likeness-dotfiles-'))
+  try {
+    for (const name of ['station.json', 'likeness.json']) {
+      renameSync(located(ctx, name), join(dotfiles, name))
+      symlinkSync(join(dotfiles, name), located(ctx, name))
+    }
+    assert.equal((await run(ctx)).exit, 0)
+    for (const name of ['station.json', 'likeness.json']) {
+      assert.ok(lstatSync(located(ctx, name)).isSymbolicLink(), name + ' is still a link')
+      assert.deepStrictEqual(readFileSync(join(dotfiles, name)),
+        readFileSync(join(ROOT, 'spec', 'written', 'connections', 'add-keeps-the-file', name)), name)
+    }
+    assert.deepStrictEqual(readdirSync(dotfiles).sort(), ['likeness.json', 'station.json'])
+  }
+  finally { rmSync(dotfiles, { recursive: true, force: true }) }
 })
 
 test('a remove or a rename whose second rename fails changes neither file', async () => {

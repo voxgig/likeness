@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 
 import { openStation, withChain } from './station.js'
@@ -288,8 +288,10 @@ function tempOf (path: string): string {
 
 /* Every file replaced, or none. Each new text, and each file's old bytes, is
  * written beside it before anything is renamed into place, so a rename that
- * fails is undone by renames alone. */
+ * fails is undone by renames alone. A file that is a symlink is replaced where
+ * the link points, so the link survives. */
 export function writeAll (writes: Write[], fs: Fs = NODE_FS): void {
+  const target = writes.map(w => undefined !== w.was && lstatSync(w.path).isSymbolicLink() ? realpathSync(w.path) : w.path)
   const temps: string[] = []
   const place = (path: string, data: string | Buffer, mode: number): string => {
     const t = tempOf(path)
@@ -308,10 +310,10 @@ export function writeAll (writes: Write[], fs: Fs = NODE_FS): void {
   const old: (string | undefined)[] = []
   let at = 0
   try {
-    for (; at < writes.length; at++) fresh.push(place(writes[at].path, writes[at].text, writes[at].was?.mode ?? 0o600))
+    for (; at < writes.length; at++) fresh.push(place(target[at], writes[at].text, writes[at].was?.mode ?? 0o600))
     for (at = 0; at < writes.length; at++) {
       const was = writes[at].was
-      old.push(undefined === was ? undefined : place(writes[at].path, was.bytes, was.mode))
+      old.push(undefined === was ? undefined : place(target[at], was.bytes, was.mode))
     }
   }
   catch {
@@ -321,15 +323,15 @@ export function writeAll (writes: Write[], fs: Fs = NODE_FS): void {
 
   for (let i = 0; i < writes.length; i++) {
     try {
-      fs.renameSync(fresh[i], writes[i].path)
+      fs.renameSync(fresh[i], target[i])
     }
     catch {
       let restored = true
       for (let j = i - 1; 0 <= j; j--) {
         try {
           const back = old[j]
-          if (undefined === back) fs.unlinkSync(writes[j].path)
-          else fs.renameSync(back, writes[j].path)
+          if (undefined === back) fs.unlinkSync(target[j])
+          else fs.renameSync(back, target[j])
         }
         catch { restored = false }
       }
