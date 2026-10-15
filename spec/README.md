@@ -53,11 +53,17 @@ asserts the prompts shown and, for a vault command, what the vault holds
 afterwards as one key reads it. The vault's bytes are never compared: they change
 on every write.
 
-The TypeScript and Go ports run both corpora in full, and `make parity` compares
-their transcript output byte for byte. The groups for the Obsidian and Notion
-adapters (`obsidian`, `pin` and `notion` in the unit corpus; `obsidian`,
-`notion` and `sources` in the transcripts) are the TypeScript port's alone
-until the other ports take those adapters, and fail in them until then. The C port runs the unit corpus but for
+The TypeScript, Go, Python and Ruby ports run both corpora in full, and `make
+parity` compares their transcript output byte for byte. Where a port's SDK or
+station still differs upstream, the port declares the entry waiting, with a reason
+naming the issue, and the declaration is held to its cause: the entry must still
+fail, and must pass once the cause's predicted change is applied. So a declaration
+fails the moment the fix lands, and cannot hide a second difference. Python and
+Ruby wait on two Obsidian entries
+([sdkgen#418](https://github.com/voxgig/sdkgen/issues/418)), and Go on eight
+([station#50](https://github.com/voxgig/station/issues/50), sdkgen#418).
+`tools/parity-waiting.json` sets aside Go's one differing answer in the comparison
+the same way. The C port runs the unit corpus but for
 `connections`, which waits on station's C library reading `station.json`
 ([station#23](https://github.com/voxgig/station/issues/23)), and the 37 transcript
 entries whose answer needs no source: `help`, `version`, `which`, a command not
