@@ -101,8 +101,10 @@ function prompt (label: string): Promise<string | undefined> {
       }
     }
     const onData = (chunk: Buffer): void => { take(chunk.toString('utf8')) }
-    process.stderr.write(label + ': ')
+    // Echo goes off before the label shows, or an answer typed the moment it
+    // appears is echoed.
     input.setRawMode(true)
+    process.stderr.write(label + ': ')
     input.resume()
     input.on('data', onData)
     const pending = ahead

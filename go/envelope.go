@@ -105,7 +105,7 @@ func jsNumber(f float64) string {
 	if 0 == f {
 		return "0"
 	}
-	if abs := math.Abs(f); 1e-7 <= abs && abs < 1e21 {
+	if abs := math.Abs(f); 1e-6 <= abs && abs < 1e21 {
 		return strconv.FormatFloat(f, 'f', -1, 64)
 	}
 	mant, exp, _ := strings.Cut(strconv.FormatFloat(f, 'e', -1, 64), "e")

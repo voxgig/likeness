@@ -58,3 +58,21 @@ func TestProcessBrokenPipeExitsQuietly(t *testing.T) {
 		t.Fatalf("exit %d (%v), stderr %q", code, cmd.ProcessState, errb.String())
 	}
 }
+
+func TestProcessIllFormedArgvDecodesAsNodeDoes(t *testing.T) {
+	bin := buildBinary(t)
+	home := t.TempDir()
+	// One replacement per maximal ill-formed subsequence: the truncated
+	// three-byte sequence is one, the stray byte another.
+	cmd := exec.Command(bin, "help", "a\xe2\x82b\xff")
+	cmd.Dir = home
+	cmd.Env = []string{"HOME=" + home, "PATH=" + os.Getenv("PATH")}
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	_ = cmd.Run()
+	want := "error: invalid-argument\n  <command> takes a name ([a-z][a-z0-9-]*), not \"a�b�\"\n" +
+		"  remedy  run `likeness help help` for its arguments\n"
+	if code := cmd.ProcessState.ExitCode(); 3 != code || want != errb.String() {
+		t.Fatalf("exit %d, stderr %q, expected %q", code, errb.String(), want)
+	}
+}

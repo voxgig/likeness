@@ -13,6 +13,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"github.com/voxgig/station/go/station"
 	"golang.org/x/term"
@@ -77,7 +78,7 @@ func probePath(env map[string]string) []map[string]any {
 				continue
 			}
 			info, err := os.Stat(full)
-			if nil != err || info.IsDir() {
+			if nil != err || !info.Mode().IsRegular() {
 				continue
 			}
 			seen[full] = true
@@ -104,7 +105,7 @@ func optText(m map[string]any, k string) string {
 
 func parseJSON(text, path string) (map[string]any, error) {
 	var parsed any
-	if err := json.Unmarshal([]byte(text), &parsed); nil != err {
+	if err := json.Unmarshal([]byte(wellFormed(text)), &parsed); nil != err {
 		return nil, fmt.Errorf("%s is not valid JSON", path)
 	}
 	doc, ok := parsed.(map[string]any)
@@ -185,7 +186,55 @@ func prompt(label string) (string, bool) {
 
 func readStdin() (string, error) {
 	raw, err := io.ReadAll(os.Stdin)
-	return string(raw), err
+	return wellFormed(string(raw)), err
+}
+
+// wellFormed replaces each maximal ill-formed subsequence with one U+FFFD, as
+// the WHATWG decoder Node reads argv, the environment and files with does.
+// Go's own decoding replaces every byte of one.
+func wellFormed(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+	var b strings.Builder
+	for i := 0; i < len(s); {
+		if r, n := utf8.DecodeRuneInString(s[i:]); utf8.RuneError != r || 1 != n {
+			b.WriteString(s[i : i+n])
+			i += n
+			continue
+		}
+		b.WriteRune(utf8.RuneError)
+		i += maximalSubpart(s[i:])
+	}
+	return b.String()
+}
+
+// maximalSubpart is the length of the ill-formed sequence starting s: its lead
+// byte and the continuation bytes that could still have completed it.
+func maximalSubpart(s string) int {
+	need, lo, hi := 0, byte(0x80), byte(0xBF)
+	switch b := s[0]; {
+	case 0xC2 <= b && b <= 0xDF:
+		need = 1
+	case 0xE0 == b:
+		need, lo = 2, 0xA0
+	case 0xE1 <= b && b <= 0xEC, 0xEE <= b && b <= 0xEF:
+		need = 2
+	case 0xED == b:
+		need, hi = 2, 0x9F
+	case 0xF0 == b:
+		need, lo = 3, 0x90
+	case 0xF1 <= b && b <= 0xF3:
+		need = 3
+	case 0xF4 == b:
+		need, hi = 3, 0x8F
+	}
+	n := 1
+	for n <= need && n < len(s) && lo <= s[n] && s[n] <= hi {
+		n++
+		lo, hi = 0x80, 0xBF
+	}
+	return n
 }
 
 // Main is the whole process: build the context, run, write, return the status.
@@ -194,13 +243,16 @@ func Main(argv []string) int {
 	// of killing the process, and the port exits quietly with 0.
 	signal.Ignore(syscall.SIGPIPE)
 
+	for i, a := range argv {
+		argv[i] = wellFormed(a)
+	}
 	rest, configPath, _ := takeConfigOption(argv)
 
 	env := map[string]string{}
 	for _, kv := range os.Environ() {
 		for i := 0; i < len(kv); i++ {
 			if '=' == kv[i] {
-				env[kv[:i]] = kv[i+1:]
+				env[wellFormed(kv[:i])] = wellFormed(kv[i+1:])
 				break
 			}
 		}
