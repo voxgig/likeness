@@ -30,4 +30,9 @@ module Likeness
   def partial_codes
     ERRORS.values.select { |e| e['partial'] }.map { |e| e['code'] }.sort
   end
+
+  # The SDK's status, never its message text, which differs between ports.
+  def status_of(err)
+    err.respond_to?(:status) ? err.status : nil
+  end
 end

@@ -10,18 +10,6 @@
       "file": "python/likeness/core.py",
       "text": "_ADAPTERS = {'joplin': 'likeness.adapter.joplin'}",
       "reason": "The Python core registers its one adapter by name; the port moves the name into the adapter when it takes the Obsidian and Notion adapters, as the TypeScript port does."
-    },
-    {
-      "rule": "source-name",
-      "file": "ruby/lib/likeness/core.rb",
-      "text": "ADAPTERS = { 'joplin' => Joplin }.freeze",
-      "reason": "The Ruby core registers its one adapter by name; the port moves the name into the adapter when it takes the Obsidian and Notion adapters, as the TypeScript port does."
-    },
-    {
-      "rule": "source-name",
-      "file": "ruby/lib/likeness/core.rb",
-      "text": "UNIVERSAL + ({ 'joplin' => Joplin::SUPPLIES }[conn.source] || [])",
-      "reason": "The Ruby core looks its one adapter's fields up by name; the port reads them from the adapter when it takes the new adapters."
     }
   ]
 }

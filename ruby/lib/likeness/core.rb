@@ -2,9 +2,10 @@
 
 require 'voxgig_station'
 
-require_relative 'adapter/joplin'
+require_relative 'adapters'
 require_relative 'args'
 require_relative 'calls'
+require_relative 'caps'
 require_relative 'envelope'
 require_relative 'errors'
 require_relative 'evaluate'
@@ -30,8 +31,6 @@ module Likeness
   Flags = Struct.new(:json, :raw, :limit, :sort, :strict, :deterministic, :instance, :source,
                      :passphrase_env, :new_passphrase_env, :vault_key, :reveal, :write, keyword_init: true)
 
-  ADAPTERS = { 'joplin' => Joplin }.freeze
-
   UNIVERSAL = %w[lid id title url created updated source instance].freeze
 
   # One station per run: every client is connected through it on first use,
@@ -39,16 +38,19 @@ module Likeness
   class Session
     attr_reader :conns, :calls
 
-    def initialize(station, conns, fixture)
+    def initialize(station, conns, configs, fixture)
       @station = station
       @conns = conns
       @calls = Calls.new(station)
+      @configs = configs
       @fixture = fixture || {}
-      @clients = {}
+      @handles = {}
     end
 
-    def client(conn)
-      @clients[conn.instance] ||= ADAPTERS.fetch(conn.source).connect(@station, conn.instance, @fixture[conn.instance])
+    # The adapter's own handle, which the core passes back to it unread.
+    def handle(conn)
+      @handles[conn.instance] ||= Likeness.adapter_for(conn).connect(@station, conn, @configs[conn.instance],
+                                                                      @fixture[conn.instance])
     end
   end
 
@@ -101,6 +103,7 @@ module Likeness
     entry = entry_of(ctx, flags)
     station = open_configured(ctx)
     conns = connections_of(station, ctx.accounts || {}, profile_of(ctx.env))
+    configs = configured(station, conns)
     if ctx.fixture.nil? && !conns.empty?
       chain = vault_chain(ctx, entry, flags)
       begin
@@ -110,7 +113,17 @@ module Likeness
                                 'this port\'s station must read minivault stores; see "Secrets" in the README')
       end
     end
-    Session.new(station, conns, ctx.fixture)
+    Session.new(station, conns, configs, ctx.fixture)
+  end
+
+  # Each connection's block from station.json, read by its own adapter. A block
+  # the adapter cannot use refuses the command before any call or prompt.
+  def configured(station, conns)
+    blocks = station.instances.to_h { |i| [i['name'], i['block']] }
+    conns.each_with_object({}) do |conn, out|
+      adapter = adapter_for(conn)
+      out[conn.instance] = adapter.configure(conn.instance, blocks[conn.instance] || {}) if adapter.respond_to?(:configure)
+    end
   end
 
   # Every declared active instance, in station's ref order, with the account
@@ -197,6 +210,30 @@ module Likeness
                       "no adapter for source \"#{conn.source}\" (connection \"#{conn.instance}\")", remedy)
   end
 
+  def adapter_for(conn)
+    ADAPTERS[conn.source]
+  end
+
+  # Decided from the capability data alone, before any call.
+  def listable(conn)
+    adapter_for(conn).respond_to?(:list_notes) && supports(conn.source, 'note', 'list')
+  end
+
+  def cannot_list(conns)
+    sources = conns.map(&:source).uniq.sort
+    detail = { 'entity' => 'note', 'op' => 'list' }
+    detail['source'] = sources[0] if 1 == sources.length
+    detail['instance'] = conns[0].instance if 1 == conns.length
+    ref = 1 == conns.length ? "#{conns[0].instance}:<#{term_of(conns[0].source, 'note')} id>" : '<instance>:<id>'
+    remedy =
+      if conns.all? { |c| supports(c.source, 'note', 'get') }
+        "get one by its ref instead: `likeness get #{ref}`"
+      else
+        'narrow to a source that can list notes with --source'
+      end
+    LikenessError.new('unsupported-capability', "#{sources.join(', ')} cannot list notes", remedy, detail)
+  end
+
   # Fetch from every selected connection, carrying a failure the whole length
   # of the pipeline: a silently dropped source gives a smaller, wrong answer.
   def gather(session, conns, with_raw, strict)
@@ -205,17 +242,26 @@ module Likeness
     failed = []
     short = []
     conns.each do |conn|
-      adapter = ADAPTERS[conn.source]
+      adapter = adapter_for(conn)
       # Refused BEFORE the network, not sent through whichever adapter is loaded.
       raise no_adapter(conn, 'drop that connection, or narrow to one that is supported with --source') if adapter.nil?
 
+      # Asked nothing, and counted as a connection that did not answer.
+      unless listable(conn)
+        failed << conn.instance
+        break if strict
+
+        next
+      end
+
       begin
-        got = adapter.list_notes(session.client(conn), conn, with_raw)
+        got = adapter.list_notes(session.handle(conn), conn, with_raw)
         notes.concat(got[:notes])
         ok << conn.instance
         short << conn.instance if got[:more]
       rescue StandardError => e
-        raise if e.is_a?(LikenessError) && 'unsupported-capability' == e.code
+        # A guard's refusal stops the command: it is never an unavailable source.
+        raise if e.is_a?(LikenessError) && 4 == exit_for(e.code)
 
         failed << conn.instance
         # `--strict` HALTS: `fanout-halted` means the fan-out stopped.
@@ -226,7 +272,8 @@ module Likeness
   end
 
   def supplies(conn)
-    UNIVERSAL + ({ 'joplin' => Joplin::SUPPLIES }[conn.source] || [])
+    adapter = adapter_for(conn)
+    UNIVERSAL + (adapter.nil? ? [] : adapter::SUPPLIES)
   end
 
   def unanswerable(conns, fields)
@@ -242,9 +289,13 @@ module Likeness
 
     filter = nil
     selector = rest.join(' ')
-    unless selector.empty?
-      filter = parse_selector(selector)
-      unsupported = unanswerable(conns, fields_of(filter))
+    filter = parse_selector(selector) unless selector.empty?
+
+    unlisted = conns.select { |c| !adapter_for(c).nil? && !listable(c) }
+    raise cannot_list(unlisted) if !conns.empty? && unlisted.length == conns.length
+
+    unless filter.nil?
+      unsupported = unanswerable(conns.reject { |c| unlisted.include?(c) }, fields_of(filter))
       unless unsupported.empty?
         raise LikenessError.new('unsupported-capability',
                                 "no source can answer a question about #{unsupported.join(', ')}",
@@ -314,10 +365,15 @@ module Likeness
         raise LikenessError.new('no-such-source', "no connection named \"#{instance}\"",
                                 'run `likeness doctor` to see the configured connections')
       end
-      adapter = ADAPTERS[conn.source]
+      adapter = adapter_for(conn)
       raise no_adapter(conn, 'this source arrives in a later stage') if adapter.nil?
+      unless adapter.respond_to?(:load_note) && supports(conn.source, 'note', 'get')
+        raise LikenessError.new('unsupported-capability', "#{conn.source} cannot get a note",
+                                'run `likeness doctor` to see what each connection offers',
+                                { 'source' => conn.source, 'instance' => conn.instance, 'entity' => 'note', 'op' => 'get' })
+      end
 
-      note = adapter.load_note(session.client(conn), conn, id, flags.raw)
+      note = adapter.load_note(session.handle(conn), conn, id, flags.raw)
       if note.nil?
         raise LikenessError.new('not-found', "#{ref} does not exist",
                                 'check the ref, or run `likeness list` to see what is there')
@@ -332,7 +388,7 @@ module Likeness
     conns = selected(session.conns, flags)
     failures = []
     rows = conns.map do |conn|
-      adapter = ADAPTERS[conn.source]
+      adapter = adapter_for(conn)
       if adapter.nil?
         # REPORTED rather than refused: naming the source is the diagnosis.
         failures << 'unsupported-capability'
@@ -340,7 +396,7 @@ module Likeness
                'detail' => 'no adapter for this source yet', 'code' => 'unsupported-capability' }
       end
       r = begin
-        adapter.check(session.client(conn))
+        adapter.check(session.handle(conn))
       rescue StandardError
         { ok: false, code: 'source-unavailable', detail: 'station could not connect this instance' }
       end
@@ -350,6 +406,7 @@ module Likeness
         row['code'] = r[:code]
         failures << r[:code]
       end
+      row['remedy'] = r[:remedy] unless r[:remedy].nil?
       row
     end
     # The worst row wins: highest exit status, then code name to break a tie.
