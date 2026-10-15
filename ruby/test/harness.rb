@@ -4,6 +4,7 @@ require 'fileutils'
 require 'json'
 require 'minitest/autorun'
 require 'tmpdir'
+require 'uri'
 
 require_relative '../lib/likeness'
 
@@ -16,6 +17,8 @@ module Harness
 
   # The prompts each run showed, for the entry to compare.
   PROMPTS = {}.compare_by_identity
+
+  CONFIG_FILES = %w[station.json likeness.json].freeze
 
   module_function
 
@@ -45,7 +48,8 @@ module Harness
   # Each connection becomes a declared station instance, its block the one the
   # entry gives, its account the likeness.json entry beside it, and its seed,
   # its own or the entry's, the SDK's offline transport. Every run gets a home
-  # of its own, holding the entry's files.
+  # of its own, holding the entry's files; an entry that brings station.json or
+  # likeness.json is configured by them alone, read as the argv shell reads them.
   def build_ctx(entry)
     ectx = entry['ctx']
     sdk = {}
@@ -71,12 +75,20 @@ module Harness
 
     profile = { 'sdk' => sdk }
     profile['secrets'] = ectx['secrets'] if ectx.key?('secrets')
+    station = { 'station' => 1, 'profiles' => { 'default' => profile } }
+    if (ectx['files'] || {}).keys.any? { |name| CONFIG_FILES.include?(name) }
+      if !ectx['connections'].empty? || ectx.key?('secrets')
+        raise "#{entry['id']}: an entry that brings its configuration declares no connections or secrets"
+      end
+
+      station, accounts = Likeness.load_config(File.join(dir, 'station.json'), Likeness.profile_of(ectx['env']))
+    end
 
     # No PATH in the entry is `which` told about nothing, not about an empty list.
     ctx = Likeness::Ctx.new(argv: entry['args'], env: ectx['env'], clock: ectx['clock'], seed: ectx['seed'],
-                            station: { 'station' => 1, 'profiles' => { 'default' => profile } },
-                            accounts: accounts, fixture: fixture, path: ectx['path'],
-                            home: home, dir: dir, stdin: -> { ectx['stdin'] || '' })
+                            station: station, accounts: accounts, fixture: fixture, path: ectx['path'],
+                            home: home, dir: dir, config: File.join(dir, 'station.json'),
+                            stdin: -> { ectx['stdin'] || '' }, presented: presenter(ectx['presents'] || {}))
     if ectx.key?('tty')
       typed = ectx['tty'].dup
       shown = []
@@ -90,8 +102,24 @@ module Harness
     ctx
   end
 
+  # Keyed by host:port, the port written out even where it is the scheme's.
+  def presenter(presents)
+    lambda do |base|
+      uri = URI.parse(base)
+      at = "#{uri.host}:#{uri.port}"
+      raise "nothing answers at #{at}" unless presents.key?(at)
+
+      presents[at]
+    end
+  end
+
+  # A file the entry names: under the home with `~/`, else in the configuration directory.
   def run_path(home, dir, name)
     name.start_with?('~/') ? File.join(home, name[2..]) : File.join(dir, name)
+  end
+
+  def located(ctx, name)
+    run_path(ctx.home, ctx.dir, name)
   end
 
   def vault_failures(entry, ctx, failures)
@@ -116,6 +144,22 @@ module Harness
     end
     (want['values'] || {}).each do |name, value|
       failures << "vault value of #{name} is not the one expected" if vault.get(name) != value
+    end
+  end
+
+  # The configuration directory afterwards: each named file byte for byte, and
+  # the absent ones not there.
+  def file_failures(entry, ctx, failures)
+    (entry['out']['files'] || {}).each do |name, want|
+      at = located(ctx, name)
+      if !File.exist?(at)
+        failures << "#{name} is not there afterwards, and #{want} says what it holds"
+      elsif File.binread(at) != File.binread(File.join(ROOT, want))
+        failures << "#{name} differs from #{want}"
+      end
+    end
+    (entry['out']['absent'] || []).each do |name|
+      failures << "#{name} is there afterwards, and the entry says it is not" if File.exist?(located(ctx, name))
     end
   end
 
@@ -211,6 +255,7 @@ module Harness
     want_prompts = out['prompts'] || []
     failures << "prompts #{JSON.generate(prompts)}, expected #{JSON.generate(want_prompts)}" if prompts != want_prompts
     vault_failures(entry, ctx, failures)
+    file_failures(entry, ctx, failures)
     failures
   end
 end

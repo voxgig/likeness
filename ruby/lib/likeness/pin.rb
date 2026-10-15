@@ -35,6 +35,15 @@ module Likeness
     "sha256:#{Digest::SHA256.hexdigest(der)}"
   end
 
+  # The fingerprint of the certificate an https base presents, by the probe the
+  # pinned transport uses, so pinning it writes nothing to the server either.
+  def presented_fingerprint(base)
+    uri = URI.parse(base)
+    raise CertificateError, 'invalid' unless 'https' == uri.scheme&.downcase
+
+    fingerprint_of(Pin.presented(uri).to_der)
+  end
+
   # A transport for the SDK's `utility.fetcher` seam that trusts exactly the
   # certificate whose SHA-256 fingerprint is the pin. No request byte is written
   # before the presented certificate has matched it.
