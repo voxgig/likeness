@@ -33,7 +33,39 @@ module Likeness
     true
   end
 
+  CONFIG_DEPTH = 64
+
+  # Counted on the text before it is parsed: each port's parser, and the copy
+  # made of station.json, recurse, and each would give out at its own depth.
+  def too_deep?(source)
+    bytes = source.b
+    depth = 0
+    quoted = false
+    i = 0
+    while i < bytes.bytesize
+      c = bytes.getbyte(i)
+      if quoted
+        if 0x5c == c
+          i += 1
+        elsif 0x22 == c
+          quoted = false
+        end
+      elsif 0x22 == c
+        quoted = true
+      elsif 0x5b == c || 0x7b == c
+        depth += 1
+        return true if CONFIG_DEPTH < depth
+      elsif (0x5d == c || 0x7d == c) && depth.positive?
+        depth -= 1
+      end
+      i += 1
+    end
+    false
+  end
+
   def parse_json(source, path)
+    raise ConfigError, "#{path} is nested more than #{CONFIG_DEPTH} deep" if too_deep?(source)
+
     begin
       raise JSON::ParserError if source.scan(NOT_JSON).any? { |escape, slash| escape || slash }
 

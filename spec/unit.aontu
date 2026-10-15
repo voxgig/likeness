@@ -1073,6 +1073,70 @@ primary: unit: {
       }
       err: "instance \"joplin\" has no account in likeness.json under profile \"0\""
     }
+
+    {
+      id: "config/station-nested-past-the-limit"
+      # Nesting is counted on the text before it is parsed, so every port
+      # refuses at one depth whichever parser it has.
+      fn: "connections"
+      in: {
+        station: "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"
+        likeness: "{}"
+      }
+      err: "station.json is nested more than 64 deep"
+    }
+
+    {
+      id: "config/likeness-nested-past-the-limit"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+        likeness: "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"
+      }
+      err: "likeness.json is nested more than 64 deep"
+    }
+
+    {
+      id: "config/nested-to-the-limit-is-read"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+        likeness: "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"
+      }
+      out: []
+    }
+
+    {
+      id: "config/objects-and-arrays-nest-together"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+        likeness: "{\"a\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":0}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}"
+      }
+      err: "likeness.json is nested more than 64 deep"
+    }
+
+    {
+      id: "config/nesting-refused-before-the-syntax"
+      # The 65th level is refused where it opens, before the text is read on to
+      # its missing close.
+      fn: "connections"
+      in: {
+        station: "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+        likeness: "{}"
+      }
+      err: "station.json is nested more than 64 deep"
+    }
+
+    {
+      id: "config/brackets-in-a-string-are-not-nesting"
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+        likeness: "{\"a\":\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"}"
+      }
+      out: []
+    }
   ]
 
   # The vault station.json names, resolved for a home of /home/u and a

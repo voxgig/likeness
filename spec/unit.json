@@ -705,6 +705,60 @@
               "profile": "0",
               "station": "{\"station\":1,\"profiles\":{\"0\":{\"sdk\":{\"joplin\":{}}}}}"
             }
+          },
+          {
+            "err": "station.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/station-nested-past-the-limit",
+            "in": {
+              "likeness": "{}",
+              "station": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"
+            }
+          },
+          {
+            "err": "likeness.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/likeness-nested-past-the-limit",
+            "in": {
+              "likeness": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            }
+          },
+          {
+            "fn": "connections",
+            "id": "config/nested-to-the-limit-is-read",
+            "in": {
+              "likeness": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            },
+            "out": []
+          },
+          {
+            "err": "likeness.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/objects-and-arrays-nest-together",
+            "in": {
+              "likeness": "{\"a\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":[{\"b\":0}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}]}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            }
+          },
+          {
+            "err": "station.json is nested more than 64 deep",
+            "fn": "connections",
+            "id": "config/nesting-refused-before-the-syntax",
+            "in": {
+              "likeness": "{}",
+              "station": "{\"a\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+            }
+          },
+          {
+            "fn": "connections",
+            "id": "config/brackets-in-a-string-are-not-nesting",
+            "in": {
+              "likeness": "{\"a\":\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"}",
+              "station": "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}"
+            },
+            "out": []
           }
         ]
       },

@@ -26,7 +26,30 @@ function finite (doc: unknown): boolean {
   return true
 }
 
+export const CONFIG_DEPTH = 64
+
+// Counted on the text before it is parsed: each port's parser, and the copy
+// made of station.json, recurse, and each would give out at its own depth.
+function tooDeep (source: string): boolean {
+  let depth = 0
+  let quoted = false
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i]
+    if (quoted) {
+      if ('\\' === c) i++
+      else if ('"' === c) quoted = false
+    }
+    else if ('"' === c) quoted = true
+    else if ('[' === c || '{' === c) {
+      if (CONFIG_DEPTH < ++depth) return true
+    }
+    else if ((']' === c || '}' === c) && 0 < depth) depth--
+  }
+  return false
+}
+
 function parseJson (source: string, path: string): any {
+  if (tooDeep(source)) throw new ConfigError(path + ' is nested more than ' + CONFIG_DEPTH + ' deep')
   let doc: unknown
   try { doc = JSON.parse(source) }
   catch { throw new ConfigError(path + ' is not valid JSON') }

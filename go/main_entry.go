@@ -103,7 +103,39 @@ func optText(m map[string]any, k string) string {
 	return ""
 }
 
+const configDepth = 64
+
+// tooDeep counts nesting on the text before it is parsed: each port's parser,
+// and the copy made of station.json, recurse, and each would give out at its
+// own depth.
+func tooDeep(text string) bool {
+	depth := 0
+	quoted := false
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		switch {
+		case quoted && '\\' == c:
+			i++
+		case quoted:
+			quoted = '"' != c
+		case '"' == c:
+			quoted = true
+		case '[' == c || '{' == c:
+			depth++
+			if configDepth < depth {
+				return true
+			}
+		case (']' == c || '}' == c) && 0 < depth:
+			depth--
+		}
+	}
+	return false
+}
+
 func parseJSON(text, path string) (map[string]any, error) {
+	if tooDeep(text) {
+		return nil, fmt.Errorf("%s is nested more than %d deep", path, configDepth)
+	}
 	var parsed any
 	if err := json.Unmarshal([]byte(wellFormed(text)), &parsed); nil != err {
 		return nil, fmt.Errorf("%s is not valid JSON", path)

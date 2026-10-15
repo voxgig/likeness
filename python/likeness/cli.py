@@ -40,7 +40,38 @@ def _finite_int(text: str) -> int:
     return int(text)
 
 
+CONFIG_DEPTH = 64
+
+
+def _too_deep(source: str) -> bool:
+    """Counted on the text before it is parsed: each port's parser, and the
+    copy made of station.json, recurse, and each would give out at its own
+    depth."""
+    depth = 0
+    quoted = False
+    i = 0
+    while i < len(source):
+        c = source[i]
+        if quoted:
+            if '\\' == c:
+                i += 1
+            elif '"' == c:
+                quoted = False
+        elif '"' == c:
+            quoted = True
+        elif c in '[{':
+            depth += 1
+            if CONFIG_DEPTH < depth:
+                return True
+        elif c in ']}' and 0 < depth:
+            depth -= 1
+        i += 1
+    return False
+
+
 def _parse_json(source: str, path: str) -> dict[str, Any]:
+    if _too_deep(source):
+        raise ConfigError(f'{path} is nested more than {CONFIG_DEPTH} deep')
     try:
         doc = json.loads(source, parse_constant=_refuse_constant, parse_float=_finite_float,
                          parse_int=_finite_int)

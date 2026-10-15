@@ -320,6 +320,55 @@ int main(int argc, char **argv) {
   }
 
   {
+    const char *dir = joinpath(a, home, str_of("cfg5"));
+    const char *station = joinpath(a, dir, str_of("station.json"));
+    const char *likeness = joinpath(a, dir, str_of("likeness.json"));
+    const char *args[4];
+    sbuf deep;
+    sbuf limit;
+    sbuf want_station;
+    sbuf want_likeness;
+    proc s;
+    proc l;
+    proc ok;
+    int k;
+    mkdir(dir, 0700);
+    args[0] = "version";
+    args[1] = "--config";
+    args[2] = station;
+    args[3] = NULL;
+    sb_init(&deep, a);
+    sb_init(&limit, a);
+    sb_puts(&deep, "{\"a\":");
+    sb_puts(&limit, "{\"a\":");
+    for (k = 0; k < 64; k++) sb_putc(&deep, '[');
+    for (k = 0; k < 64; k++) sb_putc(&deep, ']');
+    for (k = 0; k < 63; k++) sb_putc(&limit, '[');
+    for (k = 0; k < 63; k++) sb_putc(&limit, ']');
+    sb_putc(&deep, '}');
+    sb_putc(&limit, '}');
+    sb_init(&want_station, a);
+    sb_puts(&want_station, "error: invalid-project\n  ");
+    sb_puts(&want_station, station);
+    sb_puts(&want_station, " is nested more than 64 deep\n  remedy  fix the file, or point --config at another\n");
+    sb_init(&want_likeness, a);
+    sb_puts(&want_likeness, "error: invalid-project\n  ");
+    sb_puts(&want_likeness, likeness);
+    sb_puts(&want_likeness, " is nested more than 64 deep\n  remedy  fix the file, or point --config at another\n");
+    write_text(a, dir, "station.json", sb_done(&deep).p);
+    s = spawn(a, home, home, "", args, 0);
+    write_text(a, dir, "station.json", "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{}}}}");
+    write_text(a, dir, "likeness.json", sb_done(&limit).p);
+    ok = spawn(a, home, home, "", args, 0);
+    write_text(a, dir, "likeness.json", sb_done(&deep).p);
+    l = spawn(a, home, home, "", args, 0);
+    expect(&t, "a configuration nested past 64 levels is refused, in either file, and one at the limit is read",
+      3 == s.status && 0 == s.out.n && str_eq(s.err, sb_done(&want_station)) &&
+      3 == l.status && 0 == l.out.n && str_eq(l.err, sb_done(&want_likeness)) && 0 == ok.status,
+      described(a, 0 != ok.status ? ok : 3 != l.status ? l : s));
+  }
+
+  {
     const char *dir = joinpath(a, home, str_of("cfg3"));
     const char *station;
     const char *args[4];
