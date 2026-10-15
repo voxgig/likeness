@@ -54,15 +54,18 @@ class Terminal:
         return self.typed.pop(0) if self.typed else None
 
 
+def _seed(name: str) -> dict[str, Any]:
+    seed = json.loads((ROOT / 'fixtures' / 'sources' / name / 'seed.json').read_text(encoding='utf-8'))
+    del seed['_doc']
+    return seed
+
+
 def build_ctx(e: dict[str, Any]) -> Ctx:
     """Each connection becomes a declared station instance, its block the one
     the entry gives, its account the likeness.json entry beside it, and its
-    seed the SDK's offline transport. Every run gets a home of its own, holding
-    the entry's files."""
+    seed, its own or the entry's, the SDK's offline transport. Every run gets a
+    home of its own, holding the entry's files."""
     ectx = e['ctx']
-    path = ROOT / 'fixtures' / 'sources' / ectx['fixture'] / 'seed.json'
-    seed = json.loads(path.read_text(encoding='utf-8'))
-    del seed['_doc']
 
     sdk: dict[str, Any] = {}
     accounts: dict[str, str] = {}
@@ -70,7 +73,7 @@ def build_ctx(e: dict[str, Any]) -> Ctx:
     for c in ectx['connections']:
         sdk[c['instance']] = copy.deepcopy(c.get('block', {}))
         accounts[c['instance']] = c['account']
-        own = copy.deepcopy(seed)
+        own = _seed(c.get('fixture', ectx['fixture']))
         if 'net' in c:
             own['net'] = c['net']
         fixture[c['instance']] = own

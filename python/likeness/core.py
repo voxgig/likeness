@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import importlib
 import os
 import time
 from collections.abc import Callable
@@ -11,8 +10,11 @@ from dataclasses import dataclass, field
 from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
+from likeness.adapter import Check
+from likeness.adapters import ADAPTERS
 from likeness.args import Parsed, command_def, command_words, help_rows, help_text, parse_argv
 from likeness.calls import Call, Calls
+from likeness.caps import supports, term_of
 from likeness.envelope import render, serialise
 from likeness.errors import LikenessError, exit_for
 from likeness.evaluate import evaluate
@@ -195,12 +197,31 @@ def _selected(conns: list[Connection], flags: Flags) -> list[Connection]:
             (not flags.source or c.source in flags.source)]
 
 
-_ADAPTERS = {'joplin': 'likeness.adapter.joplin'}
-
-
 def _adapter_for(c: Connection) -> ModuleType | None:
-    name = _ADAPTERS.get(c.source)
-    return None if name is None else importlib.import_module(name)
+    return ADAPTERS.get(c.source)
+
+
+def _listable(c: Connection) -> bool:
+    """Decided from the capability data alone, before any call (SPEC 12.3)."""
+    adapter = _adapter_for(c)
+    return adapter is not None and hasattr(adapter, 'list_notes') and supports(c.source, 'note', 'list')
+
+
+def _cannot_list(conns: list[Connection]) -> LikenessError:
+    sources = sorted({c.source for c in conns})
+    detail = {'entity': 'note', 'op': 'list'}
+    if 1 == len(sources):
+        detail['source'] = sources[0]
+    if 1 == len(conns):
+        detail['instance'] = conns[0].instance
+    ref = conns[0].instance + ':<' + term_of(conns[0].source, 'note') + ' id>' if 1 == len(conns) \
+        else '<instance>:<id>'
+    return LikenessError(
+        'unsupported-capability', ', '.join(sources) + ' cannot list notes',
+        'get one by its ref instead: `likeness get ' + ref + '`'
+        if all(supports(c.source, 'note', 'get') for c in conns)
+        else 'narrow to a source that can list notes with --source',
+        detail)
 
 
 STATION_REMEDY = 'fix station.json; station validates it against its own shape'
@@ -248,6 +269,7 @@ class Session:
         entry = _entry_of(ctx, flags)
         station = _open_configured(ctx)
         self.conns = connections_of(station, ctx.accounts or {}, profile_of(ctx.env))
+        self._configs = _configured(station, self.conns)
         if ctx.fixture is None and self.conns:
             chain = vault_chain(ctx, entry, flags)
             try:
@@ -259,16 +281,27 @@ class Session:
         self._station = station
         self.calls = Calls(station)
         self._fixture = ctx.fixture or {}
-        self._clients: dict[str, Any] = {}
+        self._handles: dict[str, Any] = {}
 
-    def client(self, c: Connection) -> Any:
-        client = self._clients.get(c.instance)
-        if client is None:
+    def handle(self, c: Connection) -> Any:
+        if c.instance not in self._handles:
             adapter = _adapter_for(c)
             assert adapter is not None
-            client = adapter.connect(self._station, c.instance, self._fixture.get(c.instance))
-            self._clients[c.instance] = client
-        return client
+            self._handles[c.instance] = adapter.connect(
+                self._station, c, self._configs.get(c.instance), self._fixture.get(c.instance))
+        return self._handles[c.instance]
+
+
+def _configured(station: Station, conns: list[Connection]) -> dict[str, Any]:
+    """Each connection's block from station.json, read by its own adapter. A
+    block the adapter cannot use refuses the command before any call or prompt."""
+    blocks = {i['name']: i['block'] for i in station.instances()}
+    out: dict[str, Any] = {}
+    for c in conns:
+        configure = getattr(_adapter_for(c), 'configure', None)
+        if configure is not None:
+            out[c.instance] = configure(c.instance, blocks.get(c.instance) or {})
+    return out
 
 
 @dataclass
@@ -294,15 +327,22 @@ def _gather(session: Session, conns: list[Connection], with_raw: bool, strict: b
         if adapter is None:
             raise _no_adapter(
                 c, 'drop that connection, or narrow to one that is supported with --source')
+        # Asked nothing, and counted as a connection that did not answer.
+        if not _listable(c):
+            got.failed.append(c.instance)
+            if strict:
+                break
+            continue
         # Inside the boundary: station refusing one binding is that connection failing.
         try:
-            notes, more = adapter.list_notes(session.client(c), c, with_raw)
+            notes, more = adapter.list_notes(session.handle(c), c, with_raw)
             got.notes.extend(notes)
             got.ok.append(c.instance)
             if more:
                 got.short.append(c.instance)
         except Exception as err:
-            if isinstance(err, LikenessError) and 'unsupported-capability' == err.code:
+            # A guard's refusal stops the command: it is never an unavailable source.
+            if isinstance(err, LikenessError) and 4 == exit_for(err.code):
                 raise
             got.failed.append(c.instance)
             # `--strict` HALTS: going on through the rest would spend requests
@@ -332,10 +372,14 @@ def _cmd_list(ctx: Ctx, flags: Flags, rest: list[str], session: Session) -> dict
     clock_ms = parse_time(ctx.clock)
 
     selector = ' '.join(rest)
-    node = None
-    if '' != selector:
-        node = parse_selector(selector)
-        unsupported = _unanswerable(conns, fields_of(node))
+    node = None if '' == selector else parse_selector(selector)
+
+    unlisted = [c for c in conns if _adapter_for(c) is not None and not _listable(c)]
+    if conns and len(unlisted) == len(conns):
+        raise _cannot_list(unlisted)
+
+    if node is not None:
+        unsupported = _unanswerable([c for c in conns if c not in unlisted], fields_of(node))
         if unsupported:
             raise LikenessError(
                 'unsupported-capability',
@@ -408,7 +452,11 @@ def _cmd_get(flags: Flags, rest: list[str], session: Session) -> dict[str, Any]:
         adapter = _adapter_for(c)
         if adapter is None:
             raise _no_adapter(c, 'this source arrives in a later stage')
-        note = adapter.load_note(session.client(c), c, id, flags.raw)
+        if not hasattr(adapter, 'load_note') or not supports(c.source, 'note', 'get'):
+            raise LikenessError('unsupported-capability', c.source + ' cannot get a note',
+                                'run `likeness doctor` to see what each connection offers',
+                                {'source': c.source, 'instance': c.instance, 'entity': 'note', 'op': 'get'})
+        note = adapter.load_note(session.handle(c), c, id, flags.raw)
         if note is None:
             raise LikenessError('not-found', ref + ' does not exist',
                                 'check the ref, or run `likeness list` to see what is there')
@@ -431,15 +479,16 @@ def _cmd_doctor(flags: Flags, session: Session) -> dict[str, Any]:
             failures.append('unsupported-capability')
             continue
         try:
-            r = adapter.check(session.client(c))
-            ok, code, detail = r.ok, r.code, r.detail
+            r = adapter.check(session.handle(c))
         except Exception:
-            ok, code, detail = False, 'source-unavailable', 'station could not connect this instance'
+            r = Check(False, 'station could not connect this instance', 'source-unavailable')
         row: dict[str, Any] = {'instance': c.instance, 'source': c.source,
-                               'check': 'ok' if ok else 'FAIL', 'detail': detail}
-        if not ok:
-            row['code'] = code
-            failures.append(code)
+                               'check': 'ok' if r.ok else 'FAIL', 'detail': r.detail}
+        if not r.ok:
+            row['code'] = r.code
+            failures.append(str(r.code))
+        if r.remedy is not None:
+            row['remedy'] = r.remedy
         rows.append(row)
     # The worst row wins: highest exit status, then code name to break a tie.
     codes = sorted(set(failures), key=lambda c: (-exit_for(c), c))
