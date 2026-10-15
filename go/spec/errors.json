@@ -21,6 +21,13 @@
       "partial": true,
       "retryable": false
     },
+    "certificate-rejected": {
+      "code": "certificate-rejected",
+      "exit": 4,
+      "means": "the source's certificate is not the one its connection pins, or failed verification",
+      "partial": false,
+      "retryable": false
+    },
     "conflict": {
       "code": "conflict",
       "exit": 4,

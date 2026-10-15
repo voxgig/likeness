@@ -79,6 +79,17 @@ function bearer (req) {
 }
 
 
+// The headers a request carried, without the credential: the ring records
+// whether it was the right one, in `auth`, and never the value.
+function sent (headers) {
+  const out = {}
+  for (const name of Object.keys(headers).sort()) {
+    if ('authorization' !== name && 'cookie' !== name) out[name] = headers[name]
+  }
+  return out
+}
+
+
 function sourceOf (url) {
   const path = String(url || '').split('?')[0]
   for (const src of SOURCES) {
@@ -94,6 +105,7 @@ function sourceOf (url) {
  *   buildServer({ store })        // supply your own (makeStore()) store
  *   buildServer({ logger: true }) // Fastify logging
  *   buildServer({ sources: ['joplin'] })  // mount a subset
+ *   buildServer({ https: { key, cert } }) // serve TLS, with that certificate
  *
  * The returned app carries `app.store` so an in-process test can read state
  * and `app.likeness` with the mounted source descriptors.
@@ -103,6 +115,7 @@ export async function buildServer (opts = {}) {
 
   const app = Fastify({
     logger: opts.logger || false,
+    ...(opts.https ? { https: opts.https } : {}),
     // The obsidian definition's paths carry a trailing '/' that the SDK's
     // join() strips, so /tags and /tags/ must both route.
     routerOptions: { ignoreTrailingSlash: true },
@@ -135,7 +148,8 @@ export async function buildServer (opts = {}) {
       method: req.method,
       url: req.url,
       auth,
-      status: reply.statusCode
+      status: reply.statusCode,
+      headers: sent(req.headers)
     })
 
     // A ring, not a log: a long soak must not grow without bound.

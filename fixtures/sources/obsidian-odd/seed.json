@@ -1,0 +1,32 @@
+{
+  "_doc": [
+    "Awkward values for the Obsidian projection: null and wrongly typed content,",
+    "tags and stat; a path that needs percent-encoding; a listed note that is gone",
+    "by the time it is read; and files that are not notes, among them `.MD`, which",
+    "is not `.md`. The paths are the map keys, which the SDK's test mode stamps onto",
+    "each record."
+  ],
+  "entity": {
+    "vault": {
+      "odd/": {
+        "files": ["SHOUT.MD", "diagram.excalidraw", "gone.md", "mixed tags.md", "nulls.md", "wrong types.md"]
+      },
+      "odd/nulls.md": { "content": null, "tags": null, "stat": null },
+      "odd/wrong types.md": {
+        "content": 42,
+        "tags": "single",
+        "stat": { "ctime": "nope", "mtime": 1789544460000.5 }
+      },
+      "odd/mixed tags.md": {
+        "content": "Tags of every kind.",
+        "tags": ["a", null, 7, { "x": [1, 2] }, "b"],
+        "stat": { "ctime": 1773129600000, "mtime": 1773129600000.0 }
+      },
+      "a+b #c %d &e=f (1) Straße.md": {
+        "content": "A name that every encoder disagrees about.",
+        "tags": [],
+        "stat": { "ctime": 1773216000000, "mtime": 1789195500000 }
+      }
+    }
+  }
+}

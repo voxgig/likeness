@@ -3,6 +3,7 @@ import type { Station } from '@voxgig/station'
 
 import type { Note } from './note.js'
 import * as joplin from './adapter/joplin.js'
+import * as obsidian from './adapter/obsidian.js'
 
 export type Conn = {
   instance: string
@@ -28,7 +29,7 @@ export type Adapter = {
   check: (handle: any) => Promise<Check>
 }
 
-const ALL: Adapter[] = [joplin]
+const ALL: Adapter[] = [joplin, obsidian]
 
 export const ADAPTERS: Record<string, Adapter> =
   Object.fromEntries(ALL.map(a => [a.SOURCE, a]))

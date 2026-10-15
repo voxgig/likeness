@@ -9,6 +9,8 @@ import { lid, rfc3339, CROCKFORD } from '../src/identity.js'
 import { partialCodes } from '../src/errors.js'
 import { foldCase } from '../src/evaluate.js'
 import { project } from '../src/adapter/joplin.js'
+import * as obsidian from '../src/adapter/obsidian.js'
+import { parsePin, fingerprintOf } from '../src/pin.js'
 import { takeConfigOption, parseStation, parseAccounts } from '../src/cli.js'
 import { openStation, connectionsOf, profileOf } from '../src/core.js'
 import { parseArgv } from '../src/args.js'
@@ -62,6 +64,32 @@ const REGISTRY: Record<string, Fn> = {
     return project(raw, instance, account, false)
   },
   partialCodes: () => partialCodes(),
+  obsidianUrl: (v) => {
+    const { vault, path } = v as { vault: string, path: string }
+    return obsidian.noteUrl(vault, path)
+  },
+  vaultEntries: (listed) => obsidian.entries(listed as unknown[]),
+  vaultWalk: (v) => {
+    const { listings } = v as { listings: Record<string, unknown[]> }
+    const out: obsidian.Step[] = []
+    const steps = obsidian.walkSteps()
+    for (let step = steps.next(); !step.done;) {
+      const at = step.value
+      out.push(at)
+      step = steps.next('list' in at ? obsidian.entries(listings[at.list] ?? []) : undefined)
+    }
+    return out
+  },
+  obsidianTransport: (v) => {
+    const { instance, block } = v as { instance: string, block: Record<string, unknown> }
+    return obsidian.transport(instance, block)
+  },
+  projectObsidian: (v) => {
+    const { raw, path, instance, account } = v as { raw: unknown, path: string, instance: string, account: string }
+    return obsidian.project(raw, path, instance, account, false)
+  },
+  parsePin: (s) => parsePin(s),
+  fingerprintOf: (hex) => fingerprintOf(Buffer.from(hex as string, 'hex')),
   vaultEntry: (v) => {
     const { station, profile, key } = v as { station: unknown, profile?: string, key?: string }
     return vaultEntry(station, {

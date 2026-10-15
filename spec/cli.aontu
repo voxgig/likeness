@@ -2841,4 +2841,556 @@ primary: cli: {
       }
     }
   ]
+
+  obsidian: set: [
+    {
+      id: "obsidian/list-walks-the-vault"
+      # Depth first, each directory in code-point order, every note read as JSON as it is met,
+      # and the files that are not notes passed over without a request.
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/obsidian/list.json"
+        calls: [
+          { instance:"obsidian" method:"GET" path:"/vault/" }
+          { instance:"obsidian" method:"GET" path:"/vault/Daily%2F" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/Daily%2F2026-09-17.md"
+          }
+          { instance:"obsidian" method:"GET" path:"/vault/Welcome.md" }
+          { instance:"obsidian" method:"GET" path:"/vault/projects%2F" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Flaunch%20plan.md"
+          }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Fnested%2F"
+          }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Fnested%2Fdeep%20note.md"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "obsidian/list-by-tag"
+      args: ["list" "tag:launch" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/obsidian/list-by-tag.json"
+        calls: [
+          { instance:"obsidian" method:"GET" path:"/vault/" }
+          { instance:"obsidian" method:"GET" path:"/vault/Daily%2F" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/Daily%2F2026-09-17.md"
+          }
+          { instance:"obsidian" method:"GET" path:"/vault/Welcome.md" }
+          { instance:"obsidian" method:"GET" path:"/vault/projects%2F" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Flaunch%20plan.md"
+          }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Fnested%2F"
+          }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Fnested%2Fdeep%20note.md"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "obsidian/list-human"
+      args: ["list"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/obsidian/list-human.txt"
+        calls: [
+          { instance:"obsidian" method:"GET" path:"/vault/" }
+          { instance:"obsidian" method:"GET" path:"/vault/Daily%2F" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/Daily%2F2026-09-17.md"
+          }
+          { instance:"obsidian" method:"GET" path:"/vault/Welcome.md" }
+          { instance:"obsidian" method:"GET" path:"/vault/projects%2F" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Flaunch%20plan.md"
+          }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Fnested%2F"
+          }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Fnested%2Fdeep%20note.md"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "obsidian/list-odd-values"
+      # A note listed and gone by the time it is read is passed over; `.MD` is not a note.
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "obsidian-odd"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian-odd"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/obsidian/list-odd.json"
+        calls: [
+          { instance:"obsidian" method:"GET" path:"/vault/" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/a%2Bb%20%23c%20%25d%20%26e%3Df%20(1)%20Stra%C3%9Fe.md"
+          }
+          { instance:"obsidian" method:"GET" path:"/vault/odd%2F" }
+          { instance:"obsidian" method:"GET" path:"/vault/odd%2Fgone.md" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/odd%2Fmixed%20tags.md"
+          }
+          { instance:"obsidian" method:"GET" path:"/vault/odd%2Fnulls.md" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/odd%2Fwrong%20types.md"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "obsidian/list-odd-raw"
+      args: ["list" "--raw" "--json"]
+      ctx: {
+        fixture: "obsidian-odd"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian-odd"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/obsidian/list-odd-raw.json"
+        calls: [
+          { instance:"obsidian" method:"GET" path:"/vault/" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/a%2Bb%20%23c%20%25d%20%26e%3Df%20(1)%20Stra%C3%9Fe.md"
+          }
+          { instance:"obsidian" method:"GET" path:"/vault/odd%2F" }
+          { instance:"obsidian" method:"GET" path:"/vault/odd%2Fgone.md" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/odd%2Fmixed%20tags.md"
+          }
+          { instance:"obsidian" method:"GET" path:"/vault/odd%2Fnulls.md" }
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/odd%2Fwrong%20types.md"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "obsidian/get-one"
+      args: ["get" "obsidian:projects/nested/deep note.md" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/obsidian/get-one.json"
+        calls: [
+          {
+            instance: "obsidian"
+            method: "GET"
+            path: "/vault/projects%2Fnested%2Fdeep%20note.md"
+          }
+        ]
+      }
+    }
+
+    {
+      id: "obsidian/get-raw"
+      args: ["get" "obsidian:Welcome.md" "--raw" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/obsidian/get-raw.json"
+        calls: [{ instance:"obsidian" method:"GET" path:"/vault/Welcome.md" }]
+      }
+    }
+
+    {
+      id: "obsidian/get-not-found"
+      args: ["get" "obsidian:missing.md" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/obsidian/get-not-found.json"
+        calls: [{ instance:"obsidian" method:"GET" path:"/vault/missing.md" }]
+      }
+    }
+
+    {
+      id: "obsidian/get-a-file-that-is-not-a-note"
+      # A note is a `.md` file, so nothing else is asked for.
+      args: ["get" "obsidian:projects/logo.png" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/obsidian/get-not-a-note.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "obsidian/get-a-directory"
+      args: ["get" "obsidian:projects/" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 1
+        stdout: "spec/expect/obsidian/get-a-directory.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "obsidian/get-a-path-that-climbs-is-refused"
+      args: ["get" "obsidian:projects/../Welcome.md" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/obsidian/get-climbs.json" calls: [] }
+    }
+
+    {
+      id: "obsidian/doctor-ok"
+      # A listing needs the token, so the check proves it is accepted.
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/obsidian/doctor-ok.json"
+        calls: [{ instance:"obsidian" method:"GET" path:"/vault/" }]
+      }
+    }
+
+    {
+      id: "obsidian/doctor-plain-http-declared"
+      # The insecure port only where the connection declares it, and doctor says so.
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: { base:"http://127.0.0.1:27123" options:tls:false }
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 0
+        stdout: "spec/expect/obsidian/doctor-plain-http.json"
+        calls: [{ instance:"obsidian" method:"GET" path:"/vault/" }]
+      }
+    }
+
+    {
+      id: "obsidian/doctor-unreachable"
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+            net: offline: true
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/obsidian/doctor-unreachable.json"
+        calls: [{ instance:"obsidian" method:"GET" path:"/vault/" }]
+      }
+    }
+
+    {
+      id: "obsidian/doctor-token-rejected"
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+            net: { failTimes:1 failStatus:401 }
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/obsidian/doctor-token-rejected.json"
+        calls: [{ instance:"obsidian" method:"GET" path:"/vault/" }]
+      }
+    }
+
+    {
+      id: "obsidian/no-pinned-certificate-is-refused"
+      # The plugin's certificate is self-signed: one not pinned is never trusted.
+      args: ["list" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          { instance:"obsidian" account:"8dc726dfc2eecbf2" fixture:"obsidian" }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/obsidian/no-pin.json" calls: [] }
+    }
+
+    {
+      id: "obsidian/plain-http-undeclared-is-refused"
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: base: "http://127.0.0.1:27123"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/obsidian/plain-http-undeclared.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "obsidian/tls-off-on-https-is-refused"
+      args: ["doctor" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: false
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/obsidian/tls-off-on-https.json"
+        calls: []
+      }
+    }
+
+    {
+      id: "obsidian/malformed-pin-is-refused"
+      args: ["get" "obsidian:Welcome.md" "--json"]
+      ctx: {
+        fixture: "obsidian"
+        connections: [
+          {
+            instance: "obsidian"
+            account: "8dc726dfc2eecbf2"
+            fixture: "obsidian"
+            block: options: tls: fingerprint: "sha256:abc"
+          }
+        ]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/obsidian/malformed-pin.json" calls: [] }
+    }
+  ]
 }

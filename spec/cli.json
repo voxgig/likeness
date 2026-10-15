@@ -1993,6 +1993,838 @@
           }
         ]
       },
+      "obsidian": {
+        "set": [
+          {
+            "args": [
+              "list",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/list-walks-the-vault",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Daily%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Daily%2F2026-09-17.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Welcome.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Flaunch%20plan.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Fnested%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Fnested%2Fdeep%20note.md"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/obsidian/list.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "tag:launch",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/list-by-tag",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Daily%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Daily%2F2026-09-17.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Welcome.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Flaunch%20plan.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Fnested%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Fnested%2Fdeep%20note.md"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/obsidian/list-by-tag.json"
+            }
+          },
+          {
+            "args": [
+              "list"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/list-human",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Daily%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Daily%2F2026-09-17.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Welcome.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Flaunch%20plan.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Fnested%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Fnested%2Fdeep%20note.md"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/obsidian/list-human.txt"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian-odd",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian-odd",
+              "seed": 1
+            },
+            "id": "obsidian/list-odd-values",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/a%2Bb%20%23c%20%25d%20%26e%3Df%20(1)%20Stra%C3%9Fe.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/odd%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/odd%2Fgone.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/odd%2Fmixed%20tags.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/odd%2Fnulls.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/odd%2Fwrong%20types.md"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/obsidian/list-odd.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--raw",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian-odd",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian-odd",
+              "seed": 1
+            },
+            "id": "obsidian/list-odd-raw",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/a%2Bb%20%23c%20%25d%20%26e%3Df%20(1)%20Stra%C3%9Fe.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/odd%2F"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/odd%2Fgone.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/odd%2Fmixed%20tags.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/odd%2Fnulls.md"
+                },
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/odd%2Fwrong%20types.md"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/obsidian/list-odd-raw.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "obsidian:projects/nested/deep note.md",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/get-one",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/projects%2Fnested%2Fdeep%20note.md"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/obsidian/get-one.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "obsidian:Welcome.md",
+              "--raw",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/get-raw",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/Welcome.md"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/obsidian/get-raw.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "obsidian:missing.md",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/get-not-found",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/missing.md"
+                }
+              ],
+              "exit": 1,
+              "stdout": "spec/expect/obsidian/get-not-found.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "obsidian:projects/logo.png",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/get-a-file-that-is-not-a-note",
+            "out": {
+              "calls": [],
+              "exit": 1,
+              "stdout": "spec/expect/obsidian/get-not-a-note.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "obsidian:projects/",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/get-a-directory",
+            "out": {
+              "calls": [],
+              "exit": 1,
+              "stdout": "spec/expect/obsidian/get-a-directory.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "obsidian:projects/../Welcome.md",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/get-a-path-that-climbs-is-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/obsidian/get-climbs.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/doctor-ok",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/obsidian/doctor-ok.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "base": "http://127.0.0.1:27123",
+                    "options": {
+                      "tls": false
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/doctor-plain-http-declared",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                }
+              ],
+              "exit": 0,
+              "stdout": "spec/expect/obsidian/doctor-plain-http.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian",
+                  "net": {
+                    "offline": true
+                  }
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/doctor-unreachable",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                }
+              ],
+              "exit": 3,
+              "stdout": "spec/expect/obsidian/doctor-unreachable.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian",
+                  "net": {
+                    "failStatus": 401,
+                    "failTimes": 1
+                  }
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/doctor-token-rejected",
+            "out": {
+              "calls": [
+                {
+                  "instance": "obsidian",
+                  "method": "GET",
+                  "path": "/vault/"
+                }
+              ],
+              "exit": 3,
+              "stdout": "spec/expect/obsidian/doctor-token-rejected.json"
+            }
+          },
+          {
+            "args": [
+              "list",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/no-pinned-certificate-is-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/obsidian/no-pin.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "base": "http://127.0.0.1:27123"
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/plain-http-undeclared-is-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/obsidian/plain-http-undeclared.json"
+            }
+          },
+          {
+            "args": [
+              "doctor",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": false
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/tls-off-on-https-is-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/obsidian/tls-off-on-https.json"
+            }
+          },
+          {
+            "args": [
+              "get",
+              "obsidian:Welcome.md",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "8dc726dfc2eecbf2",
+                  "block": {
+                    "options": {
+                      "tls": {
+                        "fingerprint": "sha256:abc"
+                      }
+                    }
+                  },
+                  "fixture": "obsidian",
+                  "instance": "obsidian"
+                }
+              ],
+              "fixture": "obsidian",
+              "seed": 1
+            },
+            "id": "obsidian/malformed-pin-is-refused",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/obsidian/malformed-pin.json"
+            }
+          }
+        ]
+      },
       "secrets": {
         "set": [
           {

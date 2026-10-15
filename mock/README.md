@@ -33,9 +33,11 @@ const port = app.server.address().port
 await app.close()
 ```
 
-`buildServer(opts)` takes `{ store, logger, sources, clockStart, clockStep }`.
-`sources` mounts a subset (`{ sources: ['joplin'] }`). The app is decorated with
-`app.store` and `app.likeness.sources`.
+`buildServer(opts)` takes `{ store, logger, sources, clockStart, clockStep, https }`.
+`sources` mounts a subset (`{ sources: ['joplin'] }`). `https` (`{ key, cert }`)
+serves TLS with that certificate instead of plain HTTP, which is how a suite
+reaches the Obsidian plugin's HTTPS port with a certificate it pins. The app is
+decorated with `app.store` and `app.likeness.sources`.
 
 ## Sources
 
@@ -105,14 +107,21 @@ The request ring — what a test asserts against when it needs to know *which*
 calls were made, in order, not merely that the end state looks right.
 
 ```json
-[ { "source": "obsidian", "method": "GET", "url": "/obsidian/vault/mydocument.md?id=mydocument.md",
-    "auth": "ok", "status": 200 } ]
+[ { "source": "obsidian", "method": "GET", "url": "/obsidian/vault/welcome.md",
+    "auth": "ok", "status": 200,
+    "headers": { "accept": "application/vnd.olrapi.note+json", "accept-encoding": "gzip, deflate",
+                 "accept-language": "*", "connection": "keep-alive", "content-type": "application/json",
+                 "host": "127.0.0.1:7777", "sec-fetch-mode": "cors",
+                 "user-agent": "Mozilla/5.0 (compatible; ObsidianSDK/1.0)" } } ]
 ```
 
 - `?source=joplin` filters to one source.
 - `DELETE /__requests` clears it without reseeding.
 - It is a **ring**, capped at 500 rows (`makeStore({ requestMax })`); a long soak
   cannot grow it without bound.
+- `headers` are the request's own, lowercased and sorted, **without
+  `authorization` and `cookie`**: whether the credential was right is `auth`,
+  and its value is never recorded.
 - `auth` is `'ok' | 'bad'`, computed by mirroring each source's own credential
   rule. It is *not* redundant with `status`: **Linear answers HTTP 200 to a bad
   credential**, with the failure in the GraphQL `errors` array, so `status` alone
@@ -178,12 +187,12 @@ Assert on the page, or raise `pageSize` in the seed.
 | SDK call | method | path | notes |
 |---|---|---|---|
 | `Tag().list()` | GET | `/tags` | `{"tags":[{name,count}]}`, counts from frontmatter + inline `#tags` |
-| `Vault().list()` | GET | `/vault` | `{"files":[...]}`, directories suffixed `/` |
-| `Vault().load()` | GET | `/vault/{id}?id={id}` | file point: NoteJson with all 8 required keys |
-| `Vault().load()` | GET | `/vault/{id}?id={id}` | directory point: **discriminated only on the decoded id ending in `/`** |
+| `Vault().list()` | GET | `/vault/` | `{"files":[...]}`, directories suffixed `/` |
+| `Vault().load()` | GET | `/vault/{id}` | file point: NoteJson with all 8 required keys when `Accept` is exactly `application/vnd.olrapi.note+json`, else the file's Markdown, as the plugin negotiates |
+| `Vault().load()` | GET | `/vault/{id}` | directory point: **discriminated only on the decoded id ending in `/`** |
 | `Vault().create()` | POST | `/vault/{id}` | appends to an existing note, creates a missing one; `204`, empty body |
 | `Vault().update()` | PUT | `/vault/{id}` | replaces the file, reparses frontmatter; `204`, empty body |
-| `Vault().remove()` | DELETE | `/vault/{id}?id={id}&permanent={true\|false}` | anything but `"true"` trashes rather than deletes |
+| `Vault().remove()` | DELETE | `/vault/{id}?permanent={true\|false}` | anything but `"true"` trashes rather than deletes |
 | `client.direct()` | PATCH | `/vault/{id}` | full `PatchInstruction` support; not on the entity surface |
 
 Path ids are `encodeURIComponent`-encoded **including slashes**, so

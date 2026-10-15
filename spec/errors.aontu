@@ -154,6 +154,13 @@ error: {
     retryable: false
     means: "the operation would affect more records than the limit allows"
   }
+  certificate-rejected: {
+    code: "certificate-rejected"
+    exit: 4
+    partial: false
+    retryable: false
+    means: "the source's certificate is not the one its connection pins, or failed verification"
+  }
 
   budget-exceeded: code: "budget-exceeded"
   budget-exceeded: exit: 5

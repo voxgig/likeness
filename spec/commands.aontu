@@ -64,6 +64,7 @@ command: {
       "rate-limited"
       "vault-locked"
       "secret-backend-unavailable"
+      "certificate-rejected"
     ]
   }
 
@@ -94,6 +95,7 @@ command: {
       "rate-limited"
       "vault-locked"
       "secret-backend-unavailable"
+      "certificate-rejected"
     ]
   }
 
@@ -114,6 +116,7 @@ command: {
       "rate-limited"
       "vault-locked"
       "secret-backend-unavailable"
+      "certificate-rejected"
     ]
   }
 

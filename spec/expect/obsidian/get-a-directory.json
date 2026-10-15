@@ -1,0 +1,1 @@
+{"cmd":["get"],"code":"not-found","data":null,"error":{"message":"obsidian:projects/ is not a note, which is a .md file","remedy":"check the ref, or run `likeness list` to see what is there"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

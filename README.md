@@ -18,9 +18,9 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 163 entries, run by every port, C included but for the eighteen of `connections` |
-| `spec/cli.aontu` — the transcript corpus | 143 whole commands, run by the TypeScript, Go, Python and Ruby ports; C answers the 37 that need no source |
-| `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`; offline through the real generated SDK |
+| `spec/unit.aontu` — the pure-function corpus | 209 entries, run by every port, C included but for the eighteen of `connections`; the groups `obsidian` and `pin` are the TypeScript port's until the others take its Obsidian adapter |
+| `spec/cli.aontu` — the transcript corpus | 162 whole commands, run by the TypeScript, Go, Python and Ruby ports, the group `obsidian` by TypeScript alone so far; C answers the 37 that need no source |
+| `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`, over Joplin and Obsidian; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
 | `python/` — the third port | the same again, through station's Python library |
 | `ruby/` — the Ruby port | the same again, on station's Ruby library and the SDK's `rb` gem |
@@ -83,6 +83,28 @@ station profile:
 A profile reads only its own accounts. Two profiles may declare `joplin`
 against different applications, and an account shared between them would give
 one profile's notes the other's identities.
+
+#### Obsidian
+
+Obsidian is reached through its Local REST API community plugin, whose HTTPS
+port presents a certificate the plugin made for itself. likeness trusts it by
+its SHA-256 fingerprint alone, pinned in the instance's block, and never turns
+verification off:
+
+```json
+{ "station": 1, "profiles": { "default": { "sdk": { "obsidian": {
+  "base": "https://127.0.0.1:27124",
+  "options": { "tls": { "fingerprint": "sha256:<the certificate's SHA-256, in hex>" } } } } } } }
+```
+
+The plugin serves its certificate at `/obsidian-local-rest-api.crt`, and
+`openssl x509 -noout -fingerprint -sha256 -in obsidian-local-rest-api.crt`
+prints the digest, which may be written after `sha256:` with its colons or
+without them. A certificate that no longer matches is refused as
+`certificate-rejected` before any request is written. The plugin's plain HTTP
+port is used only where the block says so, with `"base": "http://127.0.0.1:27123"`
+and `"options": { "tls": false }`, and `doctor` reports it. The instance's
+account is the vault's id, which its notes' `obsidian://` links name.
 
 Every port binds every client through station, and the calls a command reports
 are station's own request events.

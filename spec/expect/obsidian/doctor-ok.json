@@ -1,0 +1,1 @@
+{"cmd":["doctor"],"code":"ok","data":[{"check":"ok","detail":"ok","instance":"obsidian","source":"obsidian"}],"meta":{"calls":1,"count":1,"incomplete":[],"sources":["obsidian"],"truncated":false},"ok":true,"version":"0.1.0"}

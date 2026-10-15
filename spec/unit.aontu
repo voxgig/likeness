@@ -1430,4 +1430,477 @@ primary: unit: {
 
     { id:"order/equal" fn:"compareCodePoints" in: ["abc" "abc"] out:0 }
   ]
+
+  # ---------------------------------------------------------------- obsidian
+  obsidian: set: [
+    {
+      id: "obsidian/url-names-the-vault-by-its-account"
+      fn: "obsidianUrl"
+      in: { vault:"8dc726dfc2eecbf2" path:"Welcome.md" }
+      out: "obsidian://open?vault=8dc726dfc2eecbf2&file=Welcome.md"
+    }
+
+    {
+      id: "obsidian/url-encodes-the-path-separator-and-spaces"
+      fn: "obsidianUrl"
+      in: { vault:"8dc726dfc2eecbf2" path:"projects/launch plan.md" }
+      out: "obsidian://open?vault=8dc726dfc2eecbf2&file=projects%2Flaunch%20plan.md"
+    }
+
+    {
+      id: "obsidian/url-encodes-everything-but-the-unreserved"
+      # Only the URI unreserved set passes, unlike encodeURIComponent: `!*'()` are encoded too.
+      fn: "obsidianUrl"
+      in: { vault:"My Vault" path:"a+b #c %d &e=f (1) Straße!*'.md" }
+      out: "obsidian://open?vault=My%20Vault&file=a%2Bb%20%23c%20%25d%20%26e%3Df%20%281%29%20Stra%C3%9Fe%21%2A%27.md"
+    }
+
+    {
+      id: "obsidian/url-keeps-the-unreserved"
+      fn: "obsidianUrl"
+      in: { vault:"v" path:"A-Z_a.z~0-9.md" }
+      out: "obsidian://open?vault=v&file=A-Z_a.z~0-9.md"
+    }
+
+    {
+      id: "obsidian/entries-in-code-point-order"
+      fn: "vaultEntries"
+      in: ["welcome.md" "Daily/" "a b.md" "a/" "a.md" "𝐀.md" "￿.md"]
+      out: ["Daily/" "a b.md" "a.md" "a/" "welcome.md" "￿.md" "𝐀.md"]
+    }
+
+    {
+      id: "obsidian/entries-by-first-segment-once"
+      # The offline transport lists every record by id, nested ones too.
+      fn: "vaultEntries"
+      in: [
+        id: "projects/nested/deep note.md"
+        id: "projects/"
+        "Welcome.md"
+        id: "Daily/2026-09-17.md"
+      ]
+      out: ["Daily/" "Welcome.md" "projects/"]
+    }
+
+    {
+      id: "obsidian/entry-that-is-empty-is-refused"
+      fn: "vaultEntries"
+      in: [""]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-climbing-out-is-refused"
+      fn: "vaultEntries"
+      in: ["../elsewhere/"]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-naming-here-is-refused"
+      fn: "vaultEntries"
+      in: ["./a.md"]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-from-the-root-is-refused"
+      fn: "vaultEntries"
+      in: ["/a.md"]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-with-an-empty-segment-is-refused"
+      fn: "vaultEntries"
+      in: ["a//b.md"]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-that-is-not-a-name-is-refused"
+      fn: "vaultEntries"
+      in: [7]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/entry-record-without-an-id-is-refused"
+      fn: "vaultEntries"
+      in: [path:"a.md"]
+      err: "names no path below it"
+    }
+
+    {
+      id: "obsidian/walk-is-depth-first-reading-notes-as-met"
+      # Files that are not notes are passed over without a request.
+      fn: "vaultWalk"
+      in: listings: {
+        "": ["Welcome.md" "projects/" "Daily/" "logo.png"]
+        "projects/": ["nested/" "launch plan.md" "img.png"]
+        "projects/nested/": ["deep note.md"]
+        "Daily/": ["2026-09-17.md"]
+      }
+      out: [
+        list: ""
+        list: "Daily/"
+        read: "Daily/2026-09-17.md"
+        read: "Welcome.md"
+        list: "projects/"
+        read: "projects/launch plan.md"
+        list: "projects/nested/"
+        read: "projects/nested/deep note.md"
+      ]
+    }
+
+    {
+      id: "obsidian/walk-passes-over-a-directory-gone"
+      fn: "vaultWalk"
+      in: listings: "": ["gone/" "a.md"]
+      out: [list:"" read:"a.md" list:"gone/"]
+    }
+
+    {
+      id: "obsidian/walk-of-an-empty-vault-lists-the-root"
+      fn: "vaultWalk"
+      in: listings: {}
+      out: [list:""]
+    }
+
+    {
+      id: "obsidian/walk-reads-md-and-nothing-else"
+      fn: "vaultWalk"
+      in: listings: "": ["SHOUT.MD" "a.md.txt" "b.markdown" "c.md"]
+      out: [list:"" read:"c.md"]
+    }
+
+    {
+      id: "obsidian/transport-pinned-hex-any-case"
+      fn: "obsidianTransport"
+      in: {
+        instance: "obsidian"
+        block: options: tls: fingerprint: "sha256:5589BA1952F2D11C07D79A381BC58636477FD17EFA2B70710FC99EF2CE994D25"
+      }
+      out: {
+        tls: "pinned"
+        pin: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      }
+    }
+
+    {
+      id: "obsidian/transport-pinned-colon-pairs"
+      fn: "obsidianTransport"
+      in: {
+        instance: "obsidian"
+        block: {
+          base: "https://127.0.0.1:27124"
+          options: tls: fingerprint: "sha256:55:89:ba:19:52:f2:d1:1c:07:d7:9a:38:1b:c5:86:36:47:7f:d1:7e:fa:2b:70:71:0f:c9:9e:f2:ce:99:4d:25"
+        }
+      }
+      out: {
+        tls: "pinned"
+        pin: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      }
+    }
+
+    {
+      id: "obsidian/transport-plain-http-declared"
+      fn: "obsidianTransport"
+      in: {
+        instance: "obsidian$home"
+        block: { base:"http://127.0.0.1:27123" options:tls:false }
+      }
+      out: tls: "off"
+    }
+
+    {
+      id: "obsidian/transport-https-without-a-pin-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block: {} }
+      err: "pins no certificate"
+    }
+
+    {
+      id: "obsidian/transport-plain-http-undeclared-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:base:"http://127.0.0.1:27123" }
+      err: "is plain HTTP and does not declare it"
+    }
+
+    {
+      id: "obsidian/transport-tls-off-on-https-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:options:tls:false }
+      err: "turns TLS off on an https base"
+    }
+
+    {
+      id: "obsidian/transport-pin-on-plain-http-is-refused"
+      fn: "obsidianTransport"
+      in: {
+        instance: "obsidian"
+        block: {
+          base: "http://127.0.0.1:27123"
+          options: tls: fingerprint: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+      err: "pins a certificate on a plain HTTP base"
+    }
+
+    {
+      id: "obsidian/transport-malformed-pin-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:options:tls:fingerprint:"sha1:abc" }
+      err: "pins a fingerprint that is not sha256 and 64 hex digits"
+    }
+
+    {
+      id: "obsidian/transport-tls-with-more-than-a-pin-is-refused"
+      fn: "obsidianTransport"
+      in: {
+        instance: "obsidian"
+        block: options: tls: {
+          fingerprint: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          ca: "anything"
+        }
+      }
+      err: "has a tls option that is neither a pinned fingerprint nor false"
+    }
+
+    {
+      id: "obsidian/transport-tls-true-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:options:tls:true }
+      err: "has a tls option that is neither a pinned fingerprint nor false"
+    }
+
+    {
+      id: "obsidian/transport-unknown-option-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:options: { tls:false timeout:5 } }
+      err: "has an option likeness does not read: \"timeout\""
+    }
+
+    {
+      id: "obsidian/transport-options-not-a-map-are-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:options: [1] }
+      err: "has options that are not a map"
+    }
+
+    {
+      id: "obsidian/transport-base-of-another-scheme-is-refused"
+      fn: "obsidianTransport"
+      in: { instance:"obsidian" block:base:"ftp://127.0.0.1" }
+      err: "has a base that is neither https nor http"
+    }
+
+    {
+      id: "obsidian/project-a-nested-note"
+      fn: "projectObsidian"
+      in: {
+        raw: {
+          content: "Body"
+          tags: ["a" "b"]
+          stat: { ctime:1772355600000 mtime:1789547400000 }
+        }
+        path: "projects/nested/deep note.md"
+        instance: "obsidian"
+        account: "8dc726dfc2eecbf2"
+      }
+      out: {
+        lid: "lk_0g9w28zgxbsg"
+        source: "obsidian"
+        instance: "obsidian"
+        id: "projects/nested/deep note.md"
+        title: "deep note"
+        space: "projects/nested"
+        body: "Body"
+        tags: ["a" "b"]
+        url: "obsidian://open?vault=8dc726dfc2eecbf2&file=projects%2Fnested%2Fdeep%20note.md"
+        created: "2026-03-01T09:00:00Z"
+        updated: "2026-09-16T08:30:00Z"
+      }
+    }
+
+    {
+      id: "obsidian/project-a-note-at-the-root-has-no-space"
+      fn: "projectObsidian"
+      in: {
+        raw: { content:"x" tags: [] stat: { ctime:0 mtime:0 } }
+        path: "Welcome.md"
+        instance: "obsidian"
+        account: "v1"
+      }
+      out: {
+        lid: "lk_dz00j92vwpky"
+        source: "obsidian"
+        instance: "obsidian"
+        id: "Welcome.md"
+        title: "Welcome"
+        body: "x"
+        tags: []
+        url: "obsidian://open?vault=v1&file=Welcome.md"
+        created: "1970-01-01T00:00:00Z"
+        updated: "1970-01-01T00:00:00Z"
+      }
+    }
+
+    {
+      id: "obsidian/project-awkward-values"
+      # A non-string is its canonical text, a null tag is dropped, and a
+      # timestamp that is not an integral number is the epoch.
+      fn: "projectObsidian"
+      in: {
+        raw: {
+          content: 42
+          tags: ["a" null 7 x: [1 2] "b"]
+          stat: { ctime:"nope" mtime:1.5 }
+        }
+        path: "odd/x.md"
+        instance: "obsidian"
+        account: "v1"
+      }
+      out: {
+        lid: "lk_xyb1ad0ac0gj"
+        source: "obsidian"
+        instance: "obsidian"
+        id: "odd/x.md"
+        title: "x"
+        space: "odd"
+        body: "42"
+        tags: ["a" "7" "{\"x\":[1,2]}" "b"]
+        url: "obsidian://open?vault=v1&file=odd%2Fx.md"
+        created: "1970-01-01T00:00:00Z"
+        updated: "1970-01-01T00:00:00Z"
+      }
+    }
+
+    {
+      id: "obsidian/project-nulls"
+      # Tags were fetched, so none is `[]`; a null body is absent.
+      fn: "projectObsidian"
+      in: {
+        raw: { content:null tags:null stat:null }
+        path: "odd/nulls.md"
+        instance: "obsidian"
+        account: "v1"
+      }
+      out: {
+        lid: "lk_1vjw01hyhpj8"
+        source: "obsidian"
+        instance: "obsidian"
+        id: "odd/nulls.md"
+        title: "nulls"
+        space: "odd"
+        tags: []
+        url: "obsidian://open?vault=v1&file=odd%2Fnulls.md"
+        created: "1970-01-01T00:00:00Z"
+        updated: "1970-01-01T00:00:00Z"
+      }
+    }
+
+    {
+      id: "obsidian/project-a-single-tag-not-in-a-list"
+      fn: "projectObsidian"
+      in: { raw:tags:"single" path:"a.md" instance:"obsidian" account:"v1" }
+      out: {
+        lid: "lk_4ghpgm9jk5pk"
+        source: "obsidian"
+        instance: "obsidian"
+        id: "a.md"
+        title: "a"
+        tags: ["single"]
+        url: "obsidian://open?vault=v1&file=a.md"
+        created: "1970-01-01T00:00:00Z"
+        updated: "1970-01-01T00:00:00Z"
+      }
+    }
+
+    {
+      id: "obsidian/project-a-note-that-is-not-a-record-is-refused"
+      fn: "projectObsidian"
+      in: { raw:"text" path:"a.md" instance:"obsidian" account:"v1" }
+      err: "returned a note that is not a record"
+    }
+
+    {
+      id: "obsidian/project-a-time-past-9999-is-refused"
+      fn: "projectObsidian"
+      in: {
+        raw: stat: ctime: 253402300800000
+        path: "a.md"
+        instance: "obsidian"
+        account: "v1"
+      }
+      err: "whose stat.ctime is outside the years 0000 to 9999"
+    }
+  ]
+
+  # --------------------------------------------------------------------- pin
+  pin: set: [
+    {
+      id: "pin/lower-case-hex-is-the-pin"
+      fn: "parsePin"
+      in: "sha256:5589BA1952F2D11C07D79A381BC58636477FD17EFA2B70710FC99EF2CE994D25"
+      out: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+    }
+
+    {
+      id: "pin/colon-pairs-are-the-same-pin"
+      fn: "parsePin"
+      in: "sha256:55:89:BA:19:52:F2:D1:1C:07:D7:9A:38:1B:C5:86:36:47:7F:D1:7E:FA:2B:70:71:0F:C9:9E:F2:CE:99:4D:25"
+      out: "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+    }
+
+    {
+      id: "pin/too-short-is-refused"
+      fn: "parsePin"
+      in: "sha256:abc"
+      err: "not a sha256 certificate fingerprint"
+    }
+
+    {
+      id: "pin/no-algorithm-is-refused"
+      fn: "parsePin"
+      in: "5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      err: "not a sha256 certificate fingerprint"
+    }
+
+    {
+      id: "pin/the-algorithm-is-lower-case"
+      fn: "parsePin"
+      in: "SHA256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+      err: "not a sha256 certificate fingerprint"
+    }
+
+    {
+      id: "pin/colons-all-or-none"
+      fn: "parsePin"
+      in: "sha256:55:895589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d"
+      err: "not a sha256 certificate fingerprint"
+    }
+
+    {
+      id: "pin/not-text-is-refused"
+      fn: "parsePin"
+      in: 42
+      err: "not a sha256 certificate fingerprint"
+    }
+
+    {
+      id: "pin/fingerprint-of-nothing"
+      # The SHA-256 of the certificate's DER bytes, given here in hex.
+      fn: "fingerprintOf"
+      in: ""
+      out: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+
+    {
+      id: "pin/fingerprint-of-abc"
+      fn: "fingerprintOf"
+      in: "616263"
+      out: "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+  ]
 }

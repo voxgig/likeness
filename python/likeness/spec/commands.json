@@ -45,7 +45,8 @@
         "auth-failed",
         "rate-limited",
         "vault-locked",
-        "secret-backend-unavailable"
+        "secret-backend-unavailable",
+        "certificate-rejected"
       ],
       "flag": {},
       "ready": true,
@@ -85,7 +86,8 @@
         "auth-failed",
         "rate-limited",
         "vault-locked",
-        "secret-backend-unavailable"
+        "secret-backend-unavailable",
+        "certificate-rejected"
       ],
       "flag": {
         "raw": {
@@ -151,7 +153,8 @@
         "auth-failed",
         "rate-limited",
         "vault-locked",
-        "secret-backend-unavailable"
+        "secret-backend-unavailable",
+        "certificate-rejected"
       ],
       "flag": {
         "limit": {
