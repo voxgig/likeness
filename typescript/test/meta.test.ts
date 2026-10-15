@@ -156,3 +156,24 @@ test('meta: version reporting another port in its data is reported', async () =>
   const f = stdoutFailures(e, serialise(parsed))
   assert.ok(f.some(x => x.startsWith('data.port is')), 'not reported: ' + JSON.stringify(f))
 })
+
+test('meta: a written file that differs is reported', async () => {
+  const e = entry('connections/add-joplin')
+  e.out.files = { ...e.out.files, 'station.json': 'fixtures/config/several/station.json' }
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('station.json differs')), 'no file failure in ' + JSON.stringify(f))
+})
+
+test('meta: a file the entry says is not there, written, is reported', async () => {
+  const e = entry('connections/add-joplin')
+  e.out.absent = ['likeness.json']
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('likeness.json is there afterwards')), 'no absence failure in ' + JSON.stringify(f))
+})
+
+test('meta: a file the entry names, never written, is reported', async () => {
+  const e = entry('connections/add-joplin-needs-an-account')
+  e.out.files = { 'station.json': 'spec/written/connections/add-joplin/station.json' }
+  const f = await check(e)
+  assert.ok(f.some(x => x.startsWith('station.json is not there afterwards')), 'no missing-file failure in ' + JSON.stringify(f))
+})

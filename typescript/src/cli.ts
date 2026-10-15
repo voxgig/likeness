@@ -5,6 +5,7 @@ import { homedir } from 'node:os'
 import { run, profileOf, type Ctx, PORT, VERSION } from './core.js'
 import { rfc3339 } from './identity.js'
 import { ConfigError, loadConfig } from './config.js'
+import { presentedFingerprint } from './pin.js'
 
 const REMEDY = 'fix the file, or point --config at another'
 
@@ -156,9 +157,11 @@ export async function main (argv: string[]): Promise<number> {
     path: probePath(env),
     home,
     dir: dirname(path),
+    config: path,
     stdin: readStdin,
     tty: true === process.stdin.isTTY,
     prompt,
+    presented: presentedFingerprint,
   }
 
   const res = await run(ctx)

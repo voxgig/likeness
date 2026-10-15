@@ -1,0 +1,16 @@
+{
+  "station": 1,
+  "profiles": {
+    "default": {
+      "sdk": {
+        "notion": {
+          "options": {
+            "headers": {
+              "notion-version": "2022-06-28"
+            }
+          }
+        }
+      }
+    }
+  }
+}

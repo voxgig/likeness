@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"invalid-argument","data":null,"error":{"message":"--notion-version is not a date such as 2022-06-28","remedy":"give the API version as YYYY-MM-DD, as Notion publishes it"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

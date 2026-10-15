@@ -4,7 +4,7 @@ import { lid, parseRfc3339, rfc3339 } from '../identity.js'
 import { compareCodePoints, type Note } from '../note.js'
 import { LikenessError } from '../errors.js'
 import { renderRaw } from '../envelope.js'
-import type { Check, Conn } from '../adapters.js'
+import type { Check, Conn, Given } from '../adapters.js'
 
 // eslint-disable-next-line
 import pkg from '@voxgig-sdk/notion-sdk'
@@ -67,6 +67,19 @@ export function configure (instance: string, block: Record<string, unknown>): Co
     throw refuse('pins a Notion-Version that is not a date such as 2022-06-28')
   }
   return { version }
+}
+
+// The block `sources add` writes: the pinned version, and the base when one is given.
+export async function setup (_instance: string, given: Given): Promise<Record<string, unknown>> {
+  const version = given['notion-version']
+  if ('string' !== typeof version || !VERSION.test(version)) {
+    throw new LikenessError('invalid-argument', '--notion-version is not a date such as 2022-06-28',
+      'give the API version as YYYY-MM-DD, as Notion publishes it')
+  }
+  const block: Record<string, unknown> = {}
+  if (undefined !== given.base) block.base = given.base
+  block.options = { headers: { 'notion-version': version } }
+  return block
 }
 
 // The ref goes in the station feature's options: the SDK refuses a top-level instance option.

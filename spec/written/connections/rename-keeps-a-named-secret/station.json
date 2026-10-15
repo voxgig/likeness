@@ -1,0 +1,27 @@
+{
+  "station": 1,
+  "profiles": {
+    "default": {
+      "sdk": {
+        "joplin": {
+          "base": "http://127.0.0.1:41184"
+        },
+        "joplin$work": {
+          "base": "http://127.0.0.1:41185"
+        },
+        "notion$wiki": {
+          "secret": "notion.apikey",
+          "options": {
+            "headers": {
+              "notion-version": "2022-06-28"
+            }
+          }
+        },
+        "joplin$a-b": {
+          "base": "http://127.0.0.1:41186",
+          "active": false
+        }
+      }
+    }
+  }
+}

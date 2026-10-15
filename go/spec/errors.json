@@ -42,6 +42,13 @@
       "partial": true,
       "retryable": true
     },
+    "instance-exists": {
+      "code": "instance-exists",
+      "exit": 4,
+      "means": "a connection with that ref is already configured, and is never overwritten",
+      "partial": false,
+      "retryable": false
+    },
     "invalid-argument": {
       "code": "invalid-argument",
       "exit": 3,

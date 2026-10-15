@@ -2533,4 +2533,108 @@ primary: unit: {
       err: "whose last_edited_time is outside the years 0000 to 9999"
     }
   ]
+
+  # The names `sources add` derives: station's secret name for a ref, and the
+  # ref written from --source and --instance.
+  sources: set: [
+    {
+      id: "sources/secret-untagged"
+      fn: "secretName"
+      in: "joplin"
+      out: "joplin.apikey"
+    }
+    {
+      id: "sources/secret-tagged"
+      fn: "secretName"
+      in: "joplin$work"
+      out: "joplin_work.apikey"
+    }
+    {
+      id: "sources/secret-hyphen"
+      fn: "secretName"
+      in: "notion$docs-eu"
+      out: "notion_docs_eu.apikey"
+    }
+    {
+      id: "sources/secret-a-run-is-one-underscore"
+      fn: "secretName"
+      in: "joplin$a--b"
+      out: "joplin_a_b.apikey"
+    }
+    {
+      id: "sources/secret-edges-trimmed"
+      fn: "secretName"
+      in: "joplin$-x-"
+      out: "joplin_x.apikey"
+    }
+    {
+      id: "sources/secret-case-folded"
+      fn: "secretName"
+      in: "Joplin$Work"
+      out: "joplin_work.apikey"
+    }
+    {
+      id: "sources/secret-an-api-and-a-tag-meet"
+      # Why station refuses `notes-a` beside `notes$a`: both derive one name.
+      fn: "secretName"
+      in: "notes-a"
+      out: "notes_a.apikey"
+    }
+    { id:"sources/ref-untagged" fn:"refFor" in:source:"joplin" out:"joplin" }
+    {
+      id: "sources/ref-tag"
+      fn: "refFor"
+      in: { source:"joplin" instance:"work" }
+      out: "joplin$work"
+    }
+    {
+      id: "sources/ref-a-tag-is-never-the-api"
+      # A `$`-less value is a tag, whatever it spells.
+      fn: "refFor"
+      in: { source:"joplin" instance:"joplin" }
+      out: "joplin$joplin"
+    }
+    {
+      id: "sources/ref-given-whole"
+      fn: "refFor"
+      in: { source:"joplin" instance:"joplin$2nd" }
+      out: "joplin$2nd"
+    }
+    {
+      id: "sources/ref-of-another-api"
+      fn: "refFor"
+      in: { source:"joplin" instance:"notion$work" }
+      err: "--instance names a connection to another API than --source does"
+    }
+    {
+      id: "sources/ref-tag-not-lowercase"
+      fn: "refFor"
+      in: { source:"joplin" instance:"Work" }
+      err: "--instance takes a tag of lowercase letters, digits and hyphens"
+    }
+    {
+      id: "sources/ref-tag-empty"
+      fn: "refFor"
+      in: { source:"joplin" instance:"" }
+      err: "--instance takes a tag of lowercase letters, digits and hyphens"
+    }
+    {
+      id: "sources/ref-tag-empty-after-the-api"
+      fn: "refFor"
+      in: { source:"joplin" instance:"joplin$" }
+      err: "--instance takes a tag of lowercase letters, digits and hyphens"
+    }
+    {
+      id: "sources/ref-tag-holds-a-dollar"
+      fn: "refFor"
+      in: { source:"joplin" instance:"joplin$a$b" }
+      err: "--instance takes a tag of lowercase letters, digits and hyphens"
+    }
+    {
+      id: "sources/ref-source-not-a-name"
+      fn: "refFor"
+      in: source: "Joplin"
+      err: "--source takes a source's name"
+    }
+  ]
 }

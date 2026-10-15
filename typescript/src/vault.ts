@@ -101,7 +101,7 @@ export function vaultEntry (
   return { file, key, shown: shown(file, opts.home) }
 }
 
-function present (entry: VaultEntry): void {
+export function present (entry: VaultEntry): void {
   if (!existsSync(entry.file)) {
     throw new LikenessError('secret-backend-unavailable', 'no vault at ' + entry.shown,
       'run `likeness secrets init` to create it, or point station.json at the vault')
@@ -109,7 +109,7 @@ function present (entry: VaultEntry): void {
 }
 
 // The passphrase that opens the vault: from the environment, else typed.
-async function passphrase (ask: Asker, flags: VaultFlags, key: string): Promise<string> {
+export async function passphrase (ask: Asker, flags: VaultFlags, key: string): Promise<string> {
   const name = flags.passphraseEnv ?? PASSPHRASE_ENV
   const value = ask.env?.[name]
   if (undefined !== value && '' !== value) return value
@@ -154,7 +154,7 @@ async function newPassphrase (
     : 'set that variable, or run on a terminal to be asked')
 }
 
-function opened (entry: VaultEntry, phrase: string): { vault: MiniVault, info: VaultKeyInfo } {
+export function opened (entry: VaultEntry, phrase: string): { vault: MiniVault, info: VaultKeyInfo } {
   const vault = openvault({ file: entry.file, key: entry.key, passphrase: phrase })
   try {
     return { vault, info: vault.open() }
@@ -167,7 +167,7 @@ function opened (entry: VaultEntry, phrase: string): { vault: MiniVault, info: V
   }
 }
 
-function written (entry: VaultEntry, write: () => void): void {
+export function written (entry: VaultEntry, write: () => void): void {
   try {
     write()
   }

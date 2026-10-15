@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"invalid-argument","data":null,"error":{"message":"no token was given","remedy":"run it again, and type the token"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

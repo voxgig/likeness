@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"instance-exists","data":null,"error":{"message":"a connection named \"joplin$work\" is already configured","remedy":"choose another tag with --instance, or remove it first with `likeness sources remove joplin$work`"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

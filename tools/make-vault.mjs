@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-/* Write a sekreto minivault: the fixture vault the secrets corpus runs against,
- * or, imported, one a tool makes for a run of its own.
+/* Write a sekreto minivault: the fixture vaults the corpus runs against, or,
+ * imported, one a tool makes for a run of its own.
  *
- *   node tools/make-vault.mjs           # refuses to replace the committed one
- *   node tools/make-vault.mjs --force
+ *   node tools/make-vault.mjs           # writes a missing one, refuses to replace one committed
+ *   node tools/make-vault.mjs --force   # replaces both
  *
  *   import { writeVault } from './make-vault.mjs'
  *   writeVault(file, passphrase, { 'joplin.apikey': token })
  *
- * Every port reads this one file: minivault's format is the same in each of
+ * Every port reads these files: minivault's format is the same in each of
  * sekreto's ports. The bytes change on every run (fresh salts and nonces);
- * what it holds does not, and fixtures/vault/README.md says what that is.
+ * what each holds does not, and fixtures/vault/README.md says what that is.
  */
 
 import { createRequire } from 'node:module'
@@ -22,11 +22,12 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(join(ROOT, 'typescript', 'package.json'))
 const { createvault } = require('@voxgig/sekreto/plugins/minivault')
 
-const FILE = join(ROOT, 'fixtures', 'vault', 'likeness.skmv')
+const DIR = join(ROOT, 'fixtures', 'vault')
 
 // Low on purpose: the stretch costs every command that opens the vault, and a
 // vault created by `secrets init` still gets sekreto's default.
 const ITERATIONS = 1000
+const MASTER = 'fixture master passphrase'
 
 // A vault holding `secrets` under its master key, and each grant as a key of its own.
 export function writeVault (file, passphrase, secrets, grants = []) {
@@ -40,25 +41,38 @@ export function writeVault (file, passphrase, secrets, grants = []) {
   }
 }
 
-function fixture () {
-  if (existsSync(FILE)) {
-    if (!process.argv.includes('--force')) {
-      console.error(`  EXISTS  ${FILE} - pass --force to replace it`)
-      process.exit(2)
-    }
-    rmSync(FILE)
-  }
-  mkdirSync(dirname(FILE), { recursive: true })
-
-  writeVault(FILE, 'fixture master passphrase', {
+const FIXTURES = {
+  'likeness.skmv': [{
     'joplin.apikey': 'joplin-mock-token',
     'notion.apikey': 'notion-fixture-token',
   }, [
     { key: 'ci', passphrase: 'fixture ci passphrase', names: ['joplin.apikey'] },
     { key: 'deploy', passphrase: 'fixture deploy passphrase', names: ['joplin.apikey', 'linear.apikey'], write: true },
-  ])
-
-  console.log(`  wrote   ${FILE}`)
+  ]],
+  // A master key and no secret: a vault as `secrets init` leaves it.
+  'empty.skmv': [{}, []],
 }
 
-if (undefined !== process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) fixture()
+function fixtures () {
+  const force = process.argv.includes('--force')
+  let refused = 0
+  mkdirSync(DIR, { recursive: true })
+
+  for (const [name, [secrets, grants]] of Object.entries(FIXTURES)) {
+    const file = join(DIR, name)
+    if (existsSync(file)) {
+      if (!force) {
+        console.error(`  EXISTS  ${file} - pass --force to replace it`)
+        refused++
+        continue
+      }
+      rmSync(file)
+    }
+    writeVault(file, MASTER, secrets, grants)
+    console.log(`  wrote   ${file}`)
+  }
+
+  if (refused === Object.keys(FIXTURES).length) process.exit(2)
+}
+
+if (undefined !== process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) fixtures()

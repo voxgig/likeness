@@ -1,12 +1,13 @@
 
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { openvault } from '@voxgig/sekreto/plugins/minivault'
 
 import { serialise, stripParityExceptions } from '../src/envelope.js'
-import { run, PORT, type Ctx } from '../src/core.js'
+import { run, profileOf, PORT, type Ctx } from '../src/core.js'
+import { loadConfig } from '../src/config.js'
 import type { Call } from '../src/calls.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -34,6 +35,7 @@ export type CliEntry = {
     secrets?: unknown
     stdin?: string
     tty?: string[]
+    presents?: Record<string, string>
   }
   out: {
     exit: number
@@ -42,6 +44,8 @@ export type CliEntry = {
     calls: Call[]
     prompts?: string[]
     vault?: VaultState
+    files?: Record<string, string>
+    absent?: string[]
   }
 }
 
@@ -86,10 +90,18 @@ function seedOf (name: string): Record<string, unknown> {
   return seed
 }
 
+// A file the entry names: under the home with `~/`, else in the configuration directory.
+export function located (ctx: Ctx, name: string): string {
+  return name.startsWith('~/') ? join(ctx.home as string, name.slice(2)) : join(ctx.dir as string, name)
+}
+
+const CONFIG_FILES = ['station.json', 'likeness.json']
+
 // Each connection becomes a declared station instance, its block the one the
 // entry gives, its account the likeness.json entry beside it, and its seed,
 // its own or the entry's, the SDK's offline transport. Every run gets a home of
-// its own, holding the entry's files.
+// its own, holding the entry's files; an entry that brings station.json or
+// likeness.json is configured by them alone, read as the argv shell reads them.
 export function buildCtx (e: CliEntry): Ctx {
   const sdk: Record<string, unknown> = {}
   const accounts: Record<string, string> = {}
@@ -114,14 +126,25 @@ export function buildCtx (e: CliEntry): Ctx {
 
   const profile: Record<string, unknown> = { sdk }
   if (undefined !== e.ctx.secrets) profile.secrets = e.ctx.secrets
+  let station: unknown = { station: 1, profiles: { default: profile } }
+  let read = accounts
+  if (Object.keys(e.ctx.files ?? {}).some(name => CONFIG_FILES.includes(name))) {
+    if (0 < e.ctx.connections.length || undefined !== e.ctx.secrets) {
+      throw new Error(e.id + ': an entry that brings its configuration declares no connections or secrets')
+    }
+    const loaded = loadConfig(join(dir, 'station.json'), profileOf(e.ctx.env))
+    station = loaded.station
+    read = loaded.accounts
+  }
 
+  const presents = e.ctx.presents ?? {}
   const ctx: Ctx = {
     argv: e.args,
     env: e.ctx.env,
     clock: e.ctx.clock,
     seed: e.ctx.seed,
-    station: { station: 1, profiles: { default: profile } },
-    accounts,
+    station,
+    accounts: read,
     fixture,
     // Absent stays absent: an entry that declares no PATH is asserting what
     // `which` does when it was told about nothing, which is a different case
@@ -129,7 +152,15 @@ export function buildCtx (e: CliEntry): Ctx {
     path: e.ctx.path,
     home,
     dir,
+    config: join(dir, 'station.json'),
     stdin: async () => e.ctx.stdin ?? '',
+    // Keyed by host:port, the port written out even where it is the scheme's.
+    presented: async (base: string) => {
+      const url = new URL(base)
+      const at = url.hostname + ':' + ('' === url.port ? '443' : url.port)
+      if (!Object.hasOwn(presents, at)) throw new Error('nothing answers at ' + at)
+      return presents[at]
+    },
   }
 
   if (undefined !== e.ctx.tty) {
@@ -145,8 +176,7 @@ export function buildCtx (e: CliEntry): Ctx {
 function vaultFailures (e: CliEntry, ctx: Ctx, fail: (s: string) => void): void {
   const want = e.out.vault
   if (undefined === want) return
-  const named = want.file ?? 'likeness.skmv'
-  const file = named.startsWith('~/') ? join(ctx.home as string, named.slice(2)) : join(ctx.dir as string, named)
+  const file = located(ctx, want.file ?? 'likeness.skmv')
   const vault = openvault({ file, key: want.key ?? 'master', passphrase: want.passphrase })
   let names: string[]
   try {
@@ -173,6 +203,19 @@ function vaultFailures (e: CliEntry, ctx: Ctx, fail: (s: string) => void): void 
 
 function expected (path: string): string {
   return readFileSync(join(ROOT, path), 'utf8')
+}
+
+// The configuration directory afterwards: each named file byte for byte, and
+// the absent ones not there.
+function fileFailures (e: CliEntry, ctx: Ctx, fail: (s: string) => void): void {
+  for (const [name, want] of Object.entries(e.out.files ?? {})) {
+    const at = located(ctx, name)
+    if (!existsSync(at)) fail(name + ' is not there afterwards, and ' + want + ' says what it holds')
+    else if (readFileSync(at, 'utf8') !== expected(want)) fail(name + ' differs from ' + want)
+  }
+  for (const name of e.out.absent ?? []) {
+    if (existsSync(located(ctx, name))) fail(name + ' is there afterwards, and the entry says it is not')
+  }
 }
 
 function checkStdout (e: CliEntry, actual: string, fail: (s: string) => void): void {
@@ -262,5 +305,6 @@ export async function check (e: CliEntry): Promise<string[]> {
   }
 
   vaultFailures(e, ctx, fail)
+  fileFailures(e, ctx, fail)
   return failures
 }

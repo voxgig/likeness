@@ -165,12 +165,133 @@ command: {
   caps: flag: {}
   caps: exits: ["unsupported-capability" "invalid-argument"]
 
-  sources: short: "connection management"
-  sources: ready: false
-  sources: writes: true
-  sources: arg: []
-  sources: flag: {}
-  sources: exits: ["unsupported-capability" "invalid-argument"]
+  # The connections in station.json, each with its account in likeness.json
+  # (SPEC 11.2, 12.2): `sources` is a group, and every write changes both
+  # files or neither.
+  "sources list": {
+    short: "every connection of the active profile: ref, source, base, account and secret name"
+    ready: true
+    writes: false
+    arg: []
+    flag: {}
+    exits: ["ok" "no-match" "invalid-argument" "invalid-project"]
+  }
+
+  # Echo is off: a token typed where an argument belongs is not repeated.
+  "sources add": {
+    short: "add a connection to --source API, tagged --instance TAG; its token goes to the vault first"
+    ready: true
+    writes: true
+    echo: false
+    arg: []
+    flag: {
+      account: {
+        type: "string"
+        value: "ID"
+        short: "the source's own id for the account, which every note's identity derives from"
+      }
+      base: type: "string"
+      base: value: "URL"
+      base: short: "where the application answers, if not at its usual address"
+      fingerprint: {
+        type: "string"
+        value: "FP"
+        short: "the certificate to pin, sha256:<hex>, held to the one presented"
+      }
+      notion-version: type: "string"
+      notion-version: value: "DATE"
+      notion-version: short: "the API version every request carries"
+      plain-http: { type:"boolean" short:"reach an http base with TLS off" }
+      secret: type: "secret"
+      secret: value: "NAME"
+      secret: short: "a token already in the vault, rather than one typed now"
+    }
+    exits: [
+      "ok"
+      "not-found"
+      "invalid-argument"
+      "invalid-project"
+      "no-such-source"
+      "unsupported-capability"
+      "instance-exists"
+      "source-unavailable"
+      "auth-failed"
+      "rate-limited"
+      "certificate-rejected"
+      "vault-locked"
+      "vault-denied"
+      "vault-exists"
+      "secret-backend-unavailable"
+    ]
+  }
+
+  "sources remove": {
+    short: "remove a connection and its account; the vault keeps its token"
+    ready: true
+    writes: true
+    arg: [
+      {
+        name: "ref"
+        type: "instance"
+        required: true
+        short: "the connection, as api or api$tag"
+      }
+    ]
+    flag: {}
+    exits: ["ok" "invalid-argument" "invalid-project" "no-such-source"]
+  }
+
+  "sources rename": {
+    short: "give a connection a new ref, its account and its token with it"
+    ready: true
+    writes: true
+    arg: [
+      { name:"ref" type:"instance" required:true short:"the connection" }
+      {
+        name: "new-ref"
+        type: "instance"
+        required: true
+        short: "its new ref, of the same API"
+      }
+    ]
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "no-such-source"
+      "instance-exists"
+    ]
+  }
+
+  "sources test": {
+    short: "check the named connections, or every one, as doctor does"
+    ready: true
+    writes: false
+    arg: [
+      {
+        name: "ref"
+        type: "instance"
+        required: false
+        repeat: true
+        short: "a connection to check"
+      }
+    ]
+    flag: {}
+    exits: [
+      "ok"
+      "invalid-argument"
+      "invalid-project"
+      "no-such-source"
+      "unsupported-capability"
+      "source-unavailable"
+      "auth-failed"
+      "rate-limited"
+      "vault-locked"
+      "secret-backend-unavailable"
+      "certificate-rejected"
+    ]
+  }
 
   # The vault's command line (SPEC 11.3): `secrets` is a group, and its action
   # is the next argument.

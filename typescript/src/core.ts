@@ -13,6 +13,8 @@ import { ADAPTERS, type Adapter, type Check } from './adapters.js'
 import { supports, termOf } from './caps.js'
 import { parseArgv, commandDef, commandWords, helpText, helpRows, type Parsed } from './args.js'
 import { vaultEntry, vaultChain, secrets, type VaultEntry, type VaultFlags } from './vault.js'
+import { add, list as sourcesList, remove, rename, type Reply } from './sources.js'
+import type { Fs } from './config.js'
 
 import { profileOf, openStation, withChain, connectionsOf, type Connection } from './station.js'
 
@@ -36,13 +38,19 @@ export type Ctx = {
   fixture?: Record<string, unknown>
   path?: { path: string, port: string, version: string }[]
   /* A path under home is shown from `~`; a relative vault path is read from
-   * dir, where station.json is. */
+   * dir, where station.json is. The `sources` group rewrites the file at
+   * config, and likeness.json beside it. */
   home?: string
   dir?: string
+  config?: string
   stdin?: () => Promise<string>
   /* Stdin is a terminal, so what the environment lacks may be asked for. */
   tty?: boolean
   prompt?: (label: string) => Promise<string | undefined>
+  // The fingerprint of the certificate an https base presents.
+  presented?: (base: string) => Promise<string>
+  // The file operations a `sources` write goes through.
+  fs?: Fs
 }
 
 type Session = {
@@ -344,7 +352,7 @@ async function cmdGet (flags: Flags, rest: string[], session: Session): Promise<
   })
 }
 
-async function cmdDoctor (flags: Flags, session: Session): Promise<Envelope> {
+async function cmdDoctor (name: string, flags: Flags, session: Session): Promise<Envelope> {
   const conns = selected(session.conns, flags)
   const rows: Record<string, unknown>[] = []
   const failures: string[] = []
@@ -381,13 +389,13 @@ async function cmdDoctor (flags: Flags, session: Session): Promise<Envelope> {
     return 0 !== d ? d : (a < b ? -1 : a > b ? 1 : 0)
   })
   const code = 0 === bad ? 'ok' : codes[0]
-  const env = envelope(['doctor'], code, rows, {
+  const env = envelope([name], code, rows, {
     count: rows.length, sources: conns.map(c => c.instance).sort(), calls: session.calls.count(),
   })
   if (0 < bad) {
     return fails(env,
       bad + (1 === bad ? ' connection needs' : ' connections need') + ' attention',
-      'start the application, check the token, and re-run `likeness doctor`')
+      'start the application, check the token, and re-run `likeness ' + name + '`')
   }
   return env
 }
@@ -428,6 +436,21 @@ function entryOf (ctx: Ctx, flags: Flags): VaultEntry {
     dir: ctx.dir ?? join(home, '.config', 'likeness'),
     key: flags.vaultKey,
   })
+}
+
+function replied (name: string, got: Reply): { env: Envelope, text?: string } {
+  return { env: envelope([name], got.empty ? 'no-match' : 'ok', got.data, { count: got.count }), text: got.text }
+}
+
+// Every `sources` action but `test`, which runs as doctor does.
+async function cmdSources (ctx: Ctx, parsed: Parsed, flags: Flags, watch: (s: Station) => void):
+Promise<{ env: Envelope, text?: string }> {
+  const name = parsed.command
+  if ('sources list' === name) return replied(name, sourcesList(openConfigured(ctx), ctx.accounts ?? {}))
+  if ('sources add' === name) return replied(name, await add(ctx, parsed.flags, flags, watch))
+  if ('sources remove' === name) return replied(name, remove(ctx, parsed.args[0]))
+  if ('sources rename' === name) return replied(name, rename(ctx, parsed.args[0], parsed.args[1]))
+  throw new Error('no such sources action: ' + name)
 }
 
 async function cmdSecrets (ctx: Ctx, name: string, flags: Flags, args: string[]): Promise<{ env: Envelope, text: string }> {
@@ -482,12 +505,19 @@ export async function run (ctx: Ctx): Promise<Result> {
       const { env, text } = await cmdSecrets(ctx, name, flags, parsed.args)
       return render(env, text)
     }
+    if (name.startsWith('sources ') && 'sources test' !== name) {
+      const { env, text } = await cmdSources(ctx, parsed, flags, (s) => { calls = new Calls(s) })
+      return render(env, text)
+    }
 
     const session = await openSession(ctx, flags)
     calls = session.calls
     if ('list' === name) return render(await cmdList(ctx, flags, parsed.args, session))
     if ('get' === name) return render(await cmdGet(flags, parsed.args, session))
-    if ('doctor' === name) return render(await cmdDoctor(flags, session))
+    if ('doctor' === name) return render(await cmdDoctor(name, flags, session))
+    if ('sources test' === name) {
+      return render(await cmdDoctor(name, { ...flags, instance: [...flags.instance, ...parsed.args] }, session))
+    }
     throw new Error('declared ready and not dispatched: ' + name)
   }
   catch (err) {

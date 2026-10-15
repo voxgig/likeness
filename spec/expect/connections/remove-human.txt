@@ -1,0 +1,1 @@
+removed joplin$work; the vault still holds joplin_work.apikey, which `likeness secrets` manages

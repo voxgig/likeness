@@ -1,0 +1,15 @@
+{
+  "station": 1,
+  "profiles": {
+    "default": {
+      "sdk": {
+        "obsidian": {
+          "base": "http://127.0.0.1:27123",
+          "options": {
+            "tls": false
+          }
+        }
+      }
+    }
+  }
+}

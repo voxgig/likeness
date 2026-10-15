@@ -1,0 +1,1 @@
+renamed joplin$work to joplin$office; its token is still joplin_work.apikey in the vault

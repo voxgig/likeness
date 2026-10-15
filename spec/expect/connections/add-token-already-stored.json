@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"vault-exists","data":null,"error":{"message":"the vault already holds joplin.apikey, and `sources add` never overwrites a token","remedy":"use it with --secret joplin.apikey, or drop it first with `likeness secrets remove joplin.apikey`"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

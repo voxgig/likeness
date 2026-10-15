@@ -1,0 +1,1 @@
+{"cmd":["sources","test"],"code":"ok","data":[{"check":"ok","detail":"ok","instance":"joplin","source":"joplin"},{"check":"ok","detail":"ok","instance":"notion","source":"notion"}],"meta":{"calls":2,"count":2,"incomplete":[],"sources":["joplin","notion"],"truncated":false},"ok":true,"version":"0.1.0"}

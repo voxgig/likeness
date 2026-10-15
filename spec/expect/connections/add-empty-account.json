@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"invalid-argument","data":null,"error":{"message":"--account is empty","remedy":"give --account with the Joplin profile id"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

@@ -20,6 +20,7 @@
 #include "obsidian.h"
 #include "pin.h"
 #include "selector.h"
+#include "sources.h"
 #include "spec.h"
 #include "utf8.h"
 #include "vault.h"
@@ -357,6 +358,23 @@ static int fn_project_notion(arena *a, const jval *in, jval **out, str *err) {
   return 0;
 }
 
+static int fn_secret_name(arena *a, const jval *in, jval **out, str *err) {
+  if (!jv_is(in, J_STRING)) return malformed(err);
+  *out = jv_str(a, lk_secret_name(a, in->s));
+  return 0;
+}
+
+static int fn_ref_for(arena *a, const jval *in, jval **out, str *err) {
+  const jval *source = jv_getz(in, "source");
+  const jval *instance = jv_getz(in, "instance");
+  str ref;
+  lk_error e;
+  if (!jv_is(source, J_STRING) || (NULL != instance && !jv_is(instance, J_STRING))) return malformed(err);
+  if (0 != lk_ref_for(a, source->s, NULL == instance ? NULL : &instance->s, &ref, &e)) return refused(&e, err);
+  *out = jv_str(a, ref);
+  return 0;
+}
+
 static const implemented REGISTRY[] = {
   { "compareCodePoints", fn_compare_code_points },
   { "crockfordAlphabet", fn_crockford_alphabet },
@@ -377,7 +395,9 @@ static const implemented REGISTRY[] = {
   { "projectJoplin", fn_project_joplin },
   { "projectNotion", fn_project_notion },
   { "projectObsidian", fn_project_obsidian },
+  { "refFor", fn_ref_for },
   { "rfc3339", fn_rfc3339 },
+  { "secretName", fn_secret_name },
   { "serialise", fn_serialise },
   { "takeConfigOption", fn_take_config_option },
   { "vaultEntries", fn_vault_entries },

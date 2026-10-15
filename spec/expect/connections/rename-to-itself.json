@@ -1,0 +1,1 @@
+{"cmd":["sources","rename"],"code":"invalid-argument","data":null,"error":{"message":"joplin$work already has that ref","remedy":"give the new ref second: `likeness sources rename joplin$work <new-ref>`"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

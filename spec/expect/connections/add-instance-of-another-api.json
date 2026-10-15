@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"invalid-argument","data":null,"error":{"message":"--instance names a connection to another API than --source does","remedy":"give the tag alone: `--source joplin --instance <tag>` adds joplin$<tag>"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

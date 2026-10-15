@@ -1,0 +1,17 @@
+{
+  "station": 1,
+  "profiles": {
+    "default": {
+      "sdk": {
+        "obsidian": {
+          "base": "https://127.0.0.1:27124",
+          "options": {
+            "tls": {
+              "fingerprint": "sha256:5589ba1952f2d11c07d79a381bc58636477fd17efa2b70710fc99ef2ce994d25"
+            }
+          }
+        }
+      }
+    }
+  }
+}

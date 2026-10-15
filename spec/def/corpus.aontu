@@ -61,6 +61,8 @@ Ctx: type(close({
   stdin?: string
 
   tty?: [&: string]
+
+  presents?: { &: string }
 }))
 
 Out: type(close({
@@ -72,6 +74,10 @@ Out: type(close({
 
   prompts?: [&: string]
   vault?: $.VaultState
+
+  # Files afterwards: each held to a committed file, and those not there.
+  files?: { &: string }
+  absent?: [&: string]
 }))
 
 CliEntry: type(close({

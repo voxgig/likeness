@@ -1,0 +1,1 @@
+{"cmd":["sources","add"],"code":"invalid-argument","data":null,"error":{"message":"notion's account cannot be discovered: its SDK cannot ask which workspace a token belongs to","remedy":"give --account with the workspace id; every note's identity derives from it"},"meta":{"calls":0,"count":0,"incomplete":[],"sources":[],"truncated":false},"ok":false,"version":"0.1.0"}

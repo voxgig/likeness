@@ -1,7 +1,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert'
-import { readdirSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
 import { check, entries, ROOT, type CliEntry } from './harness.js'
@@ -21,7 +21,6 @@ test('every corpus id is unique', () => {
 })
 
 test('no expectation file is unreferenced', () => {
-  const dir = join(ROOT, 'spec', 'expect')
   const found: string[] = []
   const walk = (d: string): void => {
     for (const name of readdirSync(d).sort()) {
@@ -31,9 +30,12 @@ test('no expectation file is unreferenced', () => {
       else found.push(relative(ROOT, p).split(sep).join('/'))
     }
   }
-  walk(dir)
+  // spec/written holds the files a command writes, as spec/expect holds what it prints.
+  for (const dir of ['expect', 'written']) {
+    if (existsSync(join(ROOT, 'spec', dir))) walk(join(ROOT, 'spec', dir))
+  }
 
-  const used = new Set(all.map(e => e.out.stdout))
+  const used = new Set(all.flatMap(e => [e.out.stdout, ...Object.values(e.out.files ?? {})]))
   const orphans = found.filter(f => !used.has(f))
   assert.deepStrictEqual(orphans, [], 'expectation files no entry refers to')
 })

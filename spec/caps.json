@@ -1,6 +1,17 @@
 {
   "capability": {
     "joplin": {
+      "connect": {
+        "account": {
+          "discover": false,
+          "term": "the Joplin profile id",
+          "why": "Joplin's data API names no profile id"
+        },
+        "default": {
+          "base": "http://127.0.0.1:41184"
+        },
+        "flag": []
+      },
       "entity": {
         "note": {
           "kind": "note",
@@ -64,6 +75,15 @@
       "name": "joplin"
     },
     "linear": {
+      "connect": {
+        "account": {
+          "discover": false,
+          "term": "the organisation id",
+          "why": "its SDK reads issues and teams, and no organisation"
+        },
+        "default": {},
+        "flag": []
+      },
       "entity": {
         "note": {
           "kind": "note",
@@ -110,6 +130,19 @@
       "name": "linear"
     },
     "notion": {
+      "connect": {
+        "account": {
+          "discover": false,
+          "term": "the workspace id",
+          "why": "its SDK cannot ask which workspace a token belongs to"
+        },
+        "default": {
+          "notion-version": "2022-06-28"
+        },
+        "flag": [
+          "notion-version"
+        ]
+      },
       "entity": {
         "note": {
           "kind": "note",
@@ -156,6 +189,20 @@
       "name": "notion"
     },
     "obsidian": {
+      "connect": {
+        "account": {
+          "discover": false,
+          "term": "the vault's id",
+          "why": "the Local REST API plugin names no vault"
+        },
+        "default": {
+          "base": "https://127.0.0.1:27124"
+        },
+        "flag": [
+          "fingerprint",
+          "plain-http"
+        ]
+      },
       "entity": {
         "note": {
           "kind": "note",
