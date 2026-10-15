@@ -65,11 +65,8 @@ against `spec/written/` or the fixture it brought, and the files that are not
 there. The vault's bytes are never compared: they change on every write.
 
 The TypeScript, Go, Python and Ruby ports run both corpora in full, and `make
-parity` compares their transcript output byte for byte. The `sources` group, its
-76 transcript entries and its 17 unit entries (`secretName`, `refFor`), is built
-in TypeScript, with its two pure functions in C as well, and waits to be ported
-to Go, Python and Ruby, which already pass the six entries the grammar and help
-answer. Where a port's SDK or
+parity` compares their transcript output byte for byte; C runs the `sources`
+group's two pure functions, `secretName` and `refFor`. Where a port's SDK or
 station still differs upstream, the port declares the entry waiting, with a reason
 naming the issue, and the declaration is held to its cause: the entry must still
 fail, and must pass once the cause's predicted change is applied. So a declaration
