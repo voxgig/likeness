@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 from collections.abc import Callable
 from dataclasses import asdict
@@ -21,7 +22,8 @@ from likeness.pin import fingerprint_of, parse_pin
 from likeness.selector import SelectorError, parse_selector
 from likeness.sources import ref_for, secret_name
 from likeness.vault import vault_entry
-from tests.harness import entries
+from tests.harness import ROOT, entries
+from voxgig_omni import makeRunner
 
 
 def _selector_error(s: str) -> dict[str, Any]:
@@ -114,6 +116,20 @@ REGISTRY: dict[str, Callable[[Any], Any]] = {
 ALL = entries('unit')
 
 
+def _plain(fn: Callable[[Any], Any]) -> Callable[[Any], Any]:
+    """The answer as canonical JSON reads it back, so `true` and `1` stay
+    different answers and a tuple compares as the list it prints as."""
+    return lambda v: json.loads(serialise(fn(v)))
+
+
+def _subject(name: str) -> Callable[[Any], Any] | None:
+    fn = REGISTRY.get(name)
+    return None if fn is None else _plain(fn)
+
+
+UNIT = makeRunner(str(ROOT / 'spec' / 'unit.json'), {'subject': _subject})('unit')
+
+
 class UnitCorpus(unittest.TestCase):
     def test_the_unit_corpus_is_not_empty(self) -> None:
         self.assertLess(0, len(ALL), 'spec/unit.json has no entries - did `make spec-build` run?')
@@ -122,22 +138,15 @@ class UnitCorpus(unittest.TestCase):
         ids = [e['id'] for e in ALL]
         self.assertEqual(sorted(set(ids)), sorted(ids), 'duplicate corpus ids')
 
+    def test_every_function_the_corpus_names_is_registered(self) -> None:
+        self.assertEqual([], sorted({e['fn'] for e in ALL} - set(REGISTRY)))
 
-def _case(e: dict[str, Any]) -> Callable[[UnitCorpus], None]:
+
+def _group_case(name: str) -> Callable[[UnitCorpus], None]:
     def test(self: UnitCorpus) -> None:
-        fn = REGISTRY.get(e['fn'])
-        self.assertIsNotNone(fn, 'no such function in the registry: ' + e['fn'])
-        assert fn is not None
-        if 'err' in e:
-            # `err` INSTEAD OF `out`: the shape refuses an entry carrying both.
-            with self.assertRaises(Exception) as raised:
-                fn(e['in'])
-            self.assertIn(e['err'], str(raised.exception))
-            return
-        # Compared as canonical bytes, so `true` and `1` stay different answers.
-        self.assertEqual(serialise(e['out']), serialise(fn(e['in'])))
+        UNIT['runsetflags'](UNIT['spec'][name], {'null': False, 'all': True})
     return test
 
 
-for _e in ALL:
-    setattr(UnitCorpus, 'test unit ' + _e['id'], _case(_e))
+for _g in sorted(UNIT['spec']):
+    setattr(UnitCorpus, 'test unit ' + _g, _group_case(_g))
