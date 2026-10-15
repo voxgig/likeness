@@ -1,5 +1,6 @@
 """The passphrase prompt on a real terminal: echo off, and what was typed ahead
-of it kept, as the canonical port reads it. getpass discards that type-ahead."""
+of it kept for each prompt in turn, as the canonical port reads it. getpass
+discards that type-ahead."""
 
 from __future__ import annotations
 
@@ -65,6 +66,17 @@ class Prompt(unittest.TestCase):
         out, code = self.run_list(ahead=MASTER + b'\r')
         self.assertEqual(0, code, out)
         self.assertTrue(out.endswith(PROMPT + b'\r\njoplin.apikey\r\nnotion.apikey\r\n'), out)
+
+    def test_answers_typed_ahead_together_each_reach_their_prompt(self) -> None:
+        config = os.path.join(self.dir, 'fresh.json')
+        with open(config, 'w', encoding='utf-8') as f:
+            f.write('{ "station": 1, "profiles": { "default": { "sdk": {}, "secrets": '
+                    '{ "providers": [{ "kind": "minivault", "file": "fresh.skmv" }] } } } }\n')
+        out, code = _run([str(binary()), 'secrets', 'init', '--config', config], self.env,
+                         ahead=b'new phrase\rnew phrase\r')
+        self.assertEqual(0, code, out)
+        self.assertTrue(out.endswith(b'the same passphrase again: \r\n'
+                                     b'created the vault ~/fresh.skmv, with the key master\r\n'), out)
 
     def test_a_passphrase_typed_at_the_prompt_is_not_echoed(self) -> None:
         out, code = self.run_list(after=MASTER + b'\r')

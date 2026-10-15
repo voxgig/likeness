@@ -109,21 +109,25 @@ def homedir() -> str:
     return home if home is not None else os.path.expanduser('~')
 
 
+def profile_of(env: dict[str, str] | None = None) -> str:
+    return (env or {}).get('VOXGIG_STATION_PROFILE') or 'default'
+
+
 def open_station(config: Any, env: dict[str, str] | None = None) -> Station:
     # Imported on first use, like each adapter's SDK: `version` and `help`
     # need neither, and loading them is most of a cold start.
     from voxgig_station import Station
     return Station({
         'config': config,
-        'profile': (env or {}).get('VOXGIG_STATION_PROFILE') or 'default',
+        'profile': profile_of(env),
         'proxy': 'off',
         'load': False,
     })
 
 
-def connections_of(station: Station, accounts: dict[str, str]) -> list[Connection]:
+def connections_of(station: Station, accounts: dict[str, str], profile: str) -> list[Connection]:
     """Every active declared instance, in station's ref order. An instance with
-    no account is refused: identity may not be derived from the ref."""
+    no account under the profile is refused: identity may not be derived from the ref."""
     out = []
     for i in station.instances():
         if not i['active']:
@@ -131,8 +135,10 @@ def connections_of(station: Station, accounts: dict[str, str]) -> list[Connectio
         account = accounts.get(i['name'])
         if not isinstance(account, str) or '' == account:
             raise LikenessError(
-                'invalid-project', 'instance "' + i['name'] + '" has no account in likeness.json',
-                'add `"' + i['name'] + '": { "account": "<id>" }` under `instances` in likeness.json')
+                'invalid-project',
+                'instance "' + i['name'] + '" has no account in likeness.json under profile "' + profile + '"',
+                'add `"' + i['name'] + '": { "account": "<id>" }` under `profiles.' + profile +
+                '.instances` in likeness.json')
         out.append(Connection(i['name'], i['api'], account))
     return out
 
@@ -212,7 +218,7 @@ def with_chain(config: Any, chain: list[Any]) -> Any:
 
 def _entry_of(ctx: Ctx, flags: Flags) -> VaultEntry:
     home = ctx.home if ctx.home is not None else homedir()
-    return vault_entry(ctx.station, (ctx.env or {}).get('VOXGIG_STATION_PROFILE') or 'default', home,
+    return vault_entry(ctx.station, profile_of(ctx.env), home,
                        ctx.dir if ctx.dir is not None else os.path.join(home, '.config', 'likeness'),
                        flags.vault_key)
 
@@ -225,7 +231,7 @@ class Session:
     def __init__(self, ctx: Ctx, flags: Flags) -> None:
         entry = _entry_of(ctx, flags)
         station = open_station(with_chain(ctx.station, []), ctx.env)
-        self.conns = connections_of(station, ctx.accounts or {})
+        self.conns = connections_of(station, ctx.accounts or {}, profile_of(ctx.env))
         if ctx.fixture is None and self.conns:
             chain = vault_chain(ctx, entry, flags)
             try:

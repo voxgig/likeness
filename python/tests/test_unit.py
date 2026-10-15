@@ -10,7 +10,7 @@ from typing import Any
 from likeness.adapter.joplin import project
 from likeness.args import parse_argv
 from likeness.cli import parse_accounts, parse_station, take_config_option
-from likeness.core import connections_of, open_station
+from likeness.core import connections_of, open_station, profile_of
 from likeness.envelope import compare_code_points, serialise
 from likeness.errors import partial_codes
 from likeness.evaluate import fold_case
@@ -45,8 +45,10 @@ def _sign(v: list[str]) -> int:
 
 
 def _connections(v: dict[str, str]) -> list[dict[str, str]]:
-    station = open_station(parse_station(v['station'], 'station.json'))
-    return [asdict(c) for c in connections_of(station, parse_accounts(v['likeness'], 'likeness.json'))]
+    env = None if v.get('profile') is None else {'VOXGIG_STATION_PROFILE': v['profile']}
+    station = open_station(parse_station(v['station'], 'station.json'), env)
+    accounts = parse_accounts(v['likeness'], 'likeness.json', profile_of(env))
+    return [asdict(c) for c in connections_of(station, accounts, profile_of(env))]
 
 
 def _vault_entry(v: dict[str, Any]) -> dict[str, str]:

@@ -10,7 +10,7 @@ import termios
 import time
 from typing import Any, BinaryIO
 
-from likeness.core import PORT, VERSION, Ctx, homedir, open_station, run, with_chain
+from likeness.core import PORT, VERSION, Ctx, homedir, open_station, profile_of, run, with_chain
 from likeness.envelope import compare_code_points, render_raw
 from likeness.identity import rfc3339
 from likeness.text import utf8
@@ -50,9 +50,12 @@ def parse_station(source: str, path: str) -> Any:
     return doc
 
 
-def parse_accounts(source: str, path: str) -> dict[str, str]:
-    """The account each instance ref belongs to, from likeness.json."""
-    instances = _parse_json(source, path).get('instances')
+def parse_accounts(source: str, path: str, profile: str) -> dict[str, str]:
+    """The account each instance ref of one station profile belongs to, from
+    likeness.json. A profile reads only its own: none is inherited."""
+    profiles = _parse_json(source, path).get('profiles')
+    scoped = profiles.get(profile) if isinstance(profiles, dict) else None
+    instances = scoped.get('instances') if isinstance(scoped, dict) else None
     out: dict[str, str] = {}
     if not isinstance(instances, dict):
         return out
@@ -76,12 +79,12 @@ def _read(path: str) -> str:
         return handle.read()
 
 
-def load_config(path: str) -> tuple[Any, dict[str, str]]:
+def load_config(path: str, profile: str) -> tuple[Any, dict[str, str]]:
     if not os.path.exists(path):
         return None, {}
     station = parse_station(_read(path), path)
     lpath = _join(os.path.dirname(path), 'likeness.json')
-    accounts = parse_accounts(_read(lpath), lpath) if os.path.exists(lpath) else {}
+    accounts = parse_accounts(_read(lpath), lpath, profile) if os.path.exists(lpath) else {}
     return station, accounts
 
 
@@ -160,21 +163,37 @@ def _raw(mode: list[Any]) -> list[Any]:
     return raw
 
 
+class _Ahead:
+    """What was typed past a line end, kept for the prompt that follows. A line
+    typed ahead arrives ending in \\n; Enter in raw mode is \\r, so \\r\\n is one end."""
+    text = ''
+    after_cr = False
+
+
 def _typed(fd: int) -> Any:
     typed = ''
+    text, _Ahead.text = _Ahead.text, ''
     while True:
-        chunk = os.read(fd, 65536)
-        if not chunk:
-            return typed or None
-        # What follows the line ending in its chunk is dropped, as there.
-        for ch in chunk.decode('utf-8', errors='replace'):
+        chars = list(text)
+        for i, ch in enumerate(chars):
+            lf = _Ahead.after_cr and '\n' == ch
+            _Ahead.after_cr = False
+            if lf:
+                continue
             if ch in ('\r', '\n'):
+                _Ahead.after_cr = '\r' == ch
+                _Ahead.text = ''.join(chars[i + 1:])
                 return typed
             if '\x04' == ch:
+                _Ahead.text = ''.join(chars[i + 1:])
                 return typed or None
             if '\x03' == ch:
                 return _INTERRUPTED
             typed = typed[:-1] if ch in ('\x7f', '\b') else typed + ch
+        chunk = os.read(fd, 65536)
+        if not chunk:
+            return typed or None
+        text = chunk.decode('utf-8', errors='replace')
 
 
 def prompt(label: str) -> str | None:
@@ -217,7 +236,7 @@ def main(argv: list[str]) -> int:
     path = config_path if config_path is not None else _join(home, '.config', 'likeness', 'station.json')
 
     try:
-        station, accounts = load_config(path)
+        station, accounts = load_config(path, profile_of(env))
     except ConfigError as err:
         quiet = not _write(sys.stderr.buffer,
                            'error: invalid-project\n  ' + str(err) + '\n  remedy  ' + REMEDY + '\n')
