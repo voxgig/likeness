@@ -49,6 +49,21 @@ function failing (nth: number): Fs {
   }
 }
 
+// Node's own file operations, but for the nth write, which creates its file and then fails, as a full disk does.
+function failingWrite (nth: number): Fs {
+  let writes = 0
+  return {
+    ...NODE_FS,
+    writeFileSync: ((file: string, data: string | Buffer, opts: { flag: string, mode: number }) => {
+      if (nth === ++writes) {
+        writeFileSync(file, '', opts)
+        throw Object.assign(new Error('no space left on device'), { code: 'ENOSPC' })
+      }
+      writeFileSync(file, data, opts)
+    }) as Fs['writeFileSync'],
+  }
+}
+
 function folder (files: Record<string, string>): string {
   const dir = mkdtempSync(join(tmpdir(), 'likeness-write-'))
   for (const [name, text] of Object.entries(files)) writeFileSync(join(dir, name), text)
@@ -75,6 +90,23 @@ test('a second rename that fails puts the first file back, and leaves no tempora
     assert.equal(readFileSync(likeness, 'utf8'), 'old likeness\n')
     assert.equal(readFileSync(station, 'utf8'), 'old station\n')
     assert.deepStrictEqual(readdirSync(dir).sort(), ['likeness.json', 'station.json'])
+  }
+  finally { rmSync(dir, { recursive: true, force: true }) }
+})
+
+test('a write that fails after creating its temporary file leaves none behind, and changes nothing', () => {
+  const dir = folder({ 'likeness.json': 'old likeness\n', 'station.json': 'old station\n' })
+  try {
+    const likeness = join(dir, 'likeness.json')
+    const station = join(dir, 'station.json')
+    for (const nth of [1, 2, 3, 4]) {
+      assert.throws(() => writeAll([
+        { path: likeness, text: 'new likeness\n', was: held(likeness) },
+        { path: station, text: 'new station\n', was: held(station) },
+      ], failingWrite(nth)), (err: unknown) => err instanceof WriteError && err.restored, 'write ' + nth)
+      assert.deepStrictEqual(readdirSync(dir).sort(), ['likeness.json', 'station.json'], 'write ' + nth)
+      assert.deepStrictEqual([readFileSync(likeness, 'utf8'), readFileSync(station, 'utf8')], ['old likeness\n', 'old station\n'])
+    }
   }
   finally { rmSync(dir, { recursive: true, force: true }) }
 })

@@ -295,7 +295,17 @@ export function writeAll (writes: Write[], fs: Fs = NODE_FS): void {
   const temps: string[] = []
   const place = (path: string, data: string | Buffer, mode: number): string => {
     const t = tempOf(path)
-    fs.writeFileSync(t, data, { flag: 'wx', mode })
+    try {
+      fs.writeFileSync(t, data, { flag: 'wx', mode })
+    }
+    catch (err) {
+      // A write that fails leaves the file the exclusive open made; EEXIST means it made none.
+      if ('EEXIST' !== (err as NodeJS.ErrnoException)?.code) {
+        try { fs.unlinkSync(t) }
+        catch { /* never created */ }
+      }
+      throw err
+    }
     temps.push(t)
     return t
   }
