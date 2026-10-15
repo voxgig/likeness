@@ -26,15 +26,17 @@ The reasoned specification lives in
 | `ruby/` — the Ruby port | the same again, on station's Ruby library and the three SDKs' `rb` gems, loaded together with their constant collisions ([sdkgen#404](https://github.com/voxgig/sdkgen/issues/404)) proved inert for what likeness uses |
 | `c/` — the fifth port, C99 and POSIX with no dependency | every pure function of the unit corpus; `version`, `help` and `which`; every other command refused as `unsupported-capability`, naming what it waits on: a live transport in the C SDK ([sdkgen#403](https://github.com/voxgig/sdkgen/issues/403)), two C SDKs in one program ([sdkgen#405](https://github.com/voxgig/sdkgen/issues/405)) and station's C library reading the vault ([station#23](https://github.com/voxgig/station/issues/23)) |
 | The parity comparison | `make parity`: the TypeScript, Go, Python and Ruby ports agree on every entry but one answer declared waiting in `tools/parity-waiting.json`, each names itself, and the comparison is proved to go red, a stale declaration included. It runs the transcript corpus, so C joins it when its transcript cells do |
+| The source × port matrix | `make matrix`: each port's own CLI binary reaches each source through its station-bound SDK, its token in a vault the run makes, against `mock/`. Go and Python reach Notion. Every other cell is red, naming in `tools/matrix-waiting.json` the upstream issue it waits on, and is held to what that issue predicts: station's vault in TypeScript ([station#34](https://github.com/voxgig/station/issues/34)) and Ruby ([station#33](https://github.com/voxgig/station/issues/33)), Joplin's query token ([station#25](https://github.com/voxgig/station/issues/25)), Linear ([sdkgen#400](https://github.com/voxgig/sdkgen/issues/400)), C's three, and Go's and Python's walk of an Obsidian vault from its root ([sdkgen#419](https://github.com/voxgig/sdkgen/issues/419)). It runs in `make check`, and CI writes its table to the run's summary |
 | `mock/` — a Fastify server emulating all four sources on one port | working, smoke-tested |
 | `replica/` — a local SQLite copy reached through a generated SDK | designed; schema and search verified, SDK not generated |
 
 In the staging plan's terms (SPEC §20) **Stage 0 and Stage 1** are complete: the ground truth
 and the walking skeleton, in four ports, with C through the unit corpus. **Stage 2**, the
 matrix, is under way: Joplin, Obsidian and Notion from every port but C, every client bound
-through station, and Obsidian over a pinned certificate. Linear waits on
-[sdkgen#400](https://github.com/voxgig/sdkgen/issues/400). Stage 3 is the primary loop:
-search and writes.
+through station, and Obsidian over a pinned certificate. `make matrix` runs it from every
+port's own CLI against `mock/` and names the upstream issue behind each red cell. Linear
+waits on [sdkgen#400](https://github.com/voxgig/sdkgen/issues/400). Stage 3 is the primary
+loop: search and writes.
 
 ## Start here
 
@@ -42,7 +44,7 @@ search and writes.
 make sdk         # clone the generated SDKs at their pinned revisions
 make py-deps     # the Python port's pinned checkouts and python/.venv
 make rb-libs     # clone station, sekreto and plugin, which the Ruby port loads from checkouts
-make check       # the schema, every port, both corpora and the parity comparison
+make check       # the schema, every port, both corpora, the parity comparison and the matrix
 make mock        # run the source mock server on 127.0.0.1:7777
 ```
 
@@ -169,7 +171,9 @@ TypeScript, Go and Python ports; the Python port takes #28 when
 `python/deps.json` moves its station pin. The Ruby port's station passes
 sekreto no plugins, so it cannot open the vault until
 [voxgig/station#40](https://github.com/voxgig/station/pull/40) lands
-([voxgig/station#33](https://github.com/voxgig/station/issues/33)).
+([voxgig/station#33](https://github.com/voxgig/station/issues/33)). `make matrix`
+holds each of these as a red cell naming its issue, and fails the day one stops
+holding.
 
 With no instances configured they answer `no-match` and exit 1, which is the
 answer "none" rather than an error.

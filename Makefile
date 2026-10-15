@@ -60,8 +60,9 @@ help:
 	@echo '  test-c-asan   the C suite under AddressSanitizer and UBSan'
 	@echo '  test-c-valgrind  the C suite under Valgrind'
 	@echo '  parity        the ports produce the same bytes, and each names itself'
+	@echo '  matrix        the CLI of every port reaches every source through station, against mock/'
 	@echo '  guards        no source name outside its adapter, and no TLS check turned off'
-	@echo '  check         spec, every port, and the parity comparison'
+	@echo '  check         spec, every port, the parity comparison and the matrix'
 	@echo '  expect        REGENERATE the committed expectations - read the diff'
 	@echo '  mock          run the local source mock server'
 	@echo '  mock-deps     install the mock server dependencies the wire tests need'
@@ -73,7 +74,7 @@ spec: spec-fmt spec-check spec-expect spec-fresh spec-agree
 
 # Everything. What CI runs, and what a change should run before it is pushed.
 .PHONY: check
-check: comments guards spec test-ts test-go test-py test-rb test-c parity
+check: comments guards spec test-ts test-go test-py test-rb test-c parity matrix
 
 
 # The two rules a port's code may not break whatever its tests say: a source
@@ -208,6 +209,22 @@ parity: sdk-check mock-deps ts-deps py-deps rb-deps
 	@cd ruby && LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" $(RB_TEST) test/parity_test.rb >/dev/null
 	@node tools/parity.mjs $(PARITY_DIR) --ports $(PARITY_PORTS)
 	@node tools/parity.mjs $(PARITY_DIR) --ports $(PARITY_PORTS) --selftest 2>/dev/null
+
+
+# The source x port matrix: each port's own CLI binary, through its
+# station-bound SDK and a vault the run makes, against mock/ served from the
+# tool's process. A red cell is declared in tools/matrix-waiting.json with the
+# upstream issue it waits on, and held to what that issue predicts; then
+# --selftest plants faults and requires each to turn the matrix red. In CI the
+# table also goes to the step summary.
+MATRIX_GO := build/matrix/likeness-go
+
+.PHONY: matrix
+matrix: sdk-check mock-deps ts-deps py-deps rb-deps
+	@cd typescript && npm run build >/dev/null
+	@cd go && go build -o "$(CURDIR)/$(MATRIX_GO)" ./cmd/likeness-go
+	@$(MAKE) --no-print-directory -C c bin/likeness-c >/dev/null
+	@node tools/matrix.mjs --selftest
 
 
 # NOT A TEST, and never run to make one pass. It rewrites the contract to agree

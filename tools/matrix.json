@@ -1,0 +1,145 @@
+{
+  "_doc": [
+    "The source x port matrix tools/matrix.mjs runs: each port's own CLI, reaching each",
+    "source through its station-bound SDK, against mock/ served from the tool's own process.",
+    "",
+    "A source names the mock that serves it (`serve`: plain http, or https with a certificate",
+    "made for the run), the block its instance is declared with in station.json ({base} is",
+    "that mock's root, {pin} the certificate's fingerprint), the account likeness.json gives",
+    "it, the ref `get` reads, where its token rides (`token.query` names the query parameter",
+    "that carries it; elsewhere the mock's own credential check is the witness), and the",
+    "headers every request to it carries.",
+    "",
+    "A command is what a working port answers: its code, and the requests the mock receives,",
+    "in order. `calls` is station's count where it differs from what the mock receives. A",
+    "query is compared decoded, {token} being the token the run put in the vault, and `root`",
+    "lists the root fields a GraphQL document may select. `doctor` and `get` run in every",
+    "cell, `list` where spec/caps.json lets the source list notes, and `mispinned` is",
+    "`doctor` over a station.json that pins another certificate."
+  ],
+  "ports": ["ts", "go", "py", "rb", "c"],
+  "source": {
+    "joplin": {
+      "serve": "http",
+      "block": { "base": "{base}/joplin" },
+      "account": "matrix-joplin",
+      "ref": "joplin:a0e50000000000000000000000000001",
+      "token": { "query": "token" },
+      "headers": {},
+      "command": {
+        "doctor": {
+          "code": "ok",
+          "requests": [
+            { "method": "GET", "path": "/joplin/notes", "status": 200,
+              "query": { "fields": "id,parent_id,title,body,created_time,updated_time", "token": "{token}" } }
+          ]
+        },
+        "list": {
+          "code": "ok",
+          "requests": [
+            { "method": "GET", "path": "/joplin/notes", "status": 200,
+              "query": { "fields": "id,parent_id,title,body,created_time,updated_time", "token": "{token}" } }
+          ]
+        },
+        "get": {
+          "code": "ok",
+          "requests": [
+            { "method": "GET", "path": "/joplin/notes/a0e50000000000000000000000000001", "status": 200,
+              "query": { "fields": "id,parent_id,title,body,created_time,updated_time", "token": "{token}" } }
+          ]
+        }
+      }
+    },
+    "obsidian": {
+      "serve": "https",
+      "block": { "base": "{base}/obsidian", "options": { "tls": { "fingerprint": "{pin}" } } },
+      "account": "matrix-obsidian",
+      "ref": "obsidian:somedirectory/meeting-notes.md",
+      "token": { "header": "authorization" },
+      "headers": { "accept": "application/vnd.olrapi.note+json" },
+      "command": {
+        "doctor": {
+          "code": "ok",
+          "requests": [
+            { "method": "GET", "path": "/obsidian/vault/", "status": 200 }
+          ]
+        },
+        "list": {
+          "code": "ok",
+          "requests": [
+            { "method": "GET", "path": "/obsidian/vault/", "status": 200 },
+            { "method": "GET", "path": "/obsidian/vault/mydocument.md", "status": 200 },
+            { "method": "GET", "path": "/obsidian/vault/projects%2F", "status": 200 },
+            { "method": "GET", "path": "/obsidian/vault/projects%2Fnested%2F", "status": 200 },
+            { "method": "GET", "path": "/obsidian/vault/projects%2Fnested%2Fdeep-note.md", "status": 200 },
+            { "method": "GET", "path": "/obsidian/vault/somedirectory%2F", "status": 200 },
+            { "method": "GET", "path": "/obsidian/vault/somedirectory%2Fmeeting-notes.md", "status": 200 },
+            { "method": "GET", "path": "/obsidian/vault/somedirectory%2Froadmap.md", "status": 200 },
+            { "method": "GET", "path": "/obsidian/vault/welcome.md", "status": 200 }
+          ]
+        },
+        "get": {
+          "code": "ok",
+          "requests": [
+            { "method": "GET", "path": "/obsidian/vault/somedirectory%2Fmeeting-notes.md", "status": 200 }
+          ]
+        },
+        "mispinned": {
+          "code": "certificate-rejected",
+          "calls": 1,
+          "requests": []
+        }
+      }
+    },
+    "notion": {
+      "serve": "http",
+      "block": { "base": "{base}/notion/v1", "options": { "headers": { "notion-version": "2022-06-28" } } },
+      "account": "matrix-notion",
+      "ref": "notion:2a9e0000-0000-4000-8000-000000000002",
+      "token": { "header": "authorization" },
+      "headers": { "notion-version": "2022-06-28" },
+      "command": {
+        "doctor": {
+          "code": "ok",
+          "requests": [
+            { "method": "GET", "path": "/notion/v1/pages/00000000-0000-0000-0000-000000000000", "status": 404 }
+          ]
+        },
+        "get": {
+          "code": "ok",
+          "requests": [
+            { "method": "GET", "path": "/notion/v1/pages/2a9e0000-0000-4000-8000-000000000002", "status": 200 }
+          ]
+        }
+      }
+    },
+    "linear": {
+      "serve": "http",
+      "block": { "base": "{base}/linear/graphql" },
+      "account": "matrix-linear",
+      "ref": "linear:iss-1c2b-4a10-mock",
+      "token": { "header": "authorization" },
+      "headers": {},
+      "command": {
+        "doctor": {
+          "code": "ok",
+          "requests": [
+            { "method": "POST", "path": "/linear/graphql", "status": 200, "root": ["issues", "issue"] }
+          ]
+        },
+        "list": {
+          "code": "ok",
+          "requests": [
+            { "method": "POST", "path": "/linear/graphql", "status": 200, "root": ["issues"] }
+          ]
+        },
+        "get": {
+          "code": "ok",
+          "requests": [
+            { "method": "POST", "path": "/linear/graphql", "status": 200, "root": ["issue"] }
+          ]
+        }
+      }
+    }
+  }
+}

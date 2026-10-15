@@ -37,6 +37,7 @@ station's C library reads only the environment, so it can neither validate
 | `list`, `get`, `doctor`, the `secrets` actions | `unsupported-capability`, exit 4, naming the three issues, for every source alike |
 | Reaching an Obsidian vault over its pinned certificate | waiting on sdkgen#403 with every read: the pin's grammar and a certificate's fingerprint are here, the TLS connection that holds a certificate to the pin is not |
 | `make parity` | not included: it runs the transcript corpus |
+| `make matrix` | every cell red, held to the three issues: each command refuses naming all three, and the mock receives nothing |
 
 The argv shell reads `station.json` and the `likeness.json` beside it only far
 enough to refuse a file that is not a JSON object, as the other ports refuse it.

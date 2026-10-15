@@ -73,6 +73,11 @@ two C SDKs in one program ([sdkgen#405](https://github.com/voxgig/sdkgen/issues/
 and station#23; its harness reports each as skipped and checks that the port refuses
 it naming all three. Until those land, `make parity` does not include C.
 
+The corpora run offline, through each SDK's test mode. The live path, from each port's
+own CLI through its station and vault to a server, is `make matrix`'s
+([PROCESS.md](../PROCESS.md) §5). Its red cells are declared in `tools/matrix-waiting.json`,
+each naming its upstream issue, and held to what that issue predicts the same way.
+
 ## What is exercised, and what is not
 
 Every shape is run against data. The table names the data each one meets:

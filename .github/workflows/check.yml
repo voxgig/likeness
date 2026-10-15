@@ -71,7 +71,10 @@ jobs:
 
       # The schema and its data, every port against both corpora (the C port
       # against the unit corpus and the transcript entries it answers), the
-      # cross-port byte comparison, and the comparison's own self-test.
+      # cross-port byte comparison, and the comparison's own self-test. Then
+      # the source x port matrix: every port's own CLI through station against
+      # mock/, each red cell naming its upstream issue, and its self-test. It
+      # writes its table to this run's summary.
       - name: make check
         run: make check
 

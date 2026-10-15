@@ -40,6 +40,7 @@ surprises you, and before changing the thing you assume produced it.
 | `make spec-fmt` | formatting drift, so a diff is about meaning |
 | `make spec-hash` | a pin per schema file, for the AGENTS.md stanza and for release notes |
 | `make guards` | a source's name as a string literal in a port's shipped code outside the capability data and that source's adapter (SPEC §11.5, §12.3) — the first line of `if (source == "notion")`, which the capability matrix replaces — and certificate verification turned off in any spelling, anywhere (SPEC §18), which is how a self-signed certificate gets "fixed" without being pinned. It reads string literals and patterns, not meaning, so a branch on a constant still needs review. `tools/check-guards.json` excuses a finding by its exact line, with a reason, and fails on an excuse that no longer matches; its self-test plants a breach of each rule |
+| `make matrix` | a port that cannot do over the wire what its corpus says it does offline: each port's own CLI binary, through its station-bound SDK and a vault the run makes, against `mock/` (§5). A red cell names its upstream issue in `tools/matrix-waiting.json` and is held to what that issue predicts; its self-test plants faults and requires each to go red |
 
 ---
 
@@ -331,9 +332,57 @@ redundant with the SDKs' offline mode, and the two have different jobs:
 | Proving the generated client's real wire behaviour — headers, encoding, status codes, GraphQL error envelopes | `mock/` |
 | Exercising auth failure, pagination headers, and vendor quirks the in-memory mock does not model | `mock/` |
 | Linear, in the Ruby and C ports, until `upstream/issue/07` is fixed | `mock/` |
+| The source × port matrix: each port's own CLI reaching each source through station | `mock/`, served from `tools/matrix.mjs` |
 
 The rule: **if a test asserts on likeness's behaviour, it uses the SDK's test
 mode; if it asserts on the wire, it uses `mock/`.**
+
+### The matrix: the live path, from every port
+
+The corpora run offline. `make matrix` runs the other half, the path a user's
+command takes: the vault, station's secret chain, station's credential
+placement and the generated transport, from each port's own CLI binary to a
+server. For each port and source, `tools/matrix.mjs` writes a home holding a
+`station.json` that declares the one instance against `mock/`, a
+`likeness.json`, and a minivault that `tools/make-vault.mjs` makes. The vault
+holds a token made for the run, and the mock is told to accept it. Obsidian is
+served over HTTPS with a certificate made for the run and pinned. The CLI then
+runs `doctor`, `list` where the source can list, and `get`, as a user runs
+them, with the passphrase in `LIKENESS_PASSPHRASE`. Obsidian also runs `doctor`
+against a pin of another certificate.
+
+`tools/matrix.json` says what a working port answers: each command's code, and
+the requests the mock receives, in order. A command passes only if:
+
+- its call count, which every port reads from station's own events, equals what
+  the mock's own log received, request for request;
+- each request has the method, path, decoded query, status and headers listed,
+  and the mock accepted its credential;
+- Joplin's token is in `token`, strictly percent-encoded, and is never station's
+  placeholder;
+- a Linear document selects the root field listed;
+- no secret the run made appears in any byte the CLI printed;
+- its answer equals the canonical port's, or, where that port waits, the answer
+  of the first port that gives one.
+
+So a hand-written path cannot turn a cell green. A request the mock received
+that station did not count went around station, and calls station counted that
+the mock never received are answers from somewhere other than the source.
+`--explain`, whose trace is output too, is not declared yet; once it is, the
+matrix refuses to run until it sweeps that trace as well.
+
+A red cell is declared in `tools/matrix-waiting.json`, naming the upstream
+issue it waits on and a prediction the tool defines: what the command answers
+and what the mock receives while the issue stands. It is held to that the way
+the corpus waiting lists are. A declared cell that passes fails the matrix
+until it is taken out. One that fails any other way fails it too, and the
+report names a cause declared `behind` it when the cell now matches that cause
+instead. To see what a re-pin would change before making it, run one port from
+another build:
+
+```sh
+node tools/matrix.mjs --bin ts=/path/to/a/build/bin/likeness.js
+```
 
 ---
 

@@ -1,0 +1,68 @@
+{
+  "_doc": [
+    "The matrix's red cells, each held to the upstream cause it waits on. A cause names its",
+    "issues, why they hold the cell, and what it predicts: what a command answers and what the",
+    "mock receives while the cause stands, which tools/matrix.mjs defines by the name `predict`",
+    "gives. A declared cell must answer exactly as its cause predicts: one that passes fails",
+    "the matrix until it is taken out of here, and one that fails any other way fails it too.",
+    "`commands` narrows a declaration to some of a cell's commands, and `behind` names what",
+    "the cell waits on once its own cause is gone, which the table shows and nothing checks",
+    "until then."
+  ],
+  "cause": {
+    "ts-station-minivault": {
+      "issues": ["voxgig/station#34"],
+      "predict": "vault-unopened",
+      "reason": "the published @voxgig/station 0.1.0 depends on sekreto 0.1.2, which has no minivault, so station refuses the vault as an unknown provider kind"
+    },
+    "rb-station-plugins": {
+      "issues": ["voxgig/station#33"],
+      "predict": "vault-unopened",
+      "reason": "station's Ruby library gives sekreto no plugins, so it refuses the vault as an unknown provider kind; voxgig/station#40 fixes it, and is not merged"
+    },
+    "query-token": {
+      "issues": ["voxgig/station#25"],
+      "predict": "placeholder-token",
+      "reason": "station places a credential in headers only, so the Joplin SDK's token query parameter carries station's placeholder and Joplin refuses it; voxgig/station#28 fixes it, and is not merged"
+    },
+    "linear-adapter": {
+      "issues": ["voxgig/sdkgen#400"],
+      "predict": "no-adapter",
+      "reason": "the Linear SDK regenerated with station's feature queries issueSearch and attachmentIssue for a bare list and load, so it is not pinned and no port has a Linear adapter"
+    },
+    "c-port": {
+      "issues": ["voxgig/sdkgen#403", "voxgig/sdkgen#405", "voxgig/station#23"],
+      "predict": "c-refused",
+      "reason": "the C SDK has no live transport, two C SDKs cannot link into one program, and station's C library does not read the vault, so the C port refuses every source command naming all three"
+    },
+    "nameless-root": {
+      "issues": ["voxgig/sdkgen#419"],
+      "predict": "walk-stops-at-root",
+      "reason": "a listed item that is not a record arrives with no data, so the vault's root listing names nothing to walk and the list stops there"
+    }
+  },
+  "waiting": [
+    { "port": "ts", "source": "joplin", "cause": "ts-station-minivault", "behind": ["query-token"] },
+    { "port": "ts", "source": "obsidian", "cause": "ts-station-minivault" },
+    { "port": "ts", "source": "notion", "cause": "ts-station-minivault" },
+    { "port": "ts", "source": "linear", "cause": "ts-station-minivault", "behind": ["linear-adapter"] },
+
+    { "port": "go", "source": "joplin", "cause": "query-token" },
+    { "port": "go", "source": "obsidian", "commands": ["list"], "cause": "nameless-root" },
+    { "port": "go", "source": "linear", "cause": "linear-adapter" },
+
+    { "port": "py", "source": "joplin", "cause": "query-token" },
+    { "port": "py", "source": "obsidian", "commands": ["list"], "cause": "nameless-root" },
+    { "port": "py", "source": "linear", "cause": "linear-adapter" },
+
+    { "port": "rb", "source": "joplin", "cause": "rb-station-plugins", "behind": ["query-token"] },
+    { "port": "rb", "source": "obsidian", "cause": "rb-station-plugins", "behind": ["nameless-root"] },
+    { "port": "rb", "source": "notion", "cause": "rb-station-plugins" },
+    { "port": "rb", "source": "linear", "cause": "rb-station-plugins", "behind": ["linear-adapter"] },
+
+    { "port": "c", "source": "joplin", "cause": "c-port" },
+    { "port": "c", "source": "obsidian", "cause": "c-port" },
+    { "port": "c", "source": "notion", "cause": "c-port" },
+    { "port": "c", "source": "linear", "cause": "c-port" }
+  ]
+}
