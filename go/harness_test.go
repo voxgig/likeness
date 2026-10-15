@@ -1,8 +1,10 @@
 package likeness
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -212,6 +214,44 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 			t.Fatal(err)
 		}
 	}
+	// One that brings station.json or likeness.json is configured by them
+	// alone, read as the argv shell reads them.
+	for name := range files {
+		if "station.json" != name && "likeness.json" != name {
+			continue
+		}
+		if _, given := ectx["secrets"]; 0 < len(conns) || given {
+			t.Fatalf("%s: an entry that brings its configuration declares no connections or secrets", str(e, "id"))
+		}
+		var err error
+		if ctx.Station, ctx.Accounts, err = loadConfig(filepath.Join(ctx.Dir, "station.json"), profileOf(ctx.Env)); nil != err {
+			t.Fatalf("%s: %v", str(e, "id"), err)
+		}
+		break
+	}
+	ctx.Config = filepath.Join(ctx.Dir, "station.json")
+
+	// Keyed by host:port, the port written out even where it is the scheme's.
+	presents, _ := ectx["presents"].(map[string]any)
+	ctx.Presented = func(base string) (string, error) {
+		u, err := url.Parse(base)
+		if nil != err {
+			return "", err
+		}
+		host, port := u.Hostname(), u.Port()
+		if strings.Contains(host, ":") {
+			host = "[" + host + "]"
+		}
+		if "" == port {
+			port = "443"
+		}
+		fingerprint, ok := presents[host+":"+port].(string)
+		if !ok {
+			return "", fmt.Errorf("nothing answers at %s:%s", host, port)
+		}
+		return fingerprint, nil
+	}
+
 	stdin := str(ectx, "stdin")
 	ctx.Stdin = func() (string, error) { return stdin, nil }
 
@@ -288,6 +328,38 @@ func vaultFailures(ctx Ctx, want map[string]any, fail func(string)) {
 	for name, value := range values {
 		if got, _, _ := vault.Get(name); got != value {
 			fail("vault value of " + name + " is not the one expected")
+		}
+	}
+}
+
+// fileFailures checks the configuration directory afterwards: each named file
+// byte for byte, and the absent ones not there.
+func fileFailures(root string, ctx Ctx, out map[string]any, fail func(string)) {
+	files, _ := out["files"].(map[string]any)
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		want := str(files, name)
+		got, err := os.ReadFile(runPath(ctx, name))
+		if nil != err {
+			fail(name + " is not there afterwards, and " + want + " says what it holds")
+			continue
+		}
+		expected, err := os.ReadFile(filepath.Join(root, want))
+		if nil != err {
+			fail("cannot read expectation " + want + ": " + err.Error())
+			continue
+		}
+		if !bytes.Equal(got, expected) {
+			fail(name + " differs from " + want)
+		}
+	}
+	for _, name := range strs(out["absent"]) {
+		if exists(runPath(ctx, name)) {
+			fail(name + " is there afterwards, and the entry says it is not")
 		}
 	}
 }
@@ -473,5 +545,6 @@ func checkWith(t *testing.T, root string, e map[string]any, predict func(string)
 	if want, ok := out["vault"].(map[string]any); ok {
 		vaultFailures(ctx, want, fail)
 	}
+	fileFailures(root, ctx, out, fail)
 	return failures
 }

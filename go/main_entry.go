@@ -244,17 +244,19 @@ func Main(argv []string) int {
 
 	clock, _ := Rfc3339(time.Now().UnixMilli())
 	res := Run(Ctx{
-		Argv:     rest,
-		Env:      env,
-		Clock:    clock,
-		Station:  config,
-		Accounts: accounts,
-		Path:     probePath(env),
-		Home:     home,
-		Dir:      filepath.Dir(path),
-		Stdin:    readStdin,
-		TTY:      term.IsTerminal(int(os.Stdin.Fd())),
-		Prompt:   prompt,
+		Argv:      rest,
+		Env:       env,
+		Clock:     clock,
+		Station:   config,
+		Accounts:  accounts,
+		Path:      probePath(env),
+		Home:      home,
+		Dir:       filepath.Dir(path),
+		Config:    path,
+		Stdin:     readStdin,
+		TTY:       term.IsTerminal(int(os.Stdin.Fd())),
+		Prompt:    prompt,
+		Presented: presentedFingerprint,
 	})
 
 	if "" != res.Stdout {

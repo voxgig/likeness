@@ -111,6 +111,23 @@ func presented(at endpoint) (*x509.Certificate, error) {
 	return nil, err
 }
 
+// presentedFingerprint is the fingerprint of the certificate an https base
+// presents, read by the same probe, so pinning it writes nothing to the server.
+func presentedFingerprint(base string) (string, error) {
+	u, err := url.Parse(base)
+	if nil != err {
+		return "", err
+	}
+	if "https" != u.Scheme {
+		return "", &certificateError{refusedInvalid}
+	}
+	cert, err := presented(endpointOf(u))
+	if nil != err {
+		return "", err
+	}
+	return fingerprintOf(cert.Raw), nil
+}
+
 // verified is a connection Go's own verification accepted, with the pinned
 // certificate as the only root and the host checked against it, that then
 // presented the pinned certificate itself.
