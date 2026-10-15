@@ -164,6 +164,32 @@ func unitRegistry() map[string]unitFn {
 			}
 			return n.Value(), nil
 		},
+		"notionVersion": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			block, _ := m["block"].(map[string]any)
+			got, err := notionAdapter{}.configure(str(m, "instance"), block)
+			if nil != err {
+				return nil, err
+			}
+			return map[string]any{"version": got.(pinnedVersion).version}, nil
+		},
+		"notionTitle": func(t *testing.T, in any) (any, error) { return titleOf(in), nil },
+		// Absent is `{}`: the corpus has no way to say "no value" but an empty record.
+		"notionSpace": func(t *testing.T, in any) (any, error) {
+			if space, ok := spaceOf(in); ok {
+				return map[string]any{"space": space}, nil
+			}
+			return map[string]any{}, nil
+		},
+		"notionTime": func(t *testing.T, in any) (any, error) { return notionStamp(in, "created_time") },
+		"projectNotion": func(t *testing.T, in any) (any, error) {
+			m := in.(map[string]any)
+			n, err := notionAdapter{}.project(m["raw"], str(m, "instance"), str(m, "account"), false)
+			if nil != err {
+				return nil, err
+			}
+			return n.Value(), nil
+		},
 		"parsePin": func(t *testing.T, in any) (any, error) {
 			return parsePin(in)
 		},

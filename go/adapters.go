@@ -37,7 +37,7 @@ type (
 	}
 )
 
-var adapters = bySource(joplinAdapter{}, obsidianAdapter{})
+var adapters = bySource(joplinAdapter{}, notionAdapter{}, obsidianAdapter{})
 
 func bySource(all ...adapter) map[string]adapter {
 	out := map[string]adapter{}
