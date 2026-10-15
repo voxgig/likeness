@@ -61,6 +61,19 @@ waits on which.
 | [station#33](https://github.com/voxgig/station/issues/33) | `voxgig/station` | the ruby, php and perl stations give sekreto no plugins, so none can open a minivault; the Ruby port waits on it for a live token |
 | [station#34](https://github.com/voxgig/station/issues/34) | `voxgig/station` | the published `@voxgig/station` 0.1.0 depends on a sekreto with no minivault; `main` has the newer one, unreleased, so the TypeScript port waits on a release for a live token |
 
+## Filed from Stage 2, 2026-10-15
+
+Found while building the Obsidian and Notion adapters.
+
+| Issue | Repository | What |
+|---|---|---|
+| [notion-sdk#6](https://github.com/voxgig-sdk/notion-sdk/issues/6) | `voxgig-sdk/notion-sdk` | the SDK never sends `Notion-Version`, which the Notion API requires; each adapter pins it in the connection's `options.headers` |
+| [notion-sdk#7](https://github.com/voxgig-sdk/notion-sdk/issues/7) | `voxgig-sdk/notion-sdk` | the definition's `Page` has no `url`, `in_trash` or `public_url`, and its `parent` only `database_id`; the adapter reads them untyped |
+| [obsidian-sdk#4](https://github.com/voxgig-sdk/obsidian-sdk/issues/4) | `voxgig-sdk/obsidian-sdk` | a vault directory's listing point is unreachable (it shares the file point's selector), and offline mode lists the whole vault at once; the adapter walks through the file point and derives directories from seeded paths |
+| [sdkgen#416](https://github.com/voxgig/sdkgen/issues/416) | `voxgig/sdkgen` | a point's response alternatives cannot be chosen per call, so the note JSON form is asked for client-wide |
+| [sdkgen#417](https://github.com/voxgig/sdkgen/issues/417) | `voxgig/sdkgen` | offline mode keys an entity with no path parameter by an optional query parameter, which then appears in the record |
+| [station#49](https://github.com/voxgig/station/issues/49) | `voxgig/station` | `connect()` never applies a declared block's `options`, so likeness reads `instances()` and passes the pinned `Notion-Version` itself |
+
 ## A correction worth keeping
 
 `issue/11` was rewritten before filing. Its first draft said the paging signal was
