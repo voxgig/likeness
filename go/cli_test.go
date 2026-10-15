@@ -206,24 +206,34 @@ func TestNoUnreferencedExpectations(t *testing.T) {
 	for _, e := range corpusEntries(t, root, "cli") {
 		out, _ := e["out"].(map[string]any)
 		used[str(out, "stdout")] = true
+		files, _ := out["files"].(map[string]any)
+		for _, f := range files {
+			used[f.(string)] = true
+		}
 	}
 
-	base := filepath.Join(root, "spec", "expect")
-	err := filepath.Walk(base, func(p string, info os.FileInfo, err error) error {
-		if nil != err {
-			return err
+	// spec/written holds the files a command writes, as spec/expect holds what it prints.
+	for _, dir := range []string{"expect", "written"} {
+		base := filepath.Join(root, "spec", dir)
+		if !exists(base) {
+			continue
 		}
-		if info.IsDir() || strings.HasPrefix(info.Name(), ".") {
+		err := filepath.Walk(base, func(p string, info os.FileInfo, err error) error {
+			if nil != err {
+				return err
+			}
+			if info.IsDir() || strings.HasPrefix(info.Name(), ".") {
+				return nil
+			}
+			rel, _ := filepath.Rel(root, p)
+			rel = filepath.ToSlash(rel)
+			if !used[rel] {
+				t.Errorf("expectation file no entry refers to: %s", rel)
+			}
 			return nil
+		})
+		if nil != err {
+			t.Fatal(err)
 		}
-		rel, _ := filepath.Rel(root, p)
-		rel = filepath.ToSlash(rel)
-		if !used[rel] {
-			t.Errorf("expectation file no entry refers to: %s", rel)
-		}
-		return nil
-	})
-	if nil != err {
-		t.Fatal(err)
 	}
 }

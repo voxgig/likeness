@@ -35,6 +35,15 @@ type (
 	loader interface {
 		loadNote(handle any, conn Connection, id string, withRaw bool) (*Note, error)
 	}
+	// The block `sources add` writes, from its base and the flags the source
+	// reads, each its declared default when none was given.
+	setupper interface {
+		setup(instance string, given map[string]any, ask asker) (pairs, error)
+	}
+	// The account a connection reaches, where the capability data says it can be asked.
+	accounter interface {
+		account(handle any) (string, error)
+	}
 )
 
 var adapters = bySource(joplinAdapter{}, notionAdapter{}, obsidianAdapter{})

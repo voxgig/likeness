@@ -337,3 +337,30 @@ func TestMetaWaitingStdoutIsHeldToItsCause(t *testing.T) {
 		t.Fatalf("a difference the cause does not predict was not reported: %q", why)
 	}
 }
+
+func TestMetaWrittenFileThatDiffersIsReported(t *testing.T) {
+	root := Root(t)
+	e := entryByID(t, root, "connections/add-joplin")
+	outOf(e)["files"].(map[string]any)["station.json"] = "fixtures/config/several/station.json"
+	if f := Check(t, root, e); !anyStarts(f, "station.json differs") {
+		t.Fatalf("no file failure in %v", f)
+	}
+}
+
+func TestMetaFileSaidAbsentAndWrittenIsReported(t *testing.T) {
+	root := Root(t)
+	e := entryByID(t, root, "connections/add-joplin")
+	outOf(e)["absent"] = []any{"likeness.json"}
+	if f := Check(t, root, e); !anyStarts(f, "likeness.json is there afterwards") {
+		t.Fatalf("no absence failure in %v", f)
+	}
+}
+
+func TestMetaFileNamedAndNeverWrittenIsReported(t *testing.T) {
+	root := Root(t)
+	e := entryByID(t, root, "connections/add-joplin-needs-an-account")
+	outOf(e)["files"] = map[string]any{"station.json": "spec/written/connections/add-joplin/station.json"}
+	if f := Check(t, root, e); !anyStarts(f, "station.json is not there afterwards") {
+		t.Fatalf("no missing-file failure in %v", f)
+	}
+}

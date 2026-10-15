@@ -12,13 +12,6 @@ import (
 	"github.com/voxgig/station/go/station"
 )
 
-// Connection is one declared station instance and the account it belongs to.
-type Connection struct {
-	Instance string
-	Source   string
-	Account  string
-}
-
 // Ctx is every impure input, named.
 type Ctx struct {
 	Argv []string
@@ -40,14 +33,20 @@ type Ctx struct {
 	// command is testable.
 	Path []map[string]any
 	// A path under Home is shown from `~`; a relative vault path is read from
-	// Dir, where station.json is.
-	Home  string
-	Dir   string
-	Stdin func() (string, error)
+	// Dir, where station.json is. The `sources` group rewrites the file at
+	// Config, and likeness.json beside it.
+	Home   string
+	Dir    string
+	Config string
+	Stdin  func() (string, error)
 	// Stdin is a terminal, so what the environment lacks may be asked for.
 	// Prompt reports false at the end of input.
 	TTY    bool
 	Prompt func(label string) (string, bool)
+	// Presented is the fingerprint of the certificate an https base presents.
+	Presented func(base string) (string, error)
+	// FS is the file operations a `sources` write goes through; nil is the disk's.
+	FS *Fs
 }
 
 // Result is what a command produced.
@@ -281,78 +280,6 @@ func configured(st *station.Station, conns []Connection) (map[string]any, error)
 		out[c.Instance] = config
 	}
 	return out, nil
-}
-
-func profileOf(env map[string]string) string {
-	if p := env["VOXGIG_STATION_PROFILE"]; "" != p {
-		return p
-	}
-	return "default"
-}
-
-func openStation(config map[string]any, env map[string]string) (*station.Station, error) {
-	load := false
-	opts := &station.Options{Profile: profileOf(env), Proxy: "off", Load: &load}
-	if nil == config {
-		opts.NoConfig = true
-	} else {
-		opts.Config = config
-	}
-	return station.New(opts)
-}
-
-// connectionsOf lists station's active declared instances in ref order, each
-// with its account. An instance with no account is refused: identity may not
-// be derived from the ref.
-func connectionsOf(st *station.Station, accounts map[string]string, profile string) ([]Connection, error) {
-	out := []Connection{}
-	for _, inst := range st.Instances() {
-		if !inst.Active {
-			continue
-		}
-		account := accounts[inst.Name]
-		if "" == account {
-			return nil, &LikenessError{
-				Code:   "invalid-project",
-				Msg:    "instance \"" + inst.Name + "\" has no account in likeness.json under profile \"" + profile + "\"",
-				Remedy: "add `\"" + inst.Name + "\": { \"account\": \"<id>\" }` under `profiles." + profile + ".instances` in likeness.json",
-			}
-		}
-		out = append(out, Connection{Instance: inst.Name, Source: inst.API, Account: account})
-	}
-	return out, nil
-}
-
-// withChain is station.json with its secret chain replaced, in every profile,
-// by the one likeness decided on. The caller's map is left as it was.
-func withChain(config map[string]any, chain []any) map[string]any {
-	if nil == config {
-		return nil
-	}
-	copied := map[string]any{}
-	for k, v := range config {
-		copied[k] = v
-	}
-	profiles, ok := config["profiles"].(map[string]any)
-	if !ok {
-		return copied
-	}
-	each := map[string]any{}
-	for name, p := range profiles {
-		pm, ok := p.(map[string]any)
-		if !ok {
-			each[name] = p
-			continue
-		}
-		one := map[string]any{}
-		for k, v := range pm {
-			one[k] = v
-		}
-		one["secrets"] = map[string]any{"providers": chain}
-		each[name] = one
-	}
-	copied["profiles"] = each
-	return copied
 }
 
 func entryOf(c Ctx, f flags) (VaultEntry, error) {
@@ -738,7 +665,7 @@ func cmdGet(c Ctx, f flags, rest []string, calls *Calls) (*envelope, error) {
 	}, nil), nil
 }
 
-func cmdDoctor(c Ctx, f flags, calls *Calls) (*envelope, error) {
+func cmdDoctor(c Ctx, name string, f flags, calls *Calls) (*envelope, error) {
 	conns, err := c.selected(f)
 	if nil != err {
 		return nil, err
@@ -804,7 +731,7 @@ func cmdDoctor(c Ctx, f flags, calls *Calls) (*envelope, error) {
 		code = distinct[0]
 	}
 
-	env := newEnvelope([]string{"doctor"}, code, rows, meta{
+	env := newEnvelope([]string{name}, code, rows, meta{
 		count: len(rows), sources: instances, calls: calls.Count(),
 	}, nil)
 	if n := len(failures); 0 < n {
@@ -813,7 +740,7 @@ func cmdDoctor(c Ctx, f flags, calls *Calls) (*envelope, error) {
 			word = " connection needs"
 		}
 		return env.fails(strconv.Itoa(n)+word+" attention",
-			"start the application, check the token, and re-run `likeness doctor`"), nil
+			"start the application, check the token, and re-run `likeness "+name+"`"), nil
 	}
 	return env, nil
 }
@@ -937,11 +864,15 @@ func dispatch(c Ctx, f flags, p Parsed) (*envelope, string, *Calls, error) {
 		if nil != err {
 			return nil, "", calls, err
 		}
-		code := "ok"
-		if got.empty {
-			code = "no-match"
+		return replied(p.Command, got), got.text, calls, nil
+	}
+
+	if strings.HasPrefix(p.Command, "sources ") && "sources test" != p.Command {
+		got, err := cmdSources(c, p, f, func(st *station.Station) { calls = NewCalls(st) })
+		if nil != err {
+			return nil, "", calls, err
 		}
-		return newEnvelope([]string{p.Command}, code, got.data, meta{count: got.count}, nil), got.text, calls, nil
+		return replied(p.Command, got), got.text, calls, nil
 	}
 
 	sess, err := openSession(c, f)
@@ -957,11 +888,42 @@ func dispatch(c Ctx, f flags, p Parsed) (*envelope, string, *Calls, error) {
 	case "get":
 		env, err = cmdGet(c, f, p.Args, calls)
 	case "doctor":
-		env, err = cmdDoctor(c, f, calls)
+		env, err = cmdDoctor(c, p.Command, f, calls)
+	case "sources test":
+		named := f
+		named.instance = append(append([]string{}, f.instance...), p.Args...)
+		env, err = cmdDoctor(c, p.Command, named, calls)
 	default:
 		err = errors.New("declared ready and not dispatched: " + p.Command)
 	}
 	return env, "", calls, err
+}
+
+func replied(name string, got answer) *envelope {
+	code := "ok"
+	if got.empty {
+		code = "no-match"
+	}
+	return newEnvelope([]string{name}, code, got.data, meta{count: got.count}, nil)
+}
+
+// cmdSources runs every `sources` action but `test`, which runs as doctor does.
+func cmdSources(c Ctx, p Parsed, f flags, watch func(*station.Station)) (answer, error) {
+	switch p.Command {
+	case "sources list":
+		st, err := openConfigured(c)
+		if nil != err {
+			return answer{}, err
+		}
+		return sourcesList(st, c.Accounts), nil
+	case "sources add":
+		return sourcesAdd(c, p.Flags, f.vaultFlags, watch)
+	case "sources remove":
+		return sourcesRemove(c, p.Args[0])
+	case "sources rename":
+		return sourcesRename(c, p.Args[0], p.Args[1])
+	}
+	return answer{}, errors.New("no such sources action: " + p.Command)
 }
 
 func errEnvelope(name string, err error, calls *Calls) *envelope {
