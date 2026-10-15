@@ -4,6 +4,6 @@ from __future__ import annotations
 
 from types import ModuleType
 
-from likeness.adapter import joplin, obsidian
+from likeness.adapter import joplin, notion, obsidian
 
-ADAPTERS: dict[str, ModuleType] = {a.SOURCE: a for a in (joplin, obsidian)}
+ADAPTERS: dict[str, ModuleType] = {a.SOURCE: a for a in (joplin, notion, obsidian)}

@@ -25,5 +25,5 @@
       "dir": "python"
     }
   },
-  "sdk": ["joplin", "obsidian"]
+  "sdk": ["joplin", "notion", "obsidian"]
 }

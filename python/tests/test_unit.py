@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import asdict
 from typing import Any
 
-from likeness.adapter import obsidian
+from likeness.adapter import notion, obsidian
 from likeness.adapter.joplin import project
 from likeness.args import parse_argv
 from likeness.cli import parse_accounts, parse_station, take_config_option
@@ -66,6 +66,12 @@ def _vault_walk(v: dict[str, Any]) -> list[dict[str, str]]:
         return out
 
 
+def _notion_space(parent: Any) -> dict[str, str]:
+    """Absent is `{}`: the corpus has no way to say "no value" but an empty record."""
+    space = notion.space_of(parent)
+    return {} if space is None else {'space': space}
+
+
 def _vault_entry(v: dict[str, Any]) -> dict[str, str]:
     profile = v.get('profile')
     return asdict(vault_entry(v['station'], 'default' if profile is None else profile, '/home/u',
@@ -91,6 +97,11 @@ REGISTRY: dict[str, Callable[[Any], Any]] = {
     'vaultWalk': _vault_walk,
     'obsidianTransport': lambda v: obsidian.transport(v['instance'], v['block']),
     'projectObsidian': lambda v: obsidian.project(v['raw'], v['path'], v['instance'], v['account'], False),
+    'notionVersion': lambda v: notion.configure(v['instance'], v['block']),
+    'notionTitle': notion.title_of,
+    'notionSpace': _notion_space,
+    'notionTime': lambda v: notion.stamp(v, 'created_time'),
+    'projectNotion': lambda v: notion.project(v['raw'], v['instance'], v['account'], False),
     'parsePin': parse_pin,
     'fingerprintOf': lambda digits: fingerprint_of(bytes.fromhex(digits)),
     'vaultEntry': _vault_entry,

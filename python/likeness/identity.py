@@ -111,3 +111,28 @@ def days_in(y: int, m: int) -> int:
     if 2 == m:
         return 29 if is_leap(y) else 28
     return _MONTH_DAYS[m - 1]
+
+
+_INSTANT = re.compile(
+    r'([0-9]{4})-([0-9]{2})-([0-9]{2})[Tt]([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?'
+    r'(?:[Zz]|([+-])([0-9]{2}):([0-9]{2}))')
+
+
+def parse_rfc3339(text: str) -> int | None:
+    """Milliseconds for an RFC 3339 date-time with its offset, the fraction
+    dropped; None for any other text."""
+    m = _INSTANT.fullmatch(text)
+    if m is None:
+        return None
+    year, month, day, hour, minute, second = (int(g) for g in m.groups()[:6])
+    if month < 1 or 12 < month or day < 1 or days_in(year, month) < day:
+        return None
+    if 23 < hour or 59 < minute or 59 < second:
+        return None
+    offset = 0
+    if m.group(7) is not None:
+        oh, om = int(m.group(8)), int(m.group(9))
+        if 23 < oh or 59 < om:
+            return None
+        offset = (-1 if '-' == m.group(7) else 1) * (oh * 60 + om)
+    return ((days_from_civil(year, month, day) * 24 + hour) * 60 + minute - offset) * 60000 + second * 1000
