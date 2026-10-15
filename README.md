@@ -18,7 +18,7 @@ The reasoned specification lives in
 | Part | State |
 |---|---|
 | `spec/` — the aontu ground-truth schema | shapes complete; source, capability, error and both corpora populated |
-| `spec/unit.aontu` — the pure-function corpus | 146 entries, run by every port |
+| `spec/unit.aontu` — the pure-function corpus | 148 entries, run by every port |
 | `spec/cli.aontu` — the transcript corpus | 141 whole commands, run by every port |
 | `typescript/` — the canonical port | `list`, `get`, `doctor`, `secrets`, `help`, `version`, `which`; offline through the real generated SDK |
 | `go/` — the second port | the same, passing the same corpora and the same committed bytes |
@@ -66,15 +66,20 @@ Every port reads `~/.config/likeness/station.json` (or `--config PATH`), which i
 [voxgig/station](https://github.com/voxgig/station) configuration in station's
 own grammar. Each instance is a ref under `sdk`: `joplin` for the first Joplin
 profile, `joplin$work` for a second. The account each instance belongs to, which
-note identity derives from, is in `likeness.json` beside it:
+note identity derives from, is in `likeness.json` beside it, under the same
+station profile:
 
 ```json
 { "station": 1, "profiles": { "default": { "sdk": { "joplin": { "base": "http://localhost:41184" } } } } }
 ```
 
 ```json
-{ "likeness": 1, "instances": { "joplin": { "account": "<the Joplin profile id>" } } }
+{ "likeness": 1, "profiles": { "default": { "instances": { "joplin": { "account": "<the Joplin profile id>" } } } } }
 ```
+
+A profile reads only its own accounts. Two profiles may declare `joplin`
+against different applications, and an account shared between them would give
+one profile's notes the other's identities.
 
 Every port binds every client through station, and the calls a command reports
 are station's own request events.

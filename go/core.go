@@ -277,7 +277,7 @@ func openStation(config map[string]any, env map[string]string) (*station.Station
 // connectionsOf lists station's active declared instances in ref order, each
 // with its account. An instance with no account is refused: identity may not
 // be derived from the ref.
-func connectionsOf(st *station.Station, accounts map[string]string) ([]Connection, error) {
+func connectionsOf(st *station.Station, accounts map[string]string, profile string) ([]Connection, error) {
 	out := []Connection{}
 	for _, inst := range st.Instances() {
 		if !inst.Active {
@@ -287,8 +287,8 @@ func connectionsOf(st *station.Station, accounts map[string]string) ([]Connectio
 		if "" == account {
 			return nil, &LikenessError{
 				Code:   "invalid-project",
-				Msg:    "instance \"" + inst.Name + "\" has no account in likeness.json",
-				Remedy: "add `\"" + inst.Name + "\": { \"account\": \"<id>\" }` under `instances` in likeness.json",
+				Msg:    "instance \"" + inst.Name + "\" has no account in likeness.json under profile \"" + profile + "\"",
+				Remedy: "add `\"" + inst.Name + "\": { \"account\": \"<id>\" }` under `profiles." + profile + ".instances` in likeness.json",
 			}
 		}
 		out = append(out, Connection{Instance: inst.Name, Source: inst.API, Account: account})
@@ -353,7 +353,7 @@ func openSession(c Ctx, f flags) (*session, error) {
 	if nil != err {
 		return s, err
 	}
-	conns, err := connectionsOf(st, c.Accounts)
+	conns, err := connectionsOf(st, c.Accounts, profileOf(c.Env))
 	if nil != err {
 		return s, err
 	}
