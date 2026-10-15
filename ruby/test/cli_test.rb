@@ -14,11 +14,13 @@ class CliCorpusTest < Minitest::Test
     assert_equal [], ids.select { |id| ids.count(id) > 1 }.uniq, 'duplicate corpus ids'
   end
 
+  # spec/written holds the files a command writes, as spec/expect holds what it prints.
   def test_no_expectation_file_is_unreferenced
-    found = Dir.glob('**/*', base: File.join(Harness::ROOT, 'spec', 'expect')).sort
-               .map { |f| "spec/expect/#{f}" }
-               .select { |f| File.file?(File.join(Harness::ROOT, f)) }
-    used = ALL.map { |e| e['out']['stdout'] }
+    found = %w[expect written].flat_map do |dir|
+      Dir.glob('**/*', base: File.join(Harness::ROOT, 'spec', dir)).sort.map { |f| "spec/#{dir}/#{f}" }
+    end
+    found = found.select { |f| File.file?(File.join(Harness::ROOT, f)) }
+    used = ALL.flat_map { |e| [e['out']['stdout'], *(e['out']['files'] || {}).values] }
     assert_equal [], found - used, 'expectation files no entry refers to'
   end
 

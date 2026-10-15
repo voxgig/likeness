@@ -164,6 +164,24 @@ class MetaTest < Minitest::Test
     assert_reported Harness.stdout_failures(e, Likeness.serialise(parsed)), 'data.port is'
   end
 
+  def test_a_written_file_that_differs_is_reported
+    e = entry('connections/add-joplin')
+    e['out']['files'] = e['out']['files'].merge('station.json' => 'fixtures/config/several/station.json')
+    assert_reported Harness.check(e), 'station.json differs'
+  end
+
+  def test_a_file_the_entry_says_is_not_there_written_is_reported
+    e = entry('connections/add-joplin')
+    e['out']['absent'] = ['likeness.json']
+    assert_reported Harness.check(e), 'likeness.json is there afterwards'
+  end
+
+  def test_a_file_the_entry_names_never_written_is_reported
+    e = entry('connections/add-joplin-needs-an-account')
+    e['out']['files'] = { 'station.json' => 'spec/written/connections/add-joplin/station.json' }
+    assert_reported Harness.check(e), 'station.json is not there afterwards'
+  end
+
   def test_net_options_reach_the_sdk
     seed = { 'entity' => { 'note' => { 'x1' => { 'id' => 'x1' } } },
              'net' => { 'failTimes' => 1, 'failStatus' => 401 } }

@@ -56,6 +56,8 @@ class UnitCorpusTest < Minitest::Test
     'projectNotion' => ->(v) { Likeness::Notion.project(v['raw'], v['instance'], v['account'], false) },
     'parsePin' => ->(text) { Likeness.parse_pin(text) },
     'fingerprintOf' => ->(hex) { Likeness.fingerprint_of([hex].pack('H*')) },
+    'secretName' => ->(ref) { Likeness.secret_name(ref) },
+    'refFor' => ->(v) { Likeness.ref_for(v['source'], v['instance']) },
     'vaultEntry' => lambda { |v|
       entry = Likeness.vault_entry(v['station'], profile: v['profile'] || 'default', home: '/home/u',
                                                  dir: '/home/u/.config/likeness', key: v['key'])

@@ -5,6 +5,7 @@ require 'pathname'
 
 require_relative 'config'
 require_relative 'core'
+require_relative 'pin'
 
 module Likeness
   PROBE_RE = /\Alikeness(?:-([a-z]+))?\z/
@@ -101,9 +102,10 @@ module Likeness
 
     clock = rfc3339(Process.clock_gettime(Process::CLOCK_REALTIME, :millisecond))
     ctx = Ctx.new(argv: taken['rest'], env: env, clock: clock, station: station, accounts: accounts,
-                  path: probe_path(env), home: home, dir: File.dirname(path),
+                  path: probe_path(env), home: home, dir: File.dirname(path), config: path,
                   stdin: -> { stdin.binmode.read.force_encoding(Encoding::UTF_8).scrub },
-                  tty: stdin.tty?, prompt: ->(label) { prompt(label, stdin, stderr) })
+                  tty: stdin.tty?, prompt: ->(label) { prompt(label, stdin, stderr) },
+                  presented: ->(base) { presented_fingerprint(base) })
     res = run(ctx)
     # A reader that went away is not the port's failure: exit quietly with 0.
     begin
