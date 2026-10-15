@@ -4109,6 +4109,7 @@ primary: cli: {
         stdout: "spec/expect/connections/needs-an-action.txt"
         calls: []
         stderr: "error: invalid-argument\n  `sources` needs an action: add, list, remove, rename or test\n  remedy  run `likeness help sources` for what each does\n"
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -4152,6 +4153,7 @@ primary: cli: {
         stdout: "spec/expect/connections/add-surplus-not-repeated.txt"
         calls: []
         stderr: "error: invalid-argument\n  `sources add` takes no further argument; it is not repeated here, in case it is a secret\n  remedy  run `likeness help sources add` for its arguments\n"
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -4168,6 +4170,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-undeclared-flag-not-repeated.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -4184,6 +4187,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/rename-needs-a-new-ref.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -4215,7 +4219,12 @@ primary: cli: {
         clock: "2026-10-15T00:00:00Z"
         seed: 1
       }
-      out: { exit:0 stdout:"spec/expect/connections/list.json" calls: [] }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/list.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
     }
 
     {
@@ -4245,7 +4254,12 @@ primary: cli: {
         clock: "2026-10-15T00:00:00Z"
         seed: 1
       }
-      out: { exit:0 stdout:"spec/expect/connections/list-human.txt" calls: [] }
+      out: {
+        exit: 0
+        stdout: "spec/expect/connections/list-human.txt"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
     }
 
     {
@@ -4257,7 +4271,12 @@ primary: cli: {
         clock: "2026-10-15T00:00:00Z"
         seed: 1
       }
-      out: { exit:1 stdout:"spec/expect/connections/list-none.json" calls: [] }
+      out: {
+        exit: 1
+        stdout: "spec/expect/connections/list-none.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+      }
     }
 
     {
@@ -4278,6 +4297,10 @@ primary: cli: {
         exit: 0
         stdout: "spec/expect/connections/list-from-files.json"
         calls: []
+        files: {
+          "station.json": "fixtures/config/several/station.json"
+          "likeness.json": "fixtures/config/several/likeness.json"
+        }
       }
     }
 
@@ -4300,6 +4323,10 @@ primary: cli: {
         exit: 0
         stdout: "spec/expect/connections/list-under-a-profile.json"
         calls: []
+        files: {
+          "station.json": "fixtures/config/kept/station.json"
+          "likeness.json": "fixtures/config/kept/likeness.json"
+        }
       }
     }
 
@@ -4398,6 +4425,10 @@ primary: cli: {
         exit: 0
         stdout: "spec/expect/connections/add-then-list.json"
         calls: []
+        files: {
+          "station.json": "spec/written/connections/add-joplin/station.json"
+          "likeness.json": "spec/written/connections/add-joplin/likeness.json"
+        }
       }
     }
 
@@ -4961,6 +4992,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-needs-a-source.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -4987,6 +5019,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-one-source.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5003,6 +5036,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-unknown-source.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5019,6 +5053,7 @@ primary: cli: {
         exit: 4
         stdout: "spec/expect/connections/add-no-adapter.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5045,6 +5080,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-flag-for-another-source.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5071,6 +5107,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-instance-of-another-api.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5099,6 +5136,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-one-instance.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5116,6 +5154,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-joplin-needs-an-account.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5132,6 +5171,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-notion-needs-an-account.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5148,6 +5188,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-obsidian-needs-an-account.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5164,6 +5205,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-empty-account.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5191,6 +5233,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-base-with-credentials.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5217,6 +5260,7 @@ primary: cli: {
         exit: 3
         stdout: "spec/expect/connections/add-base-with-a-query.json"
         calls: []
+        absent: ["station.json" "likeness.json"]
       }
     }
 
@@ -5236,6 +5280,38 @@ primary: cli: {
       out: {
         exit: 3
         stdout: "spec/expect/connections/add-token-needs-a-terminal.json"
+        calls: []
+        absent: ["station.json" "likeness.json"]
+        vault: {
+          passphrase: "fixture master passphrase"
+          names: ["joplin.apikey" "notion.apikey"]
+          values: {
+            "joplin.apikey": "joplin-mock-token"
+            "notion.apikey": "notion-fixture-token"
+          }
+        }
+      }
+    }
+
+    {
+      id: "connections/add-reads-no-token-from-the-environment"
+      # A plausible token in the environment is never read: a connection's token is typed, or named in the vault.
+      args: ["sources" "add" "--source" "joplin" "--account" "local" "--json"]
+      ctx: {
+        fixture: "joplin"
+        connections: []
+        clock: "2026-10-15T00:00:00Z"
+        seed: 1
+        env: {
+          LIKENESS_PASSPHRASE: "fixture master passphrase"
+          JOPLIN_TOKEN: "ambient-joplin-token"
+          JOPLIN_APIKEY: "ambient-joplin-token"
+        }
+        files: "likeness.skmv": "fixtures/vault/likeness.skmv"
+      }
+      out: {
+        exit: 3
+        stdout: "spec/expect/connections/add-reads-no-token-from-the-environment.json"
         calls: []
         absent: ["station.json" "likeness.json"]
         vault: {

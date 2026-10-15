@@ -328,6 +328,10 @@
             },
             "id": "connections/needs-an-action",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stderr": "error: invalid-argument\n  `sources` needs an action: add, list, remove, rename or test\n  remedy  run `likeness help sources` for what each does\n",
@@ -387,6 +391,10 @@
             },
             "id": "connections/add-surplus-not-repeated",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stderr": "error: invalid-argument\n  `sources add` takes no further argument; it is not repeated here, in case it is a secret\n  remedy  run `likeness help sources add` for its arguments\n",
@@ -408,6 +416,10 @@
             },
             "id": "connections/add-undeclared-flag-not-repeated",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-undeclared-flag-not-repeated.json"
@@ -428,6 +440,10 @@
             },
             "id": "connections/rename-needs-a-new-ref",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/rename-needs-a-new-ref.json"
@@ -479,6 +495,10 @@
             },
             "id": "connections/list",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 0,
               "stdout": "spec/expect/connections/list.json"
@@ -529,6 +549,10 @@
             },
             "id": "connections/list-human",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 0,
               "stdout": "spec/expect/connections/list-human.txt"
@@ -548,6 +572,10 @@
             },
             "id": "connections/list-none",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 1,
               "stdout": "spec/expect/connections/list-none.json"
@@ -573,6 +601,10 @@
             "out": {
               "calls": [],
               "exit": 0,
+              "files": {
+                "likeness.json": "fixtures/config/several/likeness.json",
+                "station.json": "fixtures/config/several/station.json"
+              },
               "stdout": "spec/expect/connections/list-from-files.json"
             }
           },
@@ -599,6 +631,10 @@
             "out": {
               "calls": [],
               "exit": 0,
+              "files": {
+                "likeness.json": "fixtures/config/kept/likeness.json",
+                "station.json": "fixtures/config/kept/station.json"
+              },
               "stdout": "spec/expect/connections/list-under-a-profile.json"
             }
           },
@@ -722,6 +758,10 @@
             "out": {
               "calls": [],
               "exit": 0,
+              "files": {
+                "likeness.json": "spec/written/connections/add-joplin/likeness.json",
+                "station.json": "spec/written/connections/add-joplin/station.json"
+              },
               "stdout": "spec/expect/connections/add-then-list.json"
             }
           },
@@ -1427,6 +1467,10 @@
             },
             "id": "connections/add-needs-a-source",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-needs-a-source.json"
@@ -1452,6 +1496,10 @@
             },
             "id": "connections/add-one-source",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-one-source.json"
@@ -1475,6 +1523,10 @@
             },
             "id": "connections/add-unknown-source",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-unknown-source.json"
@@ -1498,6 +1550,10 @@
             },
             "id": "connections/add-no-adapter",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 4,
               "stdout": "spec/expect/connections/add-no-adapter.json"
@@ -1523,6 +1579,10 @@
             },
             "id": "connections/add-flag-for-another-source",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-flag-for-another-source.json"
@@ -1548,6 +1608,10 @@
             },
             "id": "connections/add-instance-of-another-api",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-instance-of-another-api.json"
@@ -1575,6 +1639,10 @@
             },
             "id": "connections/add-one-instance",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-one-instance.json"
@@ -1596,6 +1664,10 @@
             },
             "id": "connections/add-joplin-needs-an-account",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-joplin-needs-an-account.json"
@@ -1617,6 +1689,10 @@
             },
             "id": "connections/add-notion-needs-an-account",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-notion-needs-an-account.json"
@@ -1638,6 +1714,10 @@
             },
             "id": "connections/add-obsidian-needs-an-account",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-obsidian-needs-an-account.json"
@@ -1660,6 +1740,10 @@
             },
             "id": "connections/add-empty-account",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-empty-account.json"
@@ -1685,6 +1769,10 @@
             },
             "id": "connections/add-base-with-credentials",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-base-with-credentials.json"
@@ -1710,6 +1798,10 @@
             },
             "id": "connections/add-base-with-a-query",
             "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-base-with-a-query.json"
@@ -1747,6 +1839,52 @@
               "calls": [],
               "exit": 3,
               "stdout": "spec/expect/connections/add-token-needs-a-terminal.json",
+              "vault": {
+                "names": [
+                  "joplin.apikey",
+                  "notion.apikey"
+                ],
+                "passphrase": "fixture master passphrase",
+                "values": {
+                  "joplin.apikey": "joplin-mock-token",
+                  "notion.apikey": "notion-fixture-token"
+                }
+              }
+            }
+          },
+          {
+            "args": [
+              "sources",
+              "add",
+              "--source",
+              "joplin",
+              "--account",
+              "local",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-10-15T00:00:00Z",
+              "connections": [],
+              "env": {
+                "JOPLIN_APIKEY": "ambient-joplin-token",
+                "JOPLIN_TOKEN": "ambient-joplin-token",
+                "LIKENESS_PASSPHRASE": "fixture master passphrase"
+              },
+              "files": {
+                "likeness.skmv": "fixtures/vault/likeness.skmv"
+              },
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "connections/add-reads-no-token-from-the-environment",
+            "out": {
+              "absent": [
+                "station.json",
+                "likeness.json"
+              ],
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/connections/add-reads-no-token-from-the-environment.json",
               "vault": {
                 "names": [
                   "joplin.apikey",
