@@ -204,11 +204,17 @@ def classify(tok: Tok) -> Value:
     return {'k': 'word', 'v': t}
 
 
+MAX_DEPTH = 64
+"""Each group and each negation opens one level. The token that would open a
+level past this is refused, so no input can exhaust a port's stack."""
+
+
 class _Parser:
     def __init__(self, toks: list[Tok], end: int) -> None:
         self.toks = toks
         self.pos = 0
         self.end = end
+        self.depth = 0
 
     def peek(self) -> Tok | None:
         return self.toks[self.pos] if self.pos < len(self.toks) else None
@@ -226,6 +232,11 @@ class _Parser:
         if tok is None:
             raise SelectorError(message, self.end, '')
         raise SelectorError(message, tok.offset, tok.text)
+
+    def enter(self, tok: Tok) -> None:
+        if MAX_DEPTH <= self.depth:
+            self.fail('nested more than ' + str(MAX_DEPTH) + ' deep', tok)
+        self.depth += 1
 
     def parse_or(self) -> Node:
         kids = [self.parse_and()]
@@ -252,10 +263,14 @@ class _Parser:
     def parse_not(self) -> Node:
         t = self.peek()
         if _is_word(t, 'NOT', 'not') or (t is not None and 'dash' == t.kind):
+            assert t is not None
+            self.enter(t)
             self.next()
             if self.at_end():
                 self.fail('NOT must be followed by a term')
-            return {'t': 'not', 'kid': self.parse_not()}
+            kid = self.parse_not()
+            self.depth -= 1
+            return {'t': 'not', 'kid': kid}
         return self.parse_atom()
 
     def parse_atom(self) -> Node:
@@ -264,12 +279,14 @@ class _Parser:
             self.fail('unexpected end of selector')
 
         if 'lparen' == t.kind:
+            self.enter(t)
             inner = self.parse_or()
             close = self.next()
             if close is None:
                 self.fail('unclosed group')
             if 'rparen' != close.kind:
                 self.fail('expected )', close)
+            self.depth -= 1
             return inner
         if 'rparen' == t.kind:
             self.fail('unmatched )', t)

@@ -346,6 +346,39 @@ primary: unit: {
       in: "updated>2000-02-29"
       out: { t:"cmp" field:"updated" op:">" value: { k:"date" v:"2000-02-29" } }
     }
+
+    {
+      id: "selector/nesting-64-groups-is-the-most"
+      # Each group and each negation opens one level, and a selector nests at
+      # most 64 deep, so no input can drive a port's parser to exhaust its stack.
+      fn: "parseSelector"
+      in: "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+      out: { t:"cmp" field:"tag" op:":" value: { k:"word" v:"a" } }
+    }
+
+    {
+      id: "selector/nesting-counts-groups-and-negations-together"
+      fn: "parseSelector"
+      in: "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((NOT tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+      out: {
+        t: "not"
+        kid: { t:"cmp" field:"tag" op:":" value: { k:"word" v:"a" } }
+      }
+    }
+
+    {
+      id: "selector/nesting-is-depth-not-count"
+      # A level closes with its group, so groups side by side do not add up.
+      fn: "parseSelector"
+      in: "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:b))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+      out: {
+        t: "and"
+        kids: [
+          { t:"cmp" field:"tag" op:":" value: { k:"word" v:"a" } }
+          { t:"cmp" field:"tag" op:":" value: { k:"word" v:"b" } }
+        ]
+      }
+    }
   ]
 
   # Malformed input. EVERY ONE ASSERTS A BYTE OFFSET: never a stack trace,
@@ -495,6 +528,36 @@ primary: unit: {
       fn: "parseSelectorError"
       in: "body<3d"
       out: { offset:4 token:"<" }
+    }
+
+    {
+      id: "selector-err/nesting-65-groups"
+      # The offending token is the one that would open the level past 64.
+      fn: "parseSelectorError"
+      in: "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+      out: { offset:64 token:"(" }
+    }
+
+    {
+      id: "selector-err/nesting-65-negations"
+      fn: "parseSelectorError"
+      in: "NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT tag:a"
+      out: { offset:256 token:"NOT" }
+    }
+
+    {
+      id: "selector-err/nesting-64-groups-and-a-negation"
+      fn: "parseSelectorError"
+      in: "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((-tag:a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+      out: { offset:64 token:"-" }
+    }
+
+    {
+      id: "selector-err/nesting-refused-before-the-end-is-read"
+      # Refused where the limit is passed, not as the unclosed group it also is.
+      fn: "parseSelectorError"
+      in: "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a"
+      out: { offset:64 token:"(" }
     }
   ]
 

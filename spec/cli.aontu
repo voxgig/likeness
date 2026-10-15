@@ -338,6 +338,22 @@ primary: cli: {
     }
 
     {
+      id: "list/nesting-past-the-limit-refused-before-the-network"
+      args: [
+        "list"
+        "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+        "--json"
+      ]
+      ctx: {
+        fixture: "joplin"
+        connections: [{ instance:"joplin" account:"local" }]
+        clock: "2026-09-18T00:00:00Z"
+        seed: 1
+      }
+      out: { exit:3 stdout:"spec/expect/list/nesting-too-deep.json" calls: [] }
+    }
+
+    {
       id: "list/unanswerable-field-refused-before-the-network"
       args: ["list" "tag:anything" "--json"]
       ctx: {

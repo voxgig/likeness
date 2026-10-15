@@ -994,6 +994,30 @@
           {
             "args": [
               "list",
+              "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+              "--json"
+            ],
+            "ctx": {
+              "clock": "2026-09-18T00:00:00Z",
+              "connections": [
+                {
+                  "account": "local",
+                  "instance": "joplin"
+                }
+              ],
+              "fixture": "joplin",
+              "seed": 1
+            },
+            "id": "list/nesting-past-the-limit-refused-before-the-network",
+            "out": {
+              "calls": [],
+              "exit": 3,
+              "stdout": "spec/expect/list/nesting-too-deep.json"
+            }
+          },
+          {
+            "args": [
+              "list",
               "tag:anything",
               "--json"
             ],

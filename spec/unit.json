@@ -1455,6 +1455,65 @@
                 "v": "2000-02-29"
               }
             }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/nesting-64-groups-is-the-most",
+            "in": "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "field": "tag",
+              "op": ":",
+              "t": "cmp",
+              "value": {
+                "k": "word",
+                "v": "a"
+              }
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/nesting-counts-groups-and-negations-together",
+            "in": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((NOT tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "kid": {
+                "field": "tag",
+                "op": ":",
+                "t": "cmp",
+                "value": {
+                  "k": "word",
+                  "v": "a"
+                }
+              },
+              "t": "not"
+            }
+          },
+          {
+            "fn": "parseSelector",
+            "id": "selector/nesting-is-depth-not-count",
+            "in": "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:b))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "kids": [
+                {
+                  "field": "tag",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "a"
+                  }
+                },
+                {
+                  "field": "tag",
+                  "op": ":",
+                  "t": "cmp",
+                  "value": {
+                    "k": "word",
+                    "v": "b"
+                  }
+                }
+              ],
+              "t": "and"
+            }
           }
         ]
       },
@@ -1656,6 +1715,42 @@
             "out": {
               "offset": 4,
               "token": "<"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-65-groups",
+            "in": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "offset": 64,
+              "token": "("
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-65-negations",
+            "in": "NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT tag:a",
+            "out": {
+              "offset": 256,
+              "token": "NOT"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-64-groups-and-a-negation",
+            "in": "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((-tag:a))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+            "out": {
+              "offset": 64,
+              "token": "-"
+            }
+          },
+          {
+            "fn": "parseSelectorError",
+            "id": "selector-err/nesting-refused-before-the-end-is-read",
+            "in": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((tag:a",
+            "out": {
+              "offset": 64,
+              "token": "("
             }
           }
         ]

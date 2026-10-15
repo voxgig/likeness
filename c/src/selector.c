@@ -17,6 +17,10 @@ typedef struct {
   size_t offset;
 } tok;
 
+/* Each group and each negation opens one level. The token that would open a
+ * level past this is refused, so no input can exhaust a port's stack. */
+#define MAX_DEPTH 64
+
 typedef struct {
   arena *a;
   tok *t;
@@ -24,6 +28,7 @@ typedef struct {
   size_t cap;
   size_t pos;
   size_t end;
+  size_t depth;
   sel_error *err;
 } parser;
 
@@ -202,6 +207,20 @@ static sel_node *fail(parser *p, const char *message, const tok *t) {
   return fail_text(p, &m, t);
 }
 
+static int enter(parser *p, const tok *t) {
+  sbuf m;
+  if (p->depth < MAX_DEPTH) {
+    p->depth++;
+    return 0;
+  }
+  sb_init(&m, p->a);
+  sb_puts(&m, "nested more than ");
+  sb_long(&m, MAX_DEPTH);
+  sb_puts(&m, " deep");
+  fail_text(p, &m, t);
+  return -1;
+}
+
 static int word_is(const tok *t, const char *upper, const char *lower) {
   return NULL != t && TK_WORD == t->kind && (str_eqz(t->text, upper) || str_eqz(t->text, lower));
 }
@@ -309,12 +328,15 @@ static sel_node *parse_atom(parser *p) {
   if (NULL == t) return fail(p, "unexpected end of selector", NULL);
 
   if (TK_LPAREN == t->kind) {
-    sel_node *inner = parse_or(p);
+    sel_node *inner;
     const tok *close;
+    if (0 != enter(p, t)) return NULL;
+    inner = parse_or(p);
     if (NULL == inner) return NULL;
     close = next(p);
     if (NULL == close) return fail(p, "unclosed group", NULL);
     if (TK_RPAREN != close->kind) return fail(p, "expected )", close);
+    p->depth--;
     return inner;
   }
   if (TK_RPAREN == t->kind) return fail(p, "unmatched )", t);
@@ -381,11 +403,15 @@ static sel_node *parse_atom(parser *p) {
 static sel_node *parse_not(parser *p) {
   const tok *t = peek(p);
   if (word_is(t, "NOT", "not") || (NULL != t && TK_DASH == t->kind)) {
-    sel_node *neg = node(p, SEL_NOT);
+    sel_node *neg;
+    if (0 != enter(p, t)) return NULL;
+    neg = node(p, SEL_NOT);
     next(p);
     if (at_end(p)) return fail(p, "NOT must be followed by a term", NULL);
     neg->kid = parse_not(p);
-    return NULL == neg->kid ? NULL : neg;
+    if (NULL == neg->kid) return NULL;
+    p->depth--;
+    return neg;
   }
   return parse_atom(p);
 }

@@ -285,10 +285,16 @@ func classify(t tok) (*Value, error) {
 
 // -- parser -----------------------------------------------------------------
 
+// MaxDepth is the deepest a selector nests: each group and each negation opens
+// one level, and the token that would open a level past it is refused, so no
+// input can exhaust a port's stack.
+const MaxDepth = 64
+
 type parser struct {
-	toks []tok
-	pos  int
-	end  int
+	toks  []tok
+	pos   int
+	end   int
+	depth int
 }
 
 func (p *parser) peek() *tok {
@@ -311,6 +317,14 @@ func (p *parser) fail(msg string, t *tok) error {
 		return &SelectorError{msg, p.end, ""}
 	}
 	return &SelectorError{msg, t.offset, t.text}
+}
+
+func (p *parser) enter(t *tok) error {
+	if MaxDepth <= p.depth {
+		return p.fail("nested more than "+strconv.Itoa(MaxDepth)+" deep", t)
+	}
+	p.depth++
+	return nil
 }
 
 func (p *parser) parseOr() (*Node, error) {
@@ -369,6 +383,9 @@ func (p *parser) parseAnd() (*Node, error) {
 func (p *parser) parseNot() (*Node, error) {
 	t := p.peek()
 	if isNotKeyword(t) || (nil != t && "dash" == t.kind) {
+		if err := p.enter(t); nil != err {
+			return nil, err
+		}
 		p.next()
 		if p.atEnd() {
 			return nil, p.fail("NOT must be followed by a term", nil)
@@ -377,6 +394,7 @@ func (p *parser) parseNot() (*Node, error) {
 		if nil != err {
 			return nil, err
 		}
+		p.depth--
 		return &Node{T: "not", Kid: kid}, nil
 	}
 	return p.parseAtom()
@@ -389,6 +407,9 @@ func (p *parser) parseAtom() (*Node, error) {
 	}
 
 	if "lparen" == t.kind {
+		if err := p.enter(t); nil != err {
+			return nil, err
+		}
 		inner, err := p.parseOr()
 		if nil != err {
 			return nil, err
@@ -400,6 +421,7 @@ func (p *parser) parseAtom() (*Node, error) {
 		if "rparen" != close.kind {
 			return nil, p.fail("expected )", close)
 		}
+		p.depth--
 		return inner, nil
 	}
 	if "rparen" == t.kind {
