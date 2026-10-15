@@ -39,12 +39,15 @@ const SOURCES = [
 const EMBED = {
   'errors.aontu': [
     'typescript/src/spec/errors.json', 'go/spec/errors.json', 'python/likeness/spec/errors.json',
+    'ruby/lib/likeness/spec/errors.json',
   ],
   'caps.aontu': [
     'typescript/src/spec/caps.json', 'go/spec/caps.json', 'python/likeness/spec/caps.json',
+    'ruby/lib/likeness/spec/caps.json',
   ],
   'commands.aontu': [
     'typescript/src/spec/commands.json', 'go/spec/commands.json', 'python/likeness/spec/commands.json',
+    'ruby/lib/likeness/spec/commands.json',
   ],
 }
 
@@ -52,7 +55,7 @@ const EMBED = {
 // (SPEC 13.1 rule 9), so help text is a corpus entry rather than five drafts.
 const HELP = [
   'spec/help.json', 'typescript/src/spec/help.json', 'go/spec/help.json',
-  'python/likeness/spec/help.json',
+  'python/likeness/spec/help.json', 'ruby/lib/likeness/spec/help.json',
 ]
 
 const check = process.argv.includes('--check')

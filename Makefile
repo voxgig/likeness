@@ -54,6 +54,8 @@ help:
 	@echo '  test-go       build and run the Go port against both corpora'
 	@echo '  py-deps       clone the checkouts the Python port imports, build python/.venv'
 	@echo '  test-py       run the Python port against both corpora'
+	@echo '  test-rb       run the Ruby port against both corpora'
+	@echo '  rb-libs       clone the voxgig libraries the Ruby port loads, at their pinned revisions'
 	@echo '  parity        the ports produce the same bytes, and each names itself'
 	@echo '  check         spec, every port, and the parity comparison'
 	@echo '  expect        REGENERATE the committed expectations - read the diff'
@@ -67,7 +69,7 @@ spec: spec-fmt spec-check spec-expect spec-fresh spec-agree
 
 # Everything. What CI runs, and what a change should run before it is pushed.
 .PHONY: check
-check: comments spec test-ts test-go test-py parity
+check: comments spec test-ts test-go test-py test-rb parity
 
 
 .PHONY: spec-expect
@@ -127,6 +129,30 @@ test-py: sdk-check mock-deps py-deps
 	@cd python && .venv/bin/python -m unittest discover -s tests -t .
 
 
+# station, sekreto and plugin are no more published than the SDKs, so the
+# Ruby port loads them from checkouts at the revisions ruby/libs.json pins:
+# `rb-libs` clones them, and `rb-deps` verifies every pin and links each
+# checkout, and the SDK clone, under ruby/vendor/ - the one place the port
+# looks. Point STATION_HOME, SEKRETO_HOME or PLUGIN_HOME at a checkout of the
+# pin to use it instead of a clone.
+RB_SDK := $(abspath $(or $(LIKENESS_SDK_ROOT),$(CURDIR)/../voxgig-sdk)/joplin-sdk)
+
+.PHONY: rb-libs
+rb-libs:
+	@node tools/fetch-lib.mjs ruby/libs.json
+
+.PHONY: rb-deps
+rb-deps: sdk-check
+	@node tools/fetch-lib.mjs ruby/libs.json --check --link ruby/vendor
+	@ln -sfn "$(RB_SDK)" ruby/vendor/joplin-sdk
+
+RB_TEST := ruby -Ilib -Itest -e 'ARGV.each { |f| require File.expand_path(f) }'
+
+.PHONY: test-rb
+test-rb: rb-deps mock-deps
+	@cd ruby && $(RB_TEST) test/*_test.rb
+
+
 # The cross-port byte comparison. Each port's suite writes its RAW transcript
 # output when LIKENESS_PARITY_OUT is set; the comparison then requires the
 # stripped bytes to MATCH and the raw bytes to DIFFER, because every envelope
@@ -137,10 +163,10 @@ test-py: sdk-check mock-deps py-deps
 # difference and requiring it to be reported: a comparison nobody has seen go
 # red might be comparing nothing at all.
 PARITY_DIR := build/parity
-PARITY_PORTS := go,py,ts
+PARITY_PORTS := go,py,rb,ts
 
 .PHONY: parity
-parity: sdk-check mock-deps ts-deps py-deps
+parity: sdk-check mock-deps ts-deps py-deps rb-deps
 	@rm -rf $(PARITY_DIR) && mkdir -p $(PARITY_DIR)
 	@cd typescript && npm run build >/dev/null && \
 	  LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" npm test >/dev/null
@@ -150,6 +176,7 @@ parity: sdk-check mock-deps ts-deps py-deps
 	@cd go && LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" go test -count=1 -run TestEmitParity ./... >/dev/null
 	@cd python && out=$$(LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" \
 	  .venv/bin/python -m unittest tests.test_parity 2>&1) || { echo "$$out"; exit 1; }
+	@cd ruby && LIKENESS_PARITY_OUT="$(CURDIR)/$(PARITY_DIR)" $(RB_TEST) test/parity_test.rb >/dev/null
 	@node tools/parity.mjs $(PARITY_DIR) --ports $(PARITY_PORTS)
 	@node tools/parity.mjs $(PARITY_DIR) --ports $(PARITY_PORTS) --selftest 2>/dev/null
 

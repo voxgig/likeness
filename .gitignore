@@ -22,3 +22,6 @@ python/.deps/
 python/.venv/
 python/*.egg-info/
 __pycache__/
+
+# The Ruby port's dependencies, linked by `make rb-deps` to pinned checkouts.
+ruby/vendor/

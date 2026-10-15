@@ -30,8 +30,9 @@ spec/
 
 `make spec-build` compiles the data files to `spec/*.json`. It also writes
 `errors.json`, `caps.json`, `commands.json` and `help.json` into
-`typescript/src/spec/`, `go/spec/` and `python/likeness/spec/`, where each port's
-build embeds them (the Python package carries them as package data), so an
+`typescript/src/spec/`, `go/spec/`, `python/likeness/spec/` and
+`ruby/lib/likeness/spec/`, where each port's build embeds them (the Python
+package carries them as package data), so an
 installed port reads no specification file from disk and needs no checkout.
 `make spec-fresh` fails if any copy is stale; none of them is edited by hand.
 

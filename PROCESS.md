@@ -36,7 +36,7 @@ surprises you, and before changing the thing you assume produced it.
 | `make spec-check` | a data file that violates its shape — with a path, an expected, an actual, and both source lines |
 | `make spec-check` red cases | a gate that has stopped gating. `spec/example/likeness-broken.aontu` **must fail**; if it passes, the build fails |
 | `make spec-agree` | an empty or misspelled registry root, a capability row that does not match the registry, a source no port can reach, and a registry entity or operation the cloned SDK model does not declare. It needs the clones `make sdk` creates, and its self-test falsifies a capability to prove it goes red |
-| `make spec-fresh` | a compiled JSON file — under `spec/`, or an embedded copy under `typescript/src/spec/`, `go/spec/` or `python/likeness/spec/` — that no longer matches its `.aontu` source |
+| `make spec-fresh` | a compiled JSON file — under `spec/`, or an embedded copy under `typescript/src/spec/`, `go/spec/`, `python/likeness/spec/` or `ruby/lib/likeness/spec/` — that no longer matches its `.aontu` source |
 | `make spec-fmt` | formatting drift, so a diff is about meaning |
 | `make spec-hash` | a pin per schema file, for the AGENTS.md stanza and for release notes |
 
@@ -153,7 +153,10 @@ instances, station resolves their secrets, and the calls a command reports in
 Station's Go module cannot be required outside a go workspace yet
 ([voxgig/station#27](https://github.com/voxgig/station/issues/27)), so
 `go/go.mod` maps its unresolvable versions to real revisions with `replace`
-lines; move them with the station pin.
+lines; move them with the station pin. station, sekreto and plugin are not
+published as gems at all, so the Ruby port loads them from checkouts at the
+revisions `ruby/libs.json` pins: `make rb-libs` clones them, and `make rb-deps`
+refuses one off its pin or dirty, exactly as `sdk-check` does for an SDK.
 
 Station's Python library, and the sekreto and plugin libraries under it, are on
 no package index, and station reads its configuration shape from its own
@@ -256,23 +259,28 @@ constrains where the offline mode can be relied on:
 
 | Behaviour | TS | Go | Py | Rb | C |
 |---|---|---|---|---|---|
-| multi-segment response envelope (`body.data.x.y`) | yes | yes | yes | **no** | **no** |
-| `update` whose id matches nothing | **404** | 200, clobbers a record | 200, clobbers the first | 200, clobbers the first | 200, clobbers the first |
-| `update` merge depth | **deep** | shallow | shallow | shallow | shallow |
-| stamps `id` from the seed map key | yes | yes | yes | **no** | yes |
+| multi-segment response envelope (`body.data.x.y`) | yes | yes | yes | to recheck | **no** |
+| `update` whose id matches nothing | **404** | 200, clobbers a record | 200, clobbers the first | **404** | 200, clobbers the first |
+| `update` merge depth | **deep** | shallow | shallow | **deep** | shallow |
+| stamps `id` from the seed map key | yes | yes | yes | yes | yes |
 | required query params also matched | yes | yes | yes | **no** | **no** |
 
+The Rb `update` and `id` rows were rechecked by running joplin-sdk's Ruby
+client at its pin, which sdkgen 4.34.6 generated. That generation's Ruby
+feature also builds a multi-segment envelope, but linear-sdk's pin is an older
+generation, so the envelope row, the one that decides Linear, is to recheck.
+
 **The consequence that changes plans: Linear cannot be tested offline in the
-Ruby or C ports.** Every Linear operation unwraps a multi-segment envelope —
-`body.data.issue`, `body.data.issueCreate.issue` — and those two ports
-synthesise only a single segment. So until `issue/07` is resolved, the Ruby and
-C ports reach Linear through `mock/` instead. That is a declared exception with
-a named cause, not a port quietly growing its own mock.
+C port, and in Ruby that is to recheck.** Every Linear operation unwraps a
+multi-segment envelope — `body.data.issue`, `body.data.issueCreate.issue` — and
+C synthesises only a single segment. So until `issue/07` is resolved, the Ruby
+and C ports reach Linear through `mock/` instead. That is a declared exception
+with a named cause, not a port quietly growing its own mock.
 
 **And treat an `update` against an unseeded id as undefined behaviour** in every
-port. It is a 404 in TypeScript and a silent clobber of an unrelated record in
-the other four, which is the failure a mock exists to prevent. Seed what you
-update.
+port. It is a 404 in TypeScript and Ruby and a silent clobber of an unrelated
+record in the other three, which is the failure a mock exists to prevent. Seed
+what you update.
 
 ### Where the mock server still earns its place
 

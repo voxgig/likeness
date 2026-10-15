@@ -1,0 +1,16 @@
+{
+  "_doc": [
+    "The voxgig libraries the Ruby port loads from checkouts, pinned by commit:",
+    "none is published as a gem. `make rb-libs` clones each at its pin, and",
+    "`make rb-deps` verifies the pins and links the checkouts under ruby/vendor/,",
+    "the one place the port loads them from. `home` names the variable that",
+    "points at an existing checkout instead. station is the main revision",
+    "go/go.mod binds; sekreto is the revision station's CI pins; plugin is the",
+    "revision station's CI resolves from voxgig/plugin's main."
+  ],
+  "lib": {
+    "station": { "repo": "voxgig/station", "rev": "50667dc650e94470dd00038d259f35406b7cc873", "home": "STATION_HOME" },
+    "sekreto": { "repo": "voxgig/sekreto", "rev": "32b83acba90a8e4199be96f56d0cdd5f636c5dfb", "home": "SEKRETO_HOME" },
+    "plugin": { "repo": "voxgig/plugin", "rev": "43acbf266b0dbcf52e5ab5463d85c822da9cd234", "home": "PLUGIN_HOME" }
+  }
+}
