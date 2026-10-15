@@ -1,4 +1,4 @@
-OMNI: { version: 1  requires: ["fn"] }
+OMNI: { version:1 requires: ["fn"] }
 
 primary: unit: {
   # ---------------------------------------------------------------- envelope

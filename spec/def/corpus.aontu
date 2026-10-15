@@ -103,7 +103,7 @@ UnitEntry: type(
   })
 )
 
-OMNI?: close({ version: integer & min(1)  requires: [&: string] })
+OMNI?: close({ version:integer & min(1) requires: [&: string] })
 
 primary: close({
   unit: { &: close({ set: [&: $.UnitEntry] }) }
