@@ -11,8 +11,9 @@ each file is where it was filed.
 
 ## Status, 2026-10-14
 
-Every draft is filed. "Closed" for a `sdkgen` issue means the generator carries
-the fix; an SDK carries it only once regenerated. Joplin, Obsidian and Notion
+Every draft but `issue/12` and `issue/13` is filed. "Closed" for a `sdkgen`
+issue means the generator carries the fix; an SDK carries it only once
+regenerated. Joplin, Obsidian and Notion
 were regenerated with station's feature, loaded only when it initialises, and
 this repository is pinned to those revisions, the heads of open pull requests:
 Joplin at `89b86ca`
@@ -35,6 +36,8 @@ carries the fixes at its pin and is held (SPEC §0 decision 11).
 | `issue/09` | [notion-sdk#2](https://github.com/voxgig-sdk/notion-sdk/issues/2) | answered by the regeneration in [notion-sdk#5](https://github.com/voxgig-sdk/notion-sdk/pull/5), which generates `rb`; closes when it merges |
 | `issue/10` | [sdkgen#163](https://github.com/voxgig/sdkgen/issues/163) | closed; the Go harness no longer rewrites `json.Number` before seeding |
 | `issue/11` | [sdkgen#164](https://github.com/voxgig/sdkgen/issues/164) | closed |
+| `issue/12` | not filed yet | open; the Ruby port's suite excepts the two transcript entries it changes, and fails once they match |
+| `issue/13` | not filed yet | open; the Ruby port's wire test that walks a vault from its root is skipped, saying why |
 
 ## Filed directly, 2026-10-14
 
@@ -107,3 +110,5 @@ learns why a workaround in this repository exists.
 | `issue/09-notion-no-ruby-target.md` | `voxgig-sdk/notion-sdk` | **blocker** | no Ruby target, so likeness's Ruby port cannot reach Notion at all |
 | `issue/10-go-netsim-ignores-json-number.md` | `voxgig-sdk/joplin-sdk` (Go target) | major | a `net` option decoded as `json.Number` is silently ignored, so a simulated failure does not happen and the test passes |
 | `issue/11-paging-signal-unreachable.md` | `voxgig-sdk/joplin-sdk` (all four) | major | the paging feature computes `hasMore` and a cursor, and exposes them nowhere a caller can reach, so a consumer cannot follow pages or even detect one |
+| `issue/12-escurl-escapes-what-encodeuricomponent-keeps.md` | `voxgig/sdkgen` | major | the Ruby and Python SDKs percent-encode `!'()*` in a path parameter where TypeScript and Go send them as they are, so the ports' requests differ on the wire |
+| `issue/13-list-drops-items-that-are-not-records.md` | `voxgig/sdkgen` | major | a `list` whose items are not records returns entities with no data in Ruby, Python and Go, so a live Obsidian vault cannot be walked from its root |

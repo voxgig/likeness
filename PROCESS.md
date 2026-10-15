@@ -252,6 +252,22 @@ on. That was `upstream/issue/09`. The regeneration that adds station's feature
 no longer warns. A missing target is still reported as a warning on every run,
 for any source, rather than found during a port's stage.
 
+### What the Ruby SDKs send differently
+
+Two differences from the TypeScript SDKs reach the wire, both in sdkgen's
+templates:
+
+- The vendored `VoxgigStruct.escurl` percent-encodes `!'()*`, which
+  `encodeURIComponent` keeps, so a vault path holding one is spelled differently
+  in a call (`upstream/issue/12`). The transcript entries
+  `obsidian/list-odd-values` and `obsidian/list-odd-raw` differ in their `calls`
+  alone; `ruby/test/harness.rb` names them, and fails once they match.
+- A `list` builds an entity only for an item that is a record, so the plugin's
+  root listing, which names its entries as text, comes back as entities with no
+  data (`upstream/issue/13`). The offline transport lists records, so the corpus
+  is unaffected; a live vault cannot be walked from its root, and the wire
+  suite's walk is skipped, saying so.
+
 ### The feature is not yet identical across the ports
 
 The TypeScript implementation is the same 494 lines in all four SDKs, so there

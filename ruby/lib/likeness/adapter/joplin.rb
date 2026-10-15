@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
+require_relative '../sdk'
+
 # At load, before any station opens: station validates with whatever
 # VoxgigStruct is defined, and this SDK always loads its own copy.
-require 'Joplin_sdk'
+Likeness.require_sdk('Joplin_sdk')
 
 require_relative '../caps'
 require_relative '../envelope'

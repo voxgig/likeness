@@ -174,6 +174,28 @@ module Harness
     end
   end
 
+  # The entries whose calls this port's SDK spells differently on the wire: its
+  # vendored VoxgigStruct.escurl percent-encodes the characters `!'()*` that
+  # encodeURIComponent keeps. Their calls are compared with that spelling
+  # applied, and an entry whose calls match outright fails, as it no longer differs.
+  ESCURL_DIVERGES = %w[obsidian/list-odd-values obsidian/list-odd-raw].freeze
+
+  def escurl(path)
+    path.gsub(/[!'()*]/) { |c| format('%%%02X', c.ord) }
+  end
+
+  def calls_failures(entry, got, failures)
+    want = entry['out']['calls']
+    if ESCURL_DIVERGES.include?(entry['id'])
+      if same_calls?(want, got)
+        failures << "calls match the expectation outright, so #{entry['id']} no longer belongs in ESCURL_DIVERGES"
+        return
+      end
+      want = want.map { |c| c.merge('path' => escurl(c['path'])) }
+    end
+    failures << "calls #{JSON.generate(got)}, expected #{JSON.generate(want)}" unless same_calls?(want, got)
+  end
+
   def check(entry)
     failures = []
     out = entry['out']
@@ -184,7 +206,7 @@ module Harness
     check_stdout(entry, r.stdout, failures)
     want_err = out['stderr'] || ''
     failures << "stderr #{JSON.generate(r.stderr)}, expected #{JSON.generate(want_err)}" if r.stderr != want_err
-    failures << "calls #{JSON.generate(r.calls)}, expected #{JSON.generate(out['calls'])}" unless same_calls?(out['calls'], r.calls)
+    calls_failures(entry, r.calls, failures)
     prompts = PROMPTS[ctx] || []
     want_prompts = out['prompts'] || []
     failures << "prompts #{JSON.generate(prompts)}, expected #{JSON.generate(want_prompts)}" if prompts != want_prompts

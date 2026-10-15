@@ -145,10 +145,11 @@ test-py: sdk-check mock-deps py-deps
 # station, sekreto and plugin are no more published than the SDKs, so the
 # Ruby port loads them from checkouts at the revisions ruby/libs.json pins:
 # `rb-libs` clones them, and `rb-deps` verifies every pin and links each
-# checkout, and the SDK clone, under ruby/vendor/ - the one place the port
+# checkout, and the SDK clones, under ruby/vendor/ - the one place the port
 # looks. Point STATION_HOME, SEKRETO_HOME or PLUGIN_HOME at a checkout of the
 # pin to use it instead of a clone.
-RB_SDK := $(abspath $(or $(LIKENESS_SDK_ROOT),$(CURDIR)/../voxgig-sdk)/joplin-sdk)
+RB_SDK_ROOT := $(abspath $(or $(LIKENESS_SDK_ROOT),$(CURDIR)/../voxgig-sdk))
+RB_SDKS := joplin-sdk obsidian-sdk
 
 .PHONY: rb-libs
 rb-libs:
@@ -157,7 +158,7 @@ rb-libs:
 .PHONY: rb-deps
 rb-deps: sdk-check
 	@node tools/fetch-lib.mjs ruby/libs.json --check --link ruby/vendor
-	@ln -sfn "$(RB_SDK)" ruby/vendor/joplin-sdk
+	@for sdk in $(RB_SDKS); do ln -sfn "$(RB_SDK_ROOT)/$$sdk" "ruby/vendor/$$sdk"; done
 
 RB_TEST := ruby -Ilib -Itest -e 'ARGV.each { |f| require File.expand_path(f) }'
 
