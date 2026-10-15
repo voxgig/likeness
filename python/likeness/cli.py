@@ -12,6 +12,7 @@ from typing import Any, BinaryIO
 from likeness.config import ConfigError, homedir, join, load_config
 from likeness.core import PORT, VERSION, Ctx, run
 from likeness.identity import rfc3339
+from likeness.pin import presented_fingerprint
 from likeness.station import profile_of
 from likeness.text import utf8
 
@@ -183,9 +184,11 @@ def main(argv: list[str]) -> int:
         path=probe_path(env),
         home=home,
         dir=os.path.dirname(path) or '.',
+        config=path,
         stdin=read_stdin,
         tty=sys.stdin is not None and sys.stdin.isatty(),
         prompt=prompt,
+        presented=presented_fingerprint,
     ))
 
     # A reader that went away is not the port's failure: exit quietly with 0.

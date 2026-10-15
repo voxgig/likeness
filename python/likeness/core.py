@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
@@ -14,13 +14,14 @@ from likeness.adapters import ADAPTERS
 from likeness.args import Parsed, command_def, command_words, help_rows, help_text, parse_argv
 from likeness.calls import Call, Calls
 from likeness.caps import supports, term_of
-from likeness.config import homedir
+from likeness.config import Fs, homedir
 from likeness.envelope import render, serialise
 from likeness.errors import LikenessError, exit_for
 from likeness.evaluate import evaluate
 from likeness.identity import parse_time
 from likeness.note import Note, sort_notes
 from likeness.selector import SelectorError, fields_of, parse_selector
+from likeness.sources import Reply, add, list_sources, remove, rename
 from likeness.station import Connection, connections_of, open_station, profile_of, with_chain
 from likeness.vault import VaultEntry, secrets, vault_chain, vault_entry
 
@@ -46,13 +47,19 @@ class Ctx:
     fixture: dict[str, Any] | None = None
     path: list[dict[str, str]] | None = None
     # A path under home is shown from `~`; a relative vault path is read from
-    # dir, where station.json is.
+    # dir, where station.json is. The `sources` group rewrites the file at
+    # config, and likeness.json beside it.
     home: str | None = None
     dir: str | None = None
+    config: str | None = None
     stdin: Callable[[], str] | None = None
     # Stdin is a terminal, so what the environment lacks may be asked for.
     tty: bool = False
     prompt: Callable[[str], str | None] | None = None
+    # The fingerprint of the certificate an https base presents.
+    presented: Callable[[str], str] | None = None
+    # The file operations a `sources` write goes through.
+    fs: Fs | None = None
 
 
 @dataclass
@@ -406,7 +413,7 @@ def _cmd_get(flags: Flags, rest: list[str], session: Session) -> dict[str, Any]:
                      sources=sorted({n['instance'] for n in out}), calls=session.calls.count())
 
 
-def _cmd_doctor(flags: Flags, session: Session) -> dict[str, Any]:
+def _cmd_doctor(name: str, flags: Flags, session: Session) -> dict[str, Any]:
     conns = _selected(session.conns, flags)
     rows: list[dict[str, Any]] = []
     failures: list[str] = []
@@ -433,12 +440,12 @@ def _cmd_doctor(flags: Flags, session: Session) -> dict[str, Any]:
         rows.append(row)
     # The worst row wins: highest exit status, then code name to break a tie.
     codes = sorted(set(failures), key=lambda c: (-exit_for(c), c))
-    env = _envelope(['doctor'], codes[0] if codes else 'ok', rows, count=len(rows),
+    env = _envelope([name], codes[0] if codes else 'ok', rows, count=len(rows),
                     sources=sorted(c.instance for c in conns), calls=session.calls.count())
     if failures:
         noun = ' connection needs' if 1 == len(failures) else ' connections need'
         return _fails(env, str(len(failures)) + noun + ' attention',
-                      'start the application, check the token, and re-run `likeness doctor`')
+                      'start the application, check the token, and re-run `likeness ' + name + '`')
     return env
 
 
@@ -462,6 +469,25 @@ def _cmd_help(args: list[str]) -> tuple[dict[str, Any], str]:
     rows = [r for r in help_rows()
             if '' == name or r['command'] == name or r['command'].startswith(name + ' ')]
     return _envelope(['help'], 'ok', rows, count=len(rows)), text
+
+
+def _replied(name: str, got: Reply) -> tuple[dict[str, Any], str | None]:
+    return _envelope([name], 'no-match' if got.empty else 'ok', got.data, count=got.count), got.text
+
+
+def _cmd_sources(ctx: Ctx, parsed: Parsed, flags: Flags,
+                 watch: Callable[[Station], None]) -> tuple[dict[str, Any], str | None]:
+    """Every `sources` action but `test`, which runs as doctor does."""
+    name = parsed.command
+    if 'sources list' == name:
+        return _replied(name, list_sources(_open_configured(ctx), ctx.accounts or {}))
+    if 'sources add' == name:
+        return _replied(name, add(ctx, parsed.flags, flags, watch))
+    if 'sources remove' == name:
+        return _replied(name, remove(ctx, parsed.args[0]))
+    if 'sources rename' == name:
+        return _replied(name, rename(ctx, parsed.args[0], parsed.args[1]))
+    raise RuntimeError('no such sources action: ' + name)
 
 
 def _cmd_secrets(ctx: Ctx, name: str, flags: Flags, args: list[str]) -> tuple[dict[str, Any], str]:
@@ -500,6 +526,10 @@ def run(ctx: Ctx) -> Result:
     flags = _flags_of(parsed)
     calls = Calls()
 
+    def watch(station: Station) -> None:
+        nonlocal calls
+        calls = Calls(station)
+
     try:
         definition = command_def(name) or {}
         if not definition.get('ready'):
@@ -517,6 +547,9 @@ def run(ctx: Ctx) -> Result:
         if name.startswith('secrets '):
             env, text = _cmd_secrets(ctx, name, flags, parsed.args)
             return _result(env, flags.json, flags.deterministic, started, calls, text)
+        if name.startswith('sources ') and 'sources test' != name:
+            env, maybe = _cmd_sources(ctx, parsed, flags, watch)
+            return _result(env, flags.json, flags.deterministic, started, calls, maybe)
 
         session = Session(ctx, flags)
         calls = session.calls
@@ -525,7 +558,9 @@ def run(ctx: Ctx) -> Result:
         elif 'get' == name:
             env = _cmd_get(flags, parsed.args, session)
         elif 'doctor' == name:
-            env = _cmd_doctor(flags, session)
+            env = _cmd_doctor(name, flags, session)
+        elif 'sources test' == name:
+            env = _cmd_doctor(name, replace(flags, instance=[*flags.instance, *parsed.args]), session)
         else:
             raise RuntimeError('declared ready and not dispatched: ' + name)
     except Exception as err:

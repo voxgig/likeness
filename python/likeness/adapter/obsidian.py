@@ -95,6 +95,62 @@ def configure(instance: str, block: dict[str, Any]) -> dict[str, str]:
     return transport(instance, block)
 
 
+PLAIN = 'http://127.0.0.1:27123'
+
+
+def _bad(message: str, remedy: str) -> LikenessError:
+    return LikenessError('invalid-argument', message, remedy)
+
+
+def setup(instance: str, given: dict[str, Any], ask: Any) -> dict[str, Any]:
+    """The block `sources add` writes. An https base is pinned to the
+    certificate it presents, which --fingerprint names or a terminal confirms:
+    never one taken on trust because it answered first."""
+    base = str(given.get('base'))
+    fingerprint = given.get('fingerprint')
+    if given.get('plain-http') is True:
+        if fingerprint is not None:
+            raise _bad('--plain-http and --fingerprint contradict each other: plain HTTP pins no certificate',
+                       'give one of them')
+        if not base.startswith('http://'):
+            raise _bad('--plain-http needs an http base',
+                       "give the plugin's HTTP address with --base, such as " + PLAIN)
+        return {'base': base, 'options': {'tls': False}}
+    if not base.startswith('https://'):
+        raise _bad('an http base is plain HTTP, which only --plain-http declares',
+                   "add --plain-http, or give the plugin's HTTPS address with --base")
+
+    pin = None
+    if fingerprint is not None:
+        try:
+            pin = parse_pin(fingerprint)
+        except PinError:
+            raise _bad('--fingerprint is not sha256: and 64 hex digits',
+                       "give the certificate's SHA-256, as sha256:<hex>") from None
+    elif not ask.tty:
+        raise _bad("pinning the plugin's certificate needs --fingerprint, or a terminal to confirm it on",
+                   'pass --fingerprint sha256:<hex>; '
+                   '`openssl x509 -noout -fingerprint -sha256 -in obsidian-local-rest-api.crt` prints it')
+
+    named = SOURCE + ' at ' + base
+    detail = {'source': SOURCE, 'instance': instance}
+    try:
+        presented = ask.presented(base)
+    except Exception:
+        raise LikenessError('source-unavailable', 'nothing at ' + base + ' presented a certificate',
+                            'start Obsidian with the Local REST API community plugin enabled, '
+                            'or give its address with --base', detail) from None
+    if pin is not None and pin != presented:
+        raise LikenessError('certificate-rejected',
+                            named + ' presents ' + presented + ', not the certificate --fingerprint names',
+                            "check the fingerprint against the plugin's certificate; "
+                            'if it was regenerated, pass the new one', detail)
+    if pin is None and not ask.confirm(named + ' presents ' + presented + '; type yes to pin it'):
+        raise LikenessError('certificate-rejected', 'the certificate ' + named + ' presents was not confirmed',
+                            "check it against the plugin's certificate, and run it again to pin it", detail)
+    return {'base': base, 'options': {'tls': {'fingerprint': presented}}}
+
+
 @dataclass(frozen=True)
 class Handle:
     sdk: Any

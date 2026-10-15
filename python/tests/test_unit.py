@@ -19,6 +19,7 @@ from likeness.evaluate import fold_case
 from likeness.identity import CROCKFORD, lid, rfc3339
 from likeness.pin import fingerprint_of, parse_pin
 from likeness.selector import SelectorError, parse_selector
+from likeness.sources import ref_for, secret_name
 from likeness.vault import vault_entry
 from tests.harness import entries
 
@@ -105,6 +106,8 @@ REGISTRY: dict[str, Callable[[Any], Any]] = {
     'projectNotion': lambda v: notion.project(v['raw'], v['instance'], v['account'], False),
     'parsePin': parse_pin,
     'fingerprintOf': lambda digits: fingerprint_of(bytes.fromhex(digits)),
+    'secretName': secret_name,
+    'refFor': lambda v: ref_for(v['source'], v.get('instance')),
     'vaultEntry': _vault_entry,
 }
 
