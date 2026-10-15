@@ -912,7 +912,7 @@ primary: unit: {
       fn: "connections"
       in: {
         station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin$zed\":{},\"joplin\":{},\"joplin$abe\":{\"base\":\"http://x\"}}}}}"
-        likeness: "{\"likeness\":1,\"instances\":{\"joplin$zed\":{\"account\":\"z\"},\"joplin\":{\"account\":\"local\"},\"joplin$abe\":{\"account\":\"a\"}}}"
+        likeness: "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin$zed\":{\"account\":\"z\"},\"joplin\":{\"account\":\"local\"},\"joplin$abe\":{\"account\":\"a\"}}}}}"
       }
       out: [
         { instance:"joplin" source:"joplin" account:"local" }
@@ -926,7 +926,7 @@ primary: unit: {
       fn: "connections"
       in: {
         station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{\"active\":false},\"joplin$on\":{}}}}}"
-        likeness: "{\"likeness\":1,\"instances\":{\"joplin$on\":{\"account\":\"on\"}}}"
+        likeness: "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin$on\":{\"account\":\"on\"}}}}}"
       }
       out: [{ instance:"joplin$on" source:"joplin" account:"on" }]
     }
@@ -937,9 +937,35 @@ primary: unit: {
       fn: "connections"
       in: {
         station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}}}}"
-        likeness: "{\"likeness\":1,\"instances\":{}}"
+        likeness: "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{}}}}"
       }
-      err: "instance \"joplin\" has no account in likeness.json"
+      err: "instance \"joplin\" has no account in likeness.json under profile \"default\""
+    }
+
+    {
+      id: "config/account-follows-the-profile"
+      # Profiles declaring one ref against different applications: each
+      # profile's notes take their identity from its own account.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}},\"work\":{\"sdk\":{\"joplin\":{\"base\":\"http://127.0.0.1:41185\"}}}}}"
+        likeness: "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":\"home\"}}},\"work\":{\"instances\":{\"joplin\":{\"account\":\"office\"}}}}}"
+        profile: "work"
+      }
+      out: [{ instance:"joplin" source:"joplin" account:"office" }]
+    }
+
+    {
+      id: "config/profile-inherits-no-account"
+      # Station's profile merge gives the profile its instance; the account is
+      # not merged with it.
+      fn: "connections"
+      in: {
+        station: "{\"station\":1,\"profiles\":{\"default\":{\"sdk\":{\"joplin\":{}}},\"work\":{}}}"
+        likeness: "{\"likeness\":1,\"profiles\":{\"default\":{\"instances\":{\"joplin\":{\"account\":\"home\"}}}}}"
+        profile: "work"
+      }
+      err: "instance \"joplin\" has no account in likeness.json under profile \"work\""
     }
   ]
 
