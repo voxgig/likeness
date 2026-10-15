@@ -1,4 +1,10 @@
 {
+  "OMNI": {
+    "requires": [
+      "fn"
+    ],
+    "version": 1
+  },
   "primary": {
     "unit": {
       "args": {

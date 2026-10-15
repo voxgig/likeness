@@ -1,3 +1,5 @@
+OMNI: { version: 1  requires: ["ctxargs"] }
+
 primary: cli: {
   args: set: [
     {

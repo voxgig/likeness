@@ -1,4 +1,10 @@
 {
+  "OMNI": {
+    "requires": [
+      "ctxargs"
+    ],
+    "version": 1
+  },
   "primary": {
     "cli": {
       "args": {
