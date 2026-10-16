@@ -34,12 +34,8 @@ module Harness
     File.read(File.join(ROOT, rel), encoding: 'UTF-8')
   end
 
-  def document(name)
-    JSON.parse(read("spec/#{name}.json"))
-  end
-
   def corpus(name)
-    document(name)['primary'][name]
+    JSON.parse(read("spec/#{name}.json"))['primary'][name]
   end
 
   def entries(name)
