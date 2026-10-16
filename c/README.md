@@ -10,9 +10,7 @@ every port shares, compiled from its C sources into those two test programs
 and nothing else. `make c-libs` at the repository root clones it at the
 revision `libs.json` pins, and `make c-deps` runs that, then verifies the pin
 and links the checkout at `vendor/omni`; `OMNI_HOME` names a checkout of the pin to use
-instead. omni's header declares one typedef twice, which C11 allows and C99
-does not, so its three sources build as C11 under the same warnings, and the
-test programs reach its header through `-isystem` and stay C99.
+instead. omni's three sources build under the same C99 flags as the port.
 
 ```sh
 make                  # bin/likeness-c

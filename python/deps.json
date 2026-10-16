@@ -7,12 +7,12 @@
     "from its own checkout at run time. The SDKs are named here and pinned in",
     "spec/sources.aontu, like every port's; python/requirements.txt pins the rest.",
     "plugin is unpinned in station's CI; this is the revision that resolves to.",
-    "omni is the corpus runner (SPEC 22 Q9): main at the merge of voxgig/omni#75, the first revision carrying fn, ctxargs, wait and all."
+    "omni is the corpus runner (SPEC 22 Q9): main at the revision @voxgig/omni 0.2.0 was released from, which every port runs."
   ],
   "checkout": {
     "omni": {
       "repo": "voxgig/omni",
-      "rev": "0a93a98765d06764d528bd43313041b9e52e4e12",
+      "rev": "e9cb45a308a4da47ffdbc1b3149b9c59199190b2",
       "dir": "python"
     },
     "plugin": {

@@ -71,7 +71,7 @@ class UnitCorpusTest < Minitest::Test
     ->(v) { JSON.parse(Likeness.serialise(fn.call(v))) }
   end
 
-  UNIT = VoxgigOmni.make_runner(Harness.document('unit'),
+  UNIT = VoxgigOmni.make_runner(File.join(Harness::ROOT, 'spec', 'unit.json'),
                                 { subject: ->(name) { REGISTRY.key?(name) ? plain(REGISTRY[name]) : nil } })
                    .call('unit')
 
