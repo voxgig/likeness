@@ -6,9 +6,8 @@ require (
 	github.com/voxgig-sdk/joplin-sdk/go v0.0.0
 	github.com/voxgig-sdk/notion-sdk/go v0.0.0
 	github.com/voxgig-sdk/obsidian-sdk/go v0.0.0
-	// The corpus runner, for the tests alone: main at the revision
-	// @voxgig/omni 0.2.0 was released from, which no go/v tag carries yet.
-	github.com/voxgig/omni/go v0.1.1-0.20261015215659-e9cb45a308a4
+	// The corpus runner, for the tests alone.
+	github.com/voxgig/omni/go v0.2.0
 	github.com/voxgig/sekreto/go v0.0.0-20260916220330-32b83acba90a
 	github.com/voxgig/station/go v0.0.1
 	golang.org/x/term v0.33.0
