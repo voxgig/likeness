@@ -10,11 +10,6 @@
     "until then."
   ],
   "cause": {
-    "ts-station-minivault": {
-      "issues": ["voxgig/station#34"],
-      "predict": "vault-unopened",
-      "reason": "the published @voxgig/station 0.1.0 depends on sekreto 0.1.2, which has no minivault, so station refuses the vault as an unknown provider kind"
-    },
     "linear-adapter": {
       "issues": ["voxgig/sdkgen#400"],
       "predict": "no-adapter",
@@ -32,10 +27,7 @@
     }
   },
   "waiting": [
-    { "port": "ts", "source": "joplin", "cause": "ts-station-minivault" },
-    { "port": "ts", "source": "obsidian", "cause": "ts-station-minivault" },
-    { "port": "ts", "source": "notion", "cause": "ts-station-minivault" },
-    { "port": "ts", "source": "linear", "cause": "ts-station-minivault", "behind": ["linear-adapter"] },
+    { "port": "ts", "source": "linear", "cause": "linear-adapter" },
 
     { "port": "go", "source": "obsidian", "commands": ["list"], "cause": "nameless-root" },
     { "port": "go", "source": "linear", "cause": "linear-adapter" },

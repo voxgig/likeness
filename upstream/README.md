@@ -62,7 +62,7 @@ waits on which.
 | [aontu#318](https://github.com/aontu-lang/aontu/issues/318) | `aontu-lang/aontu` | `vet --coverage` reads a corpus whose entries are a disjunction of records as having checked nothing (`spec/unit.aontu`: 0 of 519 leaves), so `--strict-coverage` cannot gate this repository yet |
 | [station#23](https://github.com/voxgig/station/issues/23) | `voxgig/station` | station's C port is env-only and does not use sekreto's C port |
 | [station#33](https://github.com/voxgig/station/issues/33) | `voxgig/station` | the ruby, php and perl stations gave sekreto no plugins, so none could open a minivault. Closed by [station#40](https://github.com/voxgig/station/pull/40); the Ruby port is pinned to a station that carries it, and reaches a live token |
-| [station#34](https://github.com/voxgig/station/issues/34) | `voxgig/station` | the published `@voxgig/station` 0.1.0 depends on a sekreto with no minivault; `main` has the newer one, and [station#62](https://github.com/voxgig/station/pull/62) bumps it to 0.2.0 for release, so the TypeScript port waits on that release for a live token |
+| [station#34](https://github.com/voxgig/station/issues/34) | `voxgig/station` | the published `@voxgig/station` 0.1.0 depended on a sekreto with no minivault. Released in 0.2.0 ([station#62](https://github.com/voxgig/station/pull/62)); the TypeScript port takes it, and reaches a live token |
 
 ## Filed from Stage 2, 2026-10-15
 
