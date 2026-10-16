@@ -34,7 +34,7 @@ In the staging plan's terms (SPEC §20) **Stage 0 and Stage 1** are complete: th
 and the walking skeleton, in four ports, with C through the unit corpus. **Stage 2**, the
 matrix, is under way: Joplin, Obsidian and Notion from every port but C, every client bound
 through station, and Obsidian over a pinned certificate. `make matrix` runs it from every
-port's own CLI against `mock/`: 6 of its 20 cells are green, and it names the upstream issue
+port's own CLI against `mock/`: 9 of its 20 cells are green, and it names the upstream issue
 behind each red one. Linear waits on [sdkgen#400](https://github.com/voxgig/sdkgen/issues/400).
 Stage 3 is the primary loop: search and writes.
 
