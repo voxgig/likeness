@@ -1,5 +1,5 @@
-github.com/voxgig/omni/go v0.1.1-0.20261015215659-e9cb45a308a4 h1:4yEsnkXhonberwkmY0t9D6Rgy5ZQ0PUfvn4RS4xpv7Q=
-github.com/voxgig/omni/go v0.1.1-0.20261015215659-e9cb45a308a4/go.mod h1:DHNBwo/Up+RHQQYES3MZhVfqCrFxrhMxfiQj3ms1b9o=
+github.com/voxgig/omni/go v0.2.0 h1:hdxriXYdrYkEFiyqPow9kFloRn7TATkxf67T581VFdQ=
+github.com/voxgig/omni/go v0.2.0/go.mod h1:DHNBwo/Up+RHQQYES3MZhVfqCrFxrhMxfiQj3ms1b9o=
 github.com/voxgig/plugin/go v0.0.0-20260901203214-91f294b7a228 h1:1Ymh0cwv1nKIULf9+EBhsi1G70J9msxA8HqIRQf8T1w=
 github.com/voxgig/plugin/go v0.0.0-20260901203214-91f294b7a228/go.mod h1:JWU6S3ozw+ubz54qiRwWHcq7WoL79d1Ka4xdVDXAoa8=
 github.com/voxgig/sekreto/go v0.0.0-20260916220330-32b83acba90a h1:3qNNhyU86OPx7IstxcBEq5tgFPj/XRkSKLUjlIzKdkI=
