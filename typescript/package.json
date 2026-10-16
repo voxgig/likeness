@@ -17,7 +17,7 @@
     "@voxgig-sdk/notion-sdk": "file:../../voxgig-sdk/notion-sdk/ts",
     "@voxgig-sdk/obsidian-sdk": "file:../../voxgig-sdk/obsidian-sdk/ts",
     "@voxgig/sekreto": "0.3.0",
-    "@voxgig/station": "0.1.0"
+    "@voxgig/station": "0.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

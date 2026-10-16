@@ -26,7 +26,7 @@ The reasoned specification lives in
 | `ruby/` — the Ruby port | the same again, on station's Ruby library and the three SDKs' `rb` gems, loaded together with their constant collisions ([sdkgen#404](https://github.com/voxgig/sdkgen/issues/404)) proved inert for what likeness uses |
 | `c/` — the fifth port, C99 and POSIX with no dependency; its tests compile omni | every pure function of the unit corpus; `version`, `help` and `which`; every other command refused as `unsupported-capability`, naming what it waits on: a live transport in the C SDK ([sdkgen#403](https://github.com/voxgig/sdkgen/issues/403)), two C SDKs in one program ([sdkgen#405](https://github.com/voxgig/sdkgen/issues/405)) and station's C library reading the vault ([station#23](https://github.com/voxgig/station/issues/23)) |
 | The parity comparison | `make parity`: the TypeScript, Go, Python and Ruby ports agree on every entry but one answer declared waiting in `tools/parity-waiting.json`, each names itself, and the comparison is proved to go red, a stale declaration included. It runs the transcript corpus, so C joins it when its transcript cells do |
-| The source × port matrix | `make matrix`: each port's own CLI binary reaches each source through its station-bound SDK, its token in a vault the run makes, against `mock/`. Go, Python and Ruby reach Joplin and Notion, and Obsidian but for its `list`. Every other cell is red, naming in `tools/matrix-waiting.json` the upstream issue it waits on, and is held to what that issue predicts: a station release for TypeScript's vault ([station#34](https://github.com/voxgig/station/issues/34)), Linear ([sdkgen#400](https://github.com/voxgig/sdkgen/issues/400)), C's three, and the walk of an Obsidian vault from its root in Go, Python and Ruby ([sdkgen#419](https://github.com/voxgig/sdkgen/issues/419)). It runs in `make check`, and CI writes its table to the run's summary |
+| The source × port matrix | `make matrix`: each port's own CLI binary reaches each source through its station-bound SDK, its token in a vault the run makes, against `mock/`. TypeScript reaches Joplin, Obsidian and Notion; Go, Python and Ruby reach Joplin and Notion, and Obsidian but for its `list`. Every other cell is red, naming in `tools/matrix-waiting.json` the upstream issue it waits on, and is held to what that issue predicts: Linear ([sdkgen#400](https://github.com/voxgig/sdkgen/issues/400)), C's three, and the walk of an Obsidian vault from its root in Go, Python and Ruby ([sdkgen#419](https://github.com/voxgig/sdkgen/issues/419)). It runs in `make check`, and CI writes its table to the run's summary |
 | `mock/` — a Fastify server emulating all four sources on one port | working, smoke-tested |
 | `replica/` — a local SQLite copy reached through a generated SDK | designed; schema and search verified, SDK not generated |
 
@@ -34,7 +34,7 @@ In the staging plan's terms (SPEC §20) **Stage 0 and Stage 1** are complete: th
 and the walking skeleton, in four ports, with C through the unit corpus. **Stage 2**, the
 matrix, is under way: Joplin, Obsidian and Notion from every port but C, every client bound
 through station, and Obsidian over a pinned certificate. `make matrix` runs it from every
-port's own CLI against `mock/`: 6 of its 20 cells are green, and it names the upstream issue
+port's own CLI against `mock/`: 9 of its 20 cells are green, and it names the upstream issue
 behind each red one. Linear waits on [sdkgen#400](https://github.com/voxgig/sdkgen/issues/400).
 Stage 3 is the primary loop: search and writes.
 
@@ -197,11 +197,9 @@ Joplin's `token` query parameter
 sekreto every plugin in Ruby
 ([voxgig/station#33](https://github.com/voxgig/station/issues/33)), so each
 reaches a live source through the vault. The TypeScript port takes station from
-npm, and `@voxgig/station` 0.1.0 depends on a sekreto with no minivault
-([voxgig/station#34](https://github.com/voxgig/station/issues/34)); the release
-that fixes it is [voxgig/station#62](https://github.com/voxgig/station/pull/62).
-`make matrix` holds that as a red cell naming its issue, and fails the day it
-stops holding.
+npm at `@voxgig/station` 0.2.0, the first release whose sekreto has a minivault
+([voxgig/station#34](https://github.com/voxgig/station/issues/34)), so it reaches
+one too.
 
 With no instances configured they answer `no-match` and exit 1, which is the
 answer "none" rather than an error.
