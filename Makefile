@@ -56,6 +56,8 @@ help:
 	@echo '  test-py       run the Python port against both corpora'
 	@echo '  test-rb       run the Ruby port against both corpora'
 	@echo '  rb-libs       clone the voxgig libraries the Ruby port loads, at their pinned revisions'
+	@echo '  c-libs        clone omni, which the C test programs compile, at its pinned revision'
+	@echo '  c-deps        c-libs, then verify that pin and link the checkout under c/vendor/'
 	@echo '  test-c        build and run the C port: the unit corpus and what it answers'
 	@echo '  test-c-asan   the C suite under AddressSanitizer and UBSan'
 	@echo '  test-c-valgrind  the C suite under Valgrind'
@@ -144,11 +146,12 @@ test-py: sdk-check mock-deps py-deps
 
 
 # station, sekreto and plugin are no more published than the SDKs, so the
-# Ruby port loads them from checkouts at the revisions ruby/libs.json pins:
-# `rb-libs` clones them, and `rb-deps` verifies every pin and links each
-# checkout, and the SDK clones, under ruby/vendor/ - the one place the port
-# looks. Point STATION_HOME, SEKRETO_HOME or PLUGIN_HOME at a checkout of the
-# pin to use it instead of a clone.
+# Ruby port loads them from checkouts at the revisions ruby/libs.json pins, and
+# its tests load omni the same way: `rb-libs` clones them, and `rb-deps`
+# verifies every pin and links each checkout, and the SDK clones, under
+# ruby/vendor/ - the one place the port looks. Point STATION_HOME,
+# SEKRETO_HOME, PLUGIN_HOME or OMNI_HOME at a checkout of the pin to use it
+# instead of a clone.
 RB_SDK_ROOT := $(abspath $(or $(LIKENESS_SDK_ROOT),$(CURDIR)/../voxgig-sdk))
 RB_SDKS := joplin-sdk notion-sdk obsidian-sdk
 
@@ -168,18 +171,29 @@ test-rb: rb-deps mock-deps
 	@cd ruby && $(RB_TEST) test/*_test.rb
 
 
-# The C port reads no SDK and no clone. Until the C SDK has a live transport,
-# its SDKs link into one program and station's C library reads the vault, it
-# runs the unit corpus and the transcript entries that need no source, and
+# The C port reads no SDK. Its test programs run both corpora on omni, compiled
+# from a checkout at the revision c/libs.json pins: `c-libs` clones it, and
+# `c-deps` runs that, then verifies the pin and links it under c/vendor/, so
+# every C test target fetches what it compiles. Point OMNI_HOME at a
+# checkout of the pin to use it instead of a clone. The library and the binary
+# compile nothing from it. Until the C SDK has a live transport, its SDKs link
+# into one program and station's C library reads the vault, the port answers
+# the unit corpus and the transcript entries that need no source, and
 # `parity` does not include it.
-.PHONY: test-c test-c-asan test-c-valgrind
-test-c:
+.PHONY: c-libs c-deps test-c test-c-asan test-c-valgrind
+c-libs:
+	@node tools/fetch-lib.mjs c/libs.json
+
+c-deps: c-libs
+	@node tools/fetch-lib.mjs c/libs.json --check --link c/vendor
+
+test-c: c-deps
 	@$(MAKE) --no-print-directory -C c test
 
-test-c-asan:
+test-c-asan: c-deps
 	@$(MAKE) --no-print-directory -C c asan
 
-test-c-valgrind:
+test-c-valgrind: c-deps
 	@$(MAKE) --no-print-directory -C c valgrind
 
 

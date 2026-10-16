@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	joplin "github.com/voxgig-sdk/joplin-sdk/go"
+	omni "github.com/voxgig/omni/go"
 )
 
 func entryByID(t *testing.T, root, id string) map[string]any {
@@ -15,17 +17,11 @@ func entryByID(t *testing.T, root, id string) map[string]any {
 	for _, e := range corpusEntries(t, root, "cli") {
 		if id == str(e, "id") {
 			// A deep copy, so a mutation here cannot leak into the real runner.
-			b, err := json.Marshal(e)
+			out, err := cloneExact(e)
 			if nil != err {
 				t.Fatal(err)
 			}
-			dec := json.NewDecoder(strings.NewReader(string(b)))
-			dec.UseNumber()
-			var out map[string]any
-			if err := dec.Decode(&out); nil != err {
-				t.Fatal(err)
-			}
-			return out
+			return out.(map[string]any)
 		}
 	}
 	t.Fatalf("no corpus entry with id %s", id)
@@ -46,6 +42,51 @@ func anyStarts(fs []string, prefix string) bool {
 	return false
 }
 
+// sides is the expected and actual results of omni's one result mismatch.
+func sides(t *testing.T, failures []string) (map[string]any, map[string]any) {
+	t.Helper()
+	if 1 != len(failures) {
+		t.Fatalf("expected one failure, got %v", failures)
+	}
+	lines := strings.Split(failures[0], "\n")
+	if !strings.HasSuffix(lines[0], ": result mismatch") {
+		t.Fatalf("not a result mismatch: %s", failures[0])
+	}
+	found := map[string]string{}
+	for _, ln := range lines[1:] {
+		k, v, _ := strings.Cut(strings.TrimPrefix(ln, "  "), ":")
+		found[k] = strings.TrimSpace(v)
+	}
+	return mustDecode(t, found["expected"]), mustDecode(t, found["actual"])
+}
+
+// differs is the fields the expected and actual results disagree on.
+func differs(t *testing.T, failures []string) string {
+	t.Helper()
+	want, got := sides(t, failures)
+	keys := map[string]any{}
+	for k := range want {
+		keys[k] = true
+	}
+	for k := range got {
+		keys[k] = true
+	}
+	out := []string{}
+	for _, k := range sortedKeys(keys) {
+		if !reflect.DeepEqual(want[k], got[k]) {
+			out = append(out, k)
+		}
+	}
+	return strings.Join(out, " ")
+}
+
+func reports(t *testing.T, fields string, failures []string) {
+	t.Helper()
+	if got := differs(t, failures); fields != got {
+		t.Fatalf("omni reports %q differing, expected %q:\n%s", got, fields, strings.Join(failures, "\n"))
+	}
+}
+
 /*
 The control. If this ever fails, every test below is meaningless: a harness
 that reports failures for a correct entry proves nothing by reporting them for
@@ -62,9 +103,7 @@ func TestMetaWrongExitCodeIsReported(t *testing.T) {
 	root := Root(t)
 	e := entryByID(t, root, "list/all")
 	outOf(e)["exit"] = json.Number("3")
-	if f := Check(t, root, e); !anyStarts(f, "exit ") {
-		t.Fatalf("no exit failure in %v", f)
-	}
+	reports(t, "exit", Check(t, root, e))
 }
 
 func TestMetaOneByteOfStdoutIsReported(t *testing.T) {
@@ -91,9 +130,7 @@ func TestMetaOneByteOfStdoutIsReported(t *testing.T) {
 	defer os.Remove(tmp)
 
 	outOf(e)["stdout"] = rel
-	if f := Check(t, root, e); !anyStarts(f, "stdout differs") {
-		t.Fatalf("no stdout failure in %v", f)
-	}
+	reports(t, "stdout", Check(t, root, e))
 }
 
 func TestMetaWrongVaultNamesAreReported(t *testing.T) {
@@ -101,9 +138,7 @@ func TestMetaWrongVaultNamesAreReported(t *testing.T) {
 	e := entryByID(t, root, "secrets/remove")
 	vault := e["out"].(map[string]any)["vault"].(map[string]any)
 	vault["names"] = []any{"joplin.apikey", "notion.apikey"}
-	if f := Check(t, root, e); !anyStarts(f, "vault names ") {
-		t.Fatalf("no vault failure in %v", f)
-	}
+	reports(t, "vault", Check(t, root, e))
 }
 
 func TestMetaWrongVaultValueIsReported(t *testing.T) {
@@ -111,8 +146,10 @@ func TestMetaWrongVaultValueIsReported(t *testing.T) {
 	e := entryByID(t, root, "secrets/set-from-stdin")
 	vault := e["out"].(map[string]any)["vault"].(map[string]any)
 	vault["values"] = map[string]any{"joplin.apikey": "rotated-token\n"}
-	if f := Check(t, root, e); !anyStarts(f, "vault value of ") {
-		t.Fatalf("no value failure in %v", f)
+	want, got := sides(t, Check(t, root, e))
+	wv, gv := want["vault"].(map[string]any), got["vault"].(map[string]any)
+	if !reflect.DeepEqual(wv["names"], gv["names"]) || reflect.DeepEqual(wv["values"], gv["values"]) {
+		t.Fatalf("expected the values alone to differ: %v against %v", wv, gv)
 	}
 }
 
@@ -120,18 +157,14 @@ func TestMetaUnexpectedPromptIsReported(t *testing.T) {
 	root := Root(t)
 	e := entryByID(t, root, "secrets/passphrase-typed")
 	e["out"].(map[string]any)["prompts"] = []any{}
-	if f := Check(t, root, e); !anyStarts(f, "prompts ") {
-		t.Fatalf("no prompt failure in %v", f)
-	}
+	reports(t, "prompts", Check(t, root, e))
 }
 
 func TestMetaMissingCallIsReported(t *testing.T) {
 	root := Root(t)
 	e := entryByID(t, root, "list/all")
 	outOf(e)["calls"] = []any{}
-	if f := Check(t, root, e); !anyStarts(f, "calls ") {
-		t.Fatalf("no calls failure in %v", f)
-	}
+	reports(t, "calls", Check(t, root, e))
 }
 
 /*
@@ -145,9 +178,7 @@ func TestMetaExtraCallIsReported(t *testing.T) {
 	outOf(e)["calls"] = append(cs, map[string]any{
 		"instance": "jot", "method": "GET", "path": "/notes",
 	})
-	if f := Check(t, root, e); !anyStarts(f, "calls ") {
-		t.Fatalf("no calls failure in %v", f)
-	}
+	reports(t, "calls", Check(t, root, e))
 }
 
 func TestMetaWrongCallPathIsReported(t *testing.T) {
@@ -156,18 +187,14 @@ func TestMetaWrongCallPathIsReported(t *testing.T) {
 	outOf(e)["calls"] = []any{map[string]any{
 		"instance": "jot", "method": "GET", "path": "/folders",
 	}}
-	if f := Check(t, root, e); !anyStarts(f, "calls ") {
-		t.Fatalf("no calls failure in %v", f)
-	}
+	reports(t, "calls", Check(t, root, e))
 }
 
 func TestMetaUnexpectedStderrIsReported(t *testing.T) {
 	root := Root(t)
 	e := entryByID(t, root, "list/all")
 	outOf(e)["stderr"] = "something the command never printed\n"
-	if f := Check(t, root, e); !anyStarts(f, "stderr ") {
-		t.Fatalf("no stderr failure in %v", f)
-	}
+	reports(t, "stderr", Check(t, root, e))
 }
 
 func TestMetaEveryFailureIsReported(t *testing.T) {
@@ -176,9 +203,7 @@ func TestMetaEveryFailureIsReported(t *testing.T) {
 	outOf(e)["exit"] = json.Number("3")
 	outOf(e)["calls"] = []any{}
 	outOf(e)["stderr"] = "no\n"
-	if f := Check(t, root, e); 3 != len(f) {
-		t.Fatalf("expected three failures, got %v", f)
-	}
+	reports(t, "calls exit stderr", Check(t, root, e))
 }
 
 func TestMetaMissingExpectationFileIsReported(t *testing.T) {
@@ -199,7 +224,14 @@ harness parsed stdout and re-rendered it, so every one of these passed.
 func stdoutFailures(t *testing.T, root string, e map[string]any, actual string) []string {
 	t.Helper()
 	failures := []string{}
-	checkStdout(t, root, str(outOf(e), "stdout"), actual, nil, func(s string) { failures = append(failures, s) })
+	rel := str(outOf(e), "stdout")
+	want, err := expectation(root, rel)
+	if nil != err {
+		t.Fatal(err)
+	}
+	if seenStdout(strings.HasSuffix(rel, ".json"), actual, func(s string) { failures = append(failures, s) }) != want {
+		failures = append(failures, "stdout differs from "+rel)
+	}
 	return failures
 }
 
@@ -286,11 +318,29 @@ func mustDecode(t *testing.T, s string) map[string]any {
 	return m
 }
 
+func checkPredicted(t *testing.T, root string, e map[string]any, causes []cause) []string {
+	t.Helper()
+	r, err := predicted(root, e, causes)
+	if nil != err {
+		t.Fatal(err)
+	}
+	return checkFlags(t, root, r, omni.Flags{"null": false})
+}
+
+func checkHeld(t *testing.T, root string, e map[string]any, causes []cause) []string {
+	t.Helper()
+	r, err := resolved(root, e)
+	if nil != err {
+		t.Fatal(err)
+	}
+	return checkFlags(t, root, r, omni.Flags{"null": false, "wait": map[string]any{str(e, "id"): waitFor(causes)}})
+}
+
 func TestMetaWaitingEntryThatPassesIsReported(t *testing.T) {
 	root := Root(t)
-	why := notWaiting(t, root, entryByID(t, root, "list/all"), []cause{decodedPaths})
-	if !strings.HasPrefix(why, "list/all now passes: take it out of WAITING") {
-		t.Fatalf("not reported: %q", why)
+	f := checkHeld(t, root, entryByID(t, root, "list/all"), []cause{decodedPaths})
+	if 1 != len(f) || !strings.Contains(f[0], "(list/all): stale wait: "+decodedPaths.reason) {
+		t.Fatalf("not reported: %v", f)
 	}
 }
 
@@ -300,13 +350,14 @@ func TestMetaWaitingCallPathIsHeldToItsCause(t *testing.T) {
 	root := Root(t)
 	e := entryByID(t, root, "list/all")
 	outOf(e)["calls"].([]any)[0].(map[string]any)["path"] = "/no%74es"
-	if why := notWaiting(t, root, e, []cause{decodedPaths}); "" != why {
-		t.Fatalf("a difference the cause predicts was not accepted: %s", why)
+	if f := checkHeld(t, root, e, []cause{decodedPaths}); 0 < len(f) {
+		t.Fatalf("a failing entry was not held: %v", f)
+	}
+	if f := checkPredicted(t, root, e, []cause{decodedPaths}); 0 < len(f) {
+		t.Fatalf("a difference the cause predicts was not accepted: %v", f)
 	}
 	outOf(e)["calls"].([]any)[0].(map[string]any)["path"] = "/folders"
-	if why := notWaiting(t, root, e, []cause{decodedPaths}); !strings.Contains(why, "differs other than because") {
-		t.Fatalf("a difference the cause does not predict was not reported: %q", why)
-	}
+	reports(t, "calls", checkPredicted(t, root, e, []cause{decodedPaths}))
 }
 
 // A null list element in a raw payload, which droppedNulls declares, waits;
@@ -330,20 +381,21 @@ func TestMetaWaitingStdoutIsHeldToItsCause(t *testing.T) {
 	defer os.Remove(tmp)
 	outOf(e)["stdout"] = rel
 
-	if why := notWaiting(t, root, e, []cause{droppedNulls}); "" != why {
-		t.Fatalf("a difference the cause predicts was not accepted: %s", why)
+	if f := checkPredicted(t, root, e, []cause{droppedNulls}); 0 < len(f) {
+		t.Fatalf("a difference the cause predicts was not accepted: %v", f)
 	}
-	if why := notWaiting(t, root, e, []cause{decodedPaths}); !strings.Contains(why, "differs other than because") {
-		t.Fatalf("a difference the cause does not predict was not reported: %q", why)
-	}
+	reports(t, "stdout", checkPredicted(t, root, e, []cause{decodedPaths}))
 }
 
 func TestMetaWrittenFileThatDiffersIsReported(t *testing.T) {
 	root := Root(t)
 	e := entryByID(t, root, "connections/add-joplin")
 	outOf(e)["files"].(map[string]any)["station.json"] = "fixtures/config/several/station.json"
-	if f := Check(t, root, e); !anyStarts(f, "station.json differs") {
-		t.Fatalf("no file failure in %v", f)
+	f := Check(t, root, e)
+	reports(t, "files", f)
+	want, got := sides(t, f)
+	if reflect.DeepEqual(want["files"].(map[string]any)["station.json"], got["files"].(map[string]any)["station.json"]) {
+		t.Fatalf("station.json is not the file reported differing: %v", f)
 	}
 }
 
@@ -351,8 +403,10 @@ func TestMetaFileSaidAbsentAndWrittenIsReported(t *testing.T) {
 	root := Root(t)
 	e := entryByID(t, root, "connections/add-joplin")
 	outOf(e)["absent"] = []any{"likeness.json"}
-	if f := Check(t, root, e); !anyStarts(f, "likeness.json is there afterwards") {
-		t.Fatalf("no absence failure in %v", f)
+	f := Check(t, root, e)
+	reports(t, "absent", f)
+	if want, got := sides(t, f); !reflect.DeepEqual([]any{"likeness.json"}, want["absent"]) || reflect.DeepEqual(want["absent"], got["absent"]) {
+		t.Fatalf("likeness.json is not the name reported there: %v", f)
 	}
 }
 
@@ -360,7 +414,8 @@ func TestMetaFileNamedAndNeverWrittenIsReported(t *testing.T) {
 	root := Root(t)
 	e := entryByID(t, root, "connections/add-joplin-needs-an-account")
 	outOf(e)["files"] = map[string]any{"station.json": "spec/written/connections/add-joplin/station.json"}
-	if f := Check(t, root, e); !anyStarts(f, "station.json is not there afterwards") {
-		t.Fatalf("no missing-file failure in %v", f)
+	want, got := sides(t, Check(t, root, e))
+	if nil == want["files"].(map[string]any)["station.json"] || nil != got["files"].(map[string]any)["station.json"] {
+		t.Fatalf("station.json is not reported missing: %v against %v", want["files"], got["files"])
 	}
 }

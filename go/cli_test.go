@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	omni "github.com/voxgig/omni/go"
 )
 
 // A cause is an upstream fault an entry waits on, and how the entry's
@@ -35,9 +37,9 @@ var droppedNulls = cause{
 	stdout: withoutNullElements,
 }
 
-// Entries this port cannot answer yet, each with the causes it waits on. Each
-// is reported as skipped once it differs from its expectation only as its
-// causes predict; one that passes outright fails until it is taken out of here.
+// Entries this port cannot answer yet, each with the causes it waits on. omni
+// holds each while it fails and fails its group once it passes; each must also
+// pass once its causes' predictions are applied.
 var WAITING = map[string][]cause{
 	"obsidian/get-one":                        {decodedPaths},
 	"obsidian/list-by-tag":                    {decodedPaths},
@@ -100,20 +102,16 @@ func dropNullElements(v any) any {
 	return v
 }
 
-// predicted is the entry as its causes have it, and its expected stdout likewise.
-func predicted(t *testing.T, e map[string]any, causes []cause) (map[string]any, func(string) string) {
-	t.Helper()
-	raw, err := json.Marshal(e)
+// predicted is the entry resolved as its causes have it: each call path
+// rewritten in the entry, and the expected stdout once resolved, since the
+// entry names that only by path.
+func predicted(root string, e map[string]any, causes []cause) (map[string]any, error) {
+	copied, err := cloneExact(e)
 	if nil != err {
-		t.Fatal(err)
+		return nil, err
 	}
-	dec := json.NewDecoder(strings.NewReader(string(raw)))
-	dec.UseNumber()
-	var out map[string]any
-	if err := dec.Decode(&out); nil != err {
-		t.Fatal(err)
-	}
-	calls, _ := outOf(out)["calls"].([]any)
+	entry, _ := copied.(map[string]any)
+	calls, _ := outOf(entry)["calls"].([]any)
 	for _, c := range causes {
 		if nil == c.path {
 			continue
@@ -123,29 +121,17 @@ func predicted(t *testing.T, e map[string]any, causes []cause) (map[string]any, 
 			m["path"] = c.path(str(m, "path"))
 		}
 	}
-	return out, func(want string) string {
-		for _, c := range causes {
-			if nil != c.stdout {
-				want = c.stdout(want)
-			}
+	r, err := resolved(root, entry)
+	if nil != err {
+		return nil, err
+	}
+	want := outOf(r)
+	for _, c := range causes {
+		if nil != c.stdout {
+			want["stdout"] = c.stdout(str(want, "stdout"))
 		}
-		return want
 	}
-}
-
-// notWaiting is why an entry is not waiting as its causes declare, or "":
-// one that passes outright, or differs other than as they predict, is not.
-func notWaiting(t *testing.T, root string, e map[string]any, causes []cause) string {
-	t.Helper()
-	id := str(e, "id")
-	if 0 == len(Check(t, root, e)) {
-		return id + " now passes: take it out of WAITING"
-	}
-	entry, predict := predicted(t, e, causes)
-	if f := checkWith(t, root, entry, predict); 0 < len(f) {
-		return id + " differs other than because " + reasons(causes) + ":\n  " + strings.Join(f, "\n  ")
-	}
-	return ""
+	return r, nil
 }
 
 func reasons(causes []cause) string {
@@ -156,34 +142,73 @@ func reasons(causes []cause) string {
 	return strings.Join(out, "; ")
 }
 
-func TestCliCorpus(t *testing.T) {
-	root := Root(t)
-	all := corpusEntries(t, root, "cli")
-	if 0 == len(all) {
+// waitFor is omni's wait declaration for an entry waiting on causes.
+func waitFor(causes []cause) map[string]any {
+	return map[string]any{"cause": reasons(causes)}
+}
+
+func TestCliCorpusIsNotEmpty(t *testing.T) {
+	if 0 == len(corpusEntries(t, Root(t), "cli")) {
 		t.Fatal("spec/cli.json has no entries - did `make spec-build` run?")
 	}
+}
 
+func TestCliCorpusIdsAreUnique(t *testing.T) {
 	seen := map[string]bool{}
-	for _, e := range all {
-		id := str(e, "id")
-		if seen[id] {
+	for _, e := range corpusEntries(t, Root(t), "cli") {
+		if id := str(e, "id"); seen[id] {
 			t.Errorf("duplicate corpus id: %s", id)
+		} else {
+			seen[id] = true
 		}
-		seen[id] = true
+	}
+}
 
-		t.Run(id, func(t *testing.T) {
-			causes, waits := WAITING[id]
-			if !waits {
-				if f := Check(t, root, e); 0 < len(f) {
-					t.Fatalf("%s:\n  %s", id, strings.Join(f, "\n  "))
+func TestCliCorpus(t *testing.T) {
+	root := Root(t)
+	groups := corpusGroups(t, root, "cli")
+	for _, name := range sortedKeys(groups) {
+		t.Run(name, func(t *testing.T) {
+			set := []any{}
+			waits := map[string]any{}
+			for _, raw := range groupSet(groups, name) {
+				e := raw.(map[string]any)
+				r, err := resolved(root, e)
+				if nil != err {
+					t.Fatal(err)
 				}
-				return
+				set = append(set, r)
+				if causes, ok := WAITING[str(e, "id")]; ok {
+					waits[str(e, "id")] = waitFor(causes)
+				}
 			}
-			if why := notWaiting(t, root, e, causes); "" != why {
-				t.Fatal(why)
+			flags := omni.Flags{"null": false, "all": true, "wait": waits}
+			if err := cliRun(t, root, name, set, flags); nil != err {
+				t.Fatal(err)
 			}
-			t.Skip(reasons(causes))
 		})
+	}
+}
+
+// A wait holds an entry only while it fails; this holds it to failing for its
+// declared causes alone, so a declaration cannot hide a second difference.
+func TestCliWaitingEntriesDifferOnlyAsTheirCausesPredict(t *testing.T) {
+	root := Root(t)
+	set := []any{}
+	for _, e := range corpusEntries(t, root, "cli") {
+		if causes, ok := WAITING[str(e, "id")]; ok {
+			r, err := predicted(root, e, causes)
+			if nil != err {
+				t.Fatal(err)
+			}
+			set = append(set, r)
+		}
+	}
+	if 0 == len(set) {
+		t.Skip("no entry is waiting")
+	}
+	if err := cliRun(t, root, "predicted", set, omni.Flags{"null": false, "all": true}); nil != err {
+		t.Fatal(err)
 	}
 }
 

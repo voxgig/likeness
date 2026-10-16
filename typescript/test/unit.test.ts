@@ -1,6 +1,8 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert'
+import { join } from 'node:path'
+import { makeRunner } from '@voxgig/omni'
 
 import { serialise } from '../src/envelope.js'
 import { parseSelector, SelectorError } from '../src/selector.js'
@@ -18,7 +20,7 @@ import { openStation, connectionsOf, profileOf } from '../src/core.js'
 import { parseArgv } from '../src/args.js'
 import { vaultEntry } from '../src/vault.js'
 import { secretName, refFor } from '../src/sources.js'
-import { entries, type UnitEntry } from './harness.js'
+import { entries, ROOT, type UnitEntry } from './harness.js'
 
 type Fn = (input: any) => unknown
 
@@ -135,24 +137,22 @@ test('every corpus id is unique', () => {
   }
 })
 
-for (const e of all) {
-  test('unit ' + e.id, () => {
-    const fn = REGISTRY[e.fn]
-    assert.ok(undefined !== fn, 'no such function in the registry: ' + e.fn)
+test('every function the corpus names is registered', () => {
+  assert.deepStrictEqual([...new Set(all.map(e => e.fn))].filter(fn => !Object.hasOwn(REGISTRY, fn)).sort(), [])
+})
 
-    if (undefined !== e.err) {
-      // `err` INSTEAD OF `out`, never alongside it: the shape refuses an entry
-      // carrying both, so there is no case where a throw could also be quietly
-      // matched against a value.
-      assert.throws(() => fn(e.in), (thrown: unknown) => {
-        const msg = String((thrown as Error)?.message ?? thrown)
-        assert.ok(msg.includes(e.err as string),
-          'threw "' + msg + '", expected a message containing "' + e.err + '"')
-        return true
-      })
-      return
-    }
+// The answer as canonical JSON reads it back, so `true` and `1` stay different
+// answers and a value compares as the JSON it prints as.
+function plain (fn: Fn): Fn {
+  return (v) => JSON.parse(serialise(fn(v)))
+}
 
-    assert.deepStrictEqual(fn(e.in), e.out)
+const UNIT = await (await makeRunner(join(ROOT, 'spec', 'unit.json'), {
+  subject: (name: string) => (Object.hasOwn(REGISTRY, name) ? plain(REGISTRY[name]) : undefined),
+}))('unit')
+
+for (const name of Object.keys(UNIT.spec).sort()) {
+  test('unit ' + name, async () => {
+    await UNIT.runsetflags(UNIT.spec[name], { null: false, all: true })
   })
 }

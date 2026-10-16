@@ -1,5 +1,8 @@
-# likeness, C port: C99 and POSIX, and no other code. README.md lists the
-# targets. The suites read spec/ from the repository root, one directory up.
+# likeness, C port: C99 and POSIX, and no other code in the library or the
+# binary. The unit and transcript programs also compile omni, the corpus
+# runner, from vendor/omni, which `make c-deps` at the repository root links to
+# the checkout c/libs.json pins. README.md lists the targets. The suites read
+# spec/ from the repository root, one directory up.
 
 CC       ?= cc
 STRICT   := -std=c99 -Wall -Wextra -Werror -pedantic
@@ -12,11 +15,22 @@ LIB   := $(filter-out src/main.c,$(sort $(wildcard src/*.c)))
 HDR   := $(wildcard src/*.h)
 TESTS := unit transcript process selftest
 
+# omni.h declares one typedef twice, which C11 allows and C99 does not, so
+# omni's own sources build as C11 under every other flag here. Its header
+# reaches the programs through -isystem, which keeps them C99 throughout.
+OMNI        := vendor/omni/c/src
+OMNI_SRC    := $(addprefix $(OMNI)/,json.c util.c runner.c)
+OMNI_STRICT := $(subst -std=c99,-std=c11,$(STRICT))
+ON_OMNI     := unit transcript
+
 SANITIZE := -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -g -O1
 
 .PHONY: all test asan valgrind clean
 
 all: bin/likeness-c
+
+$(OMNI)/%:
+	@echo "no omni checkout at $(OMNI) - run \`make c-deps\` from the repository root" >&2; exit 1
 
 # One build per flavour, so a sanitized object never links into the plain one.
 define flavour
@@ -27,8 +41,20 @@ $(1)/lib.a: $$(LIB) $$(HDR)
 	done
 	@rm -f $$@ && ar rcs $$@ $(1)/obj/*.o
 
+$(1)/omni.a: $$(OMNI_SRC) $(OMNI)/omni.h
+	@mkdir -p $(1)/omni
+	@for f in $$(OMNI_SRC); do \
+	  $$(CC) $$(OMNI_STRICT) $(2) -D_POSIX_C_SOURCE=200809L -c $$$$f -o $(1)/omni/$$$$(basename $$$$f .c).o || exit 1; \
+	done
+	@rm -f $$@ && ar rcs $$@ $(1)/omni/*.o
+
 $(1)/likeness-c: src/main.c $(1)/lib.a
 	$$(CC) $$(STRICT) $(2) $$(CPPFLAGS) src/main.c $(1)/lib.a $$(LDLIBS) -o $$@
+
+$(addprefix $(1)/,$(ON_OMNI)): $(1)/%: test/%.c test/harness.h test/harness.c test/bridge.h test/bridge.c \
+  $(1)/lib.a $(1)/omni.a
+	$$(CC) $$(STRICT) $(2) $$(CPPFLAGS) -Itest -isystem $(OMNI) $$< test/harness.c test/bridge.c \
+	  $(1)/lib.a $(1)/omni.a $$(LDLIBS) -o $$@
 
 $(1)/%: test/%.c test/harness.h test/harness.c $(1)/lib.a
 	$$(CC) $$(STRICT) $(2) $$(CPPFLAGS) -Itest $$< test/harness.c $(1)/lib.a $$(LDLIBS) -o $$@

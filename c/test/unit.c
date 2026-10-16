@@ -1,6 +1,7 @@
-/* The unit corpus, spec/unit.json, against this port's pure functions.
+/* The unit corpus, spec/unit.json, against this port's pure functions, run by
+ * omni one group at a time.
  *
- *   unit ROOT          run every entry; TAP on stdout
+ *   unit ROOT          run every group; TAP on stdout
  *   unit ROOT --eval   read {"fn","in"} lines on stdin, write {"out"} or {"err"}
  */
 
@@ -9,6 +10,7 @@
 #include <string.h>
 
 #include "args.h"
+#include "bridge.h"
 #include "cli.h"
 #include "envelope.h"
 #include "errors.h"
@@ -406,7 +408,8 @@ static const implemented REGISTRY[] = {
   { NULL, NULL },
 };
 
-/* What this port cannot run yet, and the upstream change each waits on. */
+/* What this port cannot run yet, and the upstream change each waits on: omni
+ * holds each of their entries while it fails. */
 static const waiting WAITING[] = {
   { "connections", "voxgig/station#23: station's C library cannot open station.json to validate it" },
   { NULL, NULL },
@@ -428,10 +431,10 @@ static const char *waits_on(const waiting *w, str name) {
   return NULL;
 }
 
-static int in_corpus(const jval *entries, const char *fn) {
+static int in_corpus(const omni_json *entries, const char *fn) {
   size_t i;
-  for (i = 0; i < entries->len; i++) {
-    if (str_eqz(field_str(entries->item[i], "fn"), fn)) return 1;
+  for (i = 0; i < entries->listlen; i++) {
+    if (0 == strcmp(omni_strz(omni_map_get(entries->list[i], "fn")), fn)) return 1;
   }
   return 0;
 }
@@ -442,7 +445,7 @@ static void report(tally *t, const char *name, str why) {
 
 /* The declarations agree with the corpus in every direction, or the run fails.
  * A NULL tally counts the faults without reporting them. */
-static int declaration_faults(arena *a, const implemented *reg, const waiting *w, const jval *entries,
+static int declaration_faults(arena *a, const implemented *reg, const waiting *w, const omni_json *entries,
                               tally *t) {
   int faults = 0;
   size_t i;
@@ -464,18 +467,18 @@ static int declaration_faults(arena *a, const implemented *reg, const waiting *w
       faults++;
     }
   }
-  for (i = 0; i < entries->len; i++) {
-    str fn = field_str(entries->item[i], "fn");
+  for (i = 0; i < entries->listlen; i++) {
+    const char *fn = omni_strz(omni_map_get(entries->list[i], "fn"));
     size_t k;
     int earlier = 0;
     for (k = 0; k < i; k++) {
-      if (str_eq(fn, field_str(entries->item[k], "fn"))) earlier = 1;
+      if (0 == strcmp(fn, omni_strz(omni_map_get(entries->list[k], "fn")))) earlier = 1;
     }
-    if (!earlier && NULL == lookup(reg, fn) && NULL == waits_on(w, fn)) {
+    if (!earlier && NULL == lookup(reg, str_of(fn)) && NULL == waits_on(w, str_of(fn))) {
       sbuf m;
       sb_init(&m, a);
       sb_puts(&m, "the corpus uses ");
-      sb_str(&m, fn);
+      sb_puts(&m, fn);
       sb_puts(&m, ", which this port neither implements nor declares waiting");
       report(t, "declared: every function", sb_done(&m));
       faults++;
@@ -484,18 +487,18 @@ static int declaration_faults(arena *a, const implemented *reg, const waiting *w
   return faults;
 }
 
-static int duplicate_ids(arena *a, const jval *entries, tally *t) {
+static int duplicate_ids(arena *a, const omni_json *entries, tally *t) {
   int faults = 0;
   size_t i;
   size_t k;
-  for (i = 0; i < entries->len; i++) {
-    str id = field_str(entries->item[i], "id");
+  for (i = 0; i < entries->listlen; i++) {
+    const char *id = omni_strz(omni_map_get(entries->list[i], "id"));
     for (k = 0; k < i; k++) {
-      if (str_eq(id, field_str(entries->item[k], "id"))) {
+      if (0 == strcmp(id, omni_strz(omni_map_get(entries->list[k], "id")))) {
         sbuf m;
         sb_init(&m, a);
         sb_puts(&m, "duplicate corpus id: ");
-        sb_str(&m, id);
+        sb_puts(&m, id);
         report(t, "ids are unique", sb_done(&m));
         faults++;
         break;
@@ -505,182 +508,242 @@ static int duplicate_ids(arena *a, const jval *entries, tally *t) {
   return faults;
 }
 
-static str shown(arena *a, const jval *v) {
-  str s;
-  if (0 != lk_render(a, v, &s, NULL)) return str_of("(a value with no envelope form)");
+typedef struct {
+  omni_pool *pool;
+  unit_fn fn;
+  const char *waits;
+} unit_call;
+
+/* The answer is the port's own serialisation read back by omni, so `true`
+ * and `1` stay different answers. Each call has its own arena: nothing it
+ * returns points into it. */
+static omni_result call_unit(omni_subject *self, omni_json **args, size_t nargs) {
+  const unit_call *c = self->data;
+  arena *a = ar_new();
+  omni_result r;
+  jval *got = NULL;
+  str err = str_mk("", 0);
+  str text;
+  str why = str_of("the answer has no envelope form");
+  r.val = NULL;
+  r.err = NULL;
+  if (NULL != c->waits) r.err = c->waits;
+  else if (0 != c->fn(a, 0 < nargs ? jv_from_omni(a, args[0]) : NULL, &got, &err)) r.err = omni_text(c->pool, err);
+  else if (0 != lk_serialise(a, got, &text, &why)) r.err = omni_text(c->pool, why);
+  else {
+    char *bad = NULL;
+    r.val = omni_parse(c->pool, text.p, &bad);
+    if (NULL == r.val) r.err = bad;
+  }
+  ar_free(a);
+  return r;
+}
+
+/* A waiting function answers every entry with its cause, so omni's wait can
+ * hold the entry rather than refuse an unknown fn. */
+static omni_subject *unit_subject(omni_provider *self, const char *name) {
+  omni_pool *pool = self->data;
+  unit_fn fn = lookup(REGISTRY, str_of(name));
+  const char *on = waits_on(WAITING, str_of(name));
+  unit_call *c;
+  omni_subject *s;
+  if (NULL == fn && NULL == on) return NULL;
+  c = omni_pool_alloc(pool, sizeof *c);
+  c->pool = pool;
+  c->fn = fn;
+  if (NULL == fn) {
+    char *waits = omni_pool_alloc(pool, strlen("waiting on ") + strlen(on) + 1);
+    strcat(strcpy(waits, "waiting on "), on);
+    c->waits = waits;
+  }
+  s = omni_pool_alloc(pool, sizeof *s);
+  s->call = call_unit;
+  s->data = c;
   return s;
 }
 
-/* NULL when the entry holds, else what failed. `err` replaces `out`, never
- * accompanies it, so a throw is never matched against a value. */
-static const char *verdict(arena *a, const implemented *reg, const jval *e) {
-  unit_fn fn = lookup(reg, field_str(e, "fn"));
-  const jval *want_err = jv_getz(e, "err");
-  jval *got = NULL;
-  str err = str_mk("", 0);
-  int rc;
-  sbuf m;
-
-  sb_init(&m, a);
-  if (NULL == fn) {
-    sb_puts(&m, "no such function in the registry: ");
-    sb_str(&m, field_str(e, "fn"));
-    return sb_done(&m).p;
-  }
-  rc = fn(a, jv_getz(e, "in"), &got, &err);
-  if (NULL != want_err) {
-    if (0 == rc) {
-      sb_puts(&m, "expected an error containing \"");
-      sb_str(&m, want_err->s);
-      sb_puts(&m, "\", got ");
-      sb_str(&m, shown(a, got));
-      return sb_done(&m).p;
-    }
-    if (!jv_is(want_err, J_STRING) || !str_contains(err, want_err->s)) {
-      sb_puts(&m, "threw \"");
-      sb_str(&m, err);
-      sb_puts(&m, "\", expected a message containing \"");
-      sb_str(&m, field_str(e, "err"));
-      sb_putc(&m, '"');
-      return sb_done(&m).p;
-    }
-    return NULL;
-  }
-  if (0 != rc) {
-    sb_puts(&m, "unexpected error: ");
-    sb_str(&m, err);
-    return sb_done(&m).p;
-  }
-  if (!jv_equal(got, jv_getz(e, "out"))) {
-    sb_puts(&m, "want ");
-    sb_str(&m, shown(a, jv_getz(e, "out")));
-    sb_puts(&m, "\ngot  ");
-    sb_str(&m, shown(a, got));
-    return sb_done(&m).p;
-  }
-  return NULL;
-}
-
 typedef struct {
-  const char *fn;
-  int pass;
-  int fail;
-  int skip;
-} count;
+  omni_pool *pool;
+  omni_provider provider;
+  omni_json *header;
+  omni_runpack *pack;
+  const char **groups;
+  size_t ngroups;
+  omni_json *entries;
+} corpus;
 
-static count *count_for(count *counts, size_t *n, str fn, arena *a) {
+static void load(corpus *c, arena *a, const char *root) {
+  char *err = NULL;
+  omni_json *all;
+  omni_runner *runner;
   size_t i;
-  for (i = 0; i < *n; i++) {
-    if (str_eqz(fn, counts[i].fn)) return &counts[i];
+  memset(c, 0, sizeof *c);
+  c->pool = omni_pool_new();
+  c->provider.subject = unit_subject;
+  c->provider.data = c->pool;
+  all = omni_loadspec(c->pool, joinpath(a, root, str_of("spec/unit.json")), &err);
+  if (NULL == all || !omni_ismap(omni_map_get(omni_map_get(all, "primary"), "unit"))) {
+    fprintf(stderr, "%s - run `make spec-build` from the repository root first\n",
+      NULL == err ? "spec/unit.json has no primary.unit" : err);
+    exit(2);
   }
-  counts[*n].fn = ar_copy(a, fn.p, fn.n);
-  return &counts[(*n)++];
+  c->header = omni_map_get(all, "OMNI");
+  runner = omni_make_runner(c->pool, NULL, all, &c->provider, &err);
+  if (NULL == runner) {
+    fprintf(stderr, "%s\n", err);
+    exit(2);
+  }
+  c->pack = omni_runner_run(runner, "unit", NULL, &err);
+  c->groups = omni_group_names(c->pool, omni_spec(c->pack), &c->ngroups);
+  c->entries = omni_list(c->pool);
+  for (i = 0; i < c->ngroups; i++) {
+    const omni_json *set = omni_map_get(omni_set(c->pack, c->groups[i]), "set");
+    size_t k;
+    for (k = 0; omni_islist(set) && k < set->listlen; k++) omni_list_push(c->entries, set->list[k]);
+  }
 }
 
-static void run_corpus(arena *a, const jval *entries, tally *t) {
-  count *counts = ar_alloc(a, (entries->len + 1) * sizeof *counts);
-  size_t ncounts = 0;
+/* Each entry of the set whose function waits, held by id to its cause. */
+static omni_json *waits_in(omni_pool *pool, const omni_json *set) {
+  omni_json *waits = omni_map(pool);
   size_t i;
-  for (i = 0; i < entries->len; i++) {
-    const jval *e = entries->item[i];
-    str fn = field_str(e, "fn");
-    count *c = count_for(counts, &ncounts, fn, a);
-    const char *on = waits_on(WAITING, fn);
+  for (i = 0; omni_islist(set) && i < set->listlen; i++) {
+    const omni_json *e = set->list[i];
+    const char *on = waits_on(WAITING, str_of(omni_strz(omni_map_get(e, "fn"))));
+    if (NULL != on) {
+      omni_json *wait = omni_map(pool);
+      omni_map_set(wait, "cause", omni_str(pool, on));
+      omni_map_set(waits, omni_strz(omni_map_get(e, "id")), wait);
+    }
+  }
+  return 0 < waits->maplen ? waits : NULL;
+}
+
+static void run_corpus(arena *a, corpus *c, tally *t) {
+  size_t held = 0;
+  char note[120];
+  size_t i;
+  for (i = 0; i < c->ngroups; i++) {
+    omni_json *group = omni_set(c->pack, c->groups[i]);
+    omni_json *waits = waits_in(c->pool, omni_map_get(group, "set"));
+    omni_flags flags = omni_flags_nonull();
+    char *message = NULL;
     sbuf name;
+    int failed;
+    size_t k;
+    flags.all = 1;
+    flags.wait = waits;
+    failed = omni_runsetflags(c->pack, group, flags, NULL, &message);
     sb_init(&name, a);
     sb_puts(&name, "unit ");
-    sb_str(&name, field_str(e, "id"));
-    if (NULL != on && NULL == lookup(REGISTRY, fn)) {
+    sb_puts(&name, c->groups[i]);
+    tap_omni(t, sb_done(&name), failed, message);
+    for (k = 0; !failed && NULL != waits && k < waits->maplen; k++) {
       sbuf why;
+      sb_init(&name, a);
+      sb_puts(&name, "unit ");
+      sb_puts(&name, waits->keys[k]);
       sb_init(&why, a);
       sb_puts(&why, "waiting on ");
-      sb_puts(&why, on);
+      sb_puts(&why, omni_strz(omni_map_get(waits->vals[k], "cause")));
       tap_skip(t, sb_done(&name), sb_done(&why).p);
-      c->skip++;
-    }
-    else {
-      const char *bad = verdict(a, REGISTRY, e);
-      if (NULL == bad) {
-        tap_ok(t, sb_done(&name));
-        c->pass++;
-      }
-      else {
-        tap_fail(t, sb_done(&name), str_of(bad));
-        c->fail++;
-      }
+      held++;
     }
   }
-  for (i = 0; i < ncounts; i++) {
-    char line[160];
-    snprintf(line, sizeof line, "%-20s pass %3d  fail %3d  skip %3d", counts[i].fn, counts[i].pass,
-      counts[i].fail, counts[i].skip);
-    tap_note(line);
-  }
+  snprintf(note, sizeof note, "%lu entries in %lu groups through omni, %lu of them held waiting",
+    (unsigned long)c->entries->listlen, (unsigned long)c->ngroups, (unsigned long)held);
+  tap_note(note);
 }
 
-static jval *entry_like(arena *a, const jval *e) {
-  jval *copy = jv_obj(a);
-  size_t i;
-  for (i = 0; i < e->len; i++) jv_set(a, copy, e->key[i], e->item[i]);
-  return copy;
+static const char *check(corpus *c, omni_json *e) {
+  omni_json *set = omni_list(c->pool);
+  char *message = NULL;
+  omni_list_push(set, e);
+  if (0 == omni_run_group(c->pool, &c->provider, c->header, "unit", "one", set, 0, NULL, &message)) return NULL;
+  return NULL == message ? "omni failed and gave no message" : message;
 }
 
-static const jval *find(const jval *entries, const char *id) {
+static omni_json *find(corpus *c, const char *id) {
   size_t i;
-  for (i = 0; i < entries->len; i++) {
-    if (str_eqz(field_str(entries->item[i], "id"), id)) return entries->item[i];
+  for (i = 0; i < c->entries->listlen; i++) {
+    if (0 == strcmp(omni_strz(omni_map_get(c->entries->list[i], "id")), id)) {
+      return omni_clone(c->pool, c->entries->list[i]);
+    }
   }
   return NULL;
 }
 
-static void meta(arena *a, const jval *entries, tally *t) {
+static omni_json *without(omni_pool *pool, const omni_json *e, const char *key) {
+  omni_json *out = omni_map(pool);
+  size_t i;
+  for (i = 0; i < e->maplen; i++) {
+    if (0 != strcmp(e->keys[i], key)) omni_map_set(out, e->keys[i], omni_clone(pool, e->vals[i]));
+  }
+  return out;
+}
+
+static void expect(tally *t, const char *name, int held, const char *message) {
+  if (held) tap_ok(t, str_of(name));
+  else tap_fail(t, str_of(name), str_of(NULL == message ? "the harness stayed green" : message));
+}
+
+static void meta(arena *a, corpus *c, tally *t) {
   static const waiting WAITING_ON_AN_IMPLEMENTED[] = { { "serialise", "test" }, { NULL, NULL } };
   static const waiting WAITING_ON_NOTHING[] = { { "noSuchFunction", "test" }, { NULL, NULL } };
   static const waiting NONE_WAITING[] = { { NULL, NULL } };
-  const jval *keys = find(entries, "envelope/keys-sorted");
-  const jval *refused = find(entries, "envelope/float-is-refused");
-  jval *e;
+  omni_json *keys = find(c, "envelope/keys-sorted");
+  omni_json *refused = find(c, "envelope/float-is-refused");
+  omni_json *json_true = find(c, "args/selector-terms-accumulate");
+  omni_json *e;
+  const char *said;
 
-  if (NULL == keys || NULL == refused) {
+  if (NULL == keys || NULL == refused || NULL == json_true) {
     tap_fail(t, str_of("meta: the entries the meta tests mutate exist"), str_of("an entry is missing"));
     return;
   }
 
-  #define EXPECT(name, cond) \
-    do { if (cond) tap_ok(t, str_of(name)); else tap_fail(t, str_of(name), str_of("the harness stayed green")); } while (0)
+  said = check(c, keys);
+  expect(t, "meta: the unmutated entry passes", NULL == said, said);
 
-  EXPECT("meta: the unmutated entry passes", NULL == verdict(a, REGISTRY, keys));
+  e = omni_clone(c->pool, keys);
+  omni_map_set(e, "out", omni_str(c->pool, "{\"10\":4,\"2\":5,\"C\":3,\"a\":2,\"b\":1}"));
+  said = check(c, e);
+  expect(t, "meta: output missing its newline is reported", omni_says(said, ": result mismatch"), said);
 
-  e = entry_like(a, keys);
-  jv_setz(a, e, "out", jv_strz(a, "{\"10\":4,\"2\":5,\"C\":3,\"a\":2,\"b\":1}"));
-  EXPECT("meta: output missing its newline is reported", NULL != verdict(a, REGISTRY, e));
+  e = omni_clone(c->pool, refused);
+  omni_map_set(e, "err", omni_str(c->pool, "a message nobody writes"));
+  said = check(c, e);
+  expect(t, "meta: the wrong error message is reported", omni_says(said, ": error mismatch"), said);
 
-  e = entry_like(a, refused);
-  jv_setz(a, e, "err", jv_strz(a, "a message nobody writes"));
-  EXPECT("meta: the wrong error message is reported", NULL != verdict(a, REGISTRY, e));
+  e = without(c->pool, keys, "out");
+  omni_map_set(e, "err", omni_str(c->pool, "anything"));
+  said = check(c, e);
+  expect(t, "meta: an error expected from a function that succeeds is reported",
+    omni_says(said, ": expected error did not occur"), said);
 
-  e = entry_like(a, keys);
-  jv_setz(a, e, "err", jv_strz(a, "anything"));
-  EXPECT("meta: an error expected from a function that succeeds is reported", NULL != verdict(a, REGISTRY, e));
+  e = omni_clone(c->pool, keys);
+  omni_map_set(e, "fn", omni_str(c->pool, "noSuchFunction"));
+  said = check(c, e);
+  expect(t, "meta: an unknown function is reported", omni_says(said, "unknown fn: noSuchFunction"), said);
 
-  e = entry_like(a, keys);
-  jv_setz(a, e, "fn", jv_strz(a, "noSuchFunction"));
-  EXPECT("meta: an unknown function is reported", NULL != verdict(a, REGISTRY, e));
+  e = omni_clone(c->pool, json_true);
+  omni_map_set(omni_map_get(omni_map_get(e, "out"), "flags"), "json", omni_num(c->pool, 1));
+  said = check(c, e);
+  expect(t, "meta: 1 where the port answers true is reported", omni_says(said, ": result mismatch"), said);
 
-  EXPECT("meta: a waiting function the port implements is refused",
-    0 < declaration_faults(a, REGISTRY, WAITING_ON_AN_IMPLEMENTED, entries, NULL));
-  EXPECT("meta: a waiting function absent from the corpus is refused",
-    0 < declaration_faults(a, REGISTRY, WAITING_ON_NOTHING, entries, NULL));
-  EXPECT("meta: a corpus function neither implemented nor waiting is refused",
-    0 < declaration_faults(a, REGISTRY, NONE_WAITING, entries, NULL));
+  expect(t, "meta: a waiting function the port implements is refused",
+    0 < declaration_faults(a, REGISTRY, WAITING_ON_AN_IMPLEMENTED, c->entries, NULL), NULL);
+  expect(t, "meta: a waiting function absent from the corpus is refused",
+    0 < declaration_faults(a, REGISTRY, WAITING_ON_NOTHING, c->entries, NULL), NULL);
+  expect(t, "meta: a corpus function neither implemented nor waiting is refused",
+    0 < declaration_faults(a, REGISTRY, NONE_WAITING, c->entries, NULL), NULL);
 
   {
-    jval *twice = jv_arr(a);
-    jv_push(a, twice, (jval *)keys);
-    jv_push(a, twice, (jval *)keys);
-    EXPECT("meta: a duplicate id is refused", 0 < duplicate_ids(a, twice, NULL));
+    omni_json *twice = omni_list(c->pool);
+    omni_list_push(twice, keys);
+    omni_list_push(twice, keys);
+    expect(t, "meta: a duplicate id is refused", 0 < duplicate_ids(a, twice, NULL), NULL);
   }
-  #undef EXPECT
 }
 
 /* A lone surrogate leaves as a \u escape, so the reader rebuilds the string a
@@ -753,7 +816,7 @@ static int eval(arena *top) {
 int main(int argc, char **argv) {
   arena *a = ar_new();
   const char *root = repo_root(a, argc, argv);
-  jval *entries;
+  corpus c;
   tally t;
   int status;
 
@@ -765,17 +828,18 @@ int main(int argc, char **argv) {
   }
 
   memset(&t, 0, sizeof t);
-  entries = corpus_entries(a, root, "unit");
+  load(&c, a, root);
   tap_begin();
-  if (0 == entries->len) tap_fail(&t, str_of("the unit corpus is not empty"), str_of("spec/unit.json has no entries"));
+  if (0 == c.entries->listlen) tap_fail(&t, str_of("the unit corpus is not empty"), str_of("spec/unit.json has no entries"));
   else tap_ok(&t, str_of("the unit corpus is not empty"));
-  if (0 == duplicate_ids(a, entries, &t)) tap_ok(&t, str_of("every corpus id is unique"));
-  if (0 == declaration_faults(a, REGISTRY, WAITING, entries, &t)) {
+  if (0 == duplicate_ids(a, c.entries, &t)) tap_ok(&t, str_of("every corpus id is unique"));
+  if (0 == declaration_faults(a, REGISTRY, WAITING, c.entries, &t)) {
     tap_ok(&t, str_of("every corpus function is implemented or declared waiting, and nothing else is"));
   }
-  run_corpus(a, entries, &t);
-  meta(a, entries, &t);
+  run_corpus(a, &c, &t);
+  meta(a, &c, &t);
   status = tap_end(&t);
+  omni_pool_free(c.pool);
   ar_free(a);
   spec_unload();
   return status;

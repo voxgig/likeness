@@ -6,13 +6,15 @@ require (
 	github.com/voxgig-sdk/joplin-sdk/go v0.0.0
 	github.com/voxgig-sdk/notion-sdk/go v0.0.0
 	github.com/voxgig-sdk/obsidian-sdk/go v0.0.0
+	// The corpus runner, for the tests alone: main at the first revision with
+	// fn, ctxargs, wait and the all flag, which no go/v tag carries yet.
+	github.com/voxgig/omni/go v0.1.1-0.20261015212257-0a93a98765d0
 	github.com/voxgig/sekreto/go v0.0.0-20260916220330-32b83acba90a
 	github.com/voxgig/station/go v0.0.1
 	golang.org/x/term v0.33.0
 )
 
 require (
-	github.com/voxgig/omni/go v0.1.0 // indirect
 	github.com/voxgig/plugin/go v0.0.0-20260901203214-91f294b7a228 // indirect
 	github.com/voxgig/struct/go v0.1.6 // indirect
 	golang.org/x/sys v0.34.0 // indirect

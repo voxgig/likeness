@@ -22,6 +22,21 @@ class MetaTest < Minitest::Test
     [e, Likeness.run(Harness.build_ctx(e))]
   end
 
+  # The expected and actual results of omni's one result mismatch.
+  def sides(failures)
+    assert_equal 1, failures.length, failures.inspect
+    head, *rest = failures[0].split("\n")
+    assert_includes head, 'result mismatch'
+    lines = rest.to_h { |line| line[2..].split(':', 2).then { |key, value| [key, value.strip] } }
+    [JSON.parse(lines['expected']), JSON.parse(lines['actual'])]
+  end
+
+  # The fields the expected and actual results disagree on.
+  def differs(failures)
+    want, got = sides(failures)
+    (want.keys | got.keys).sort.reject { |key| want[key] == got[key] }
+  end
+
   # The control: a harness that fails a correct entry proves nothing by
   # failing a broken one.
   def test_the_unmutated_entry_passes
@@ -31,7 +46,7 @@ class MetaTest < Minitest::Test
   def test_a_wrong_exit_code_is_reported
     e = entry('list/all')
     e['out']['exit'] = 3
-    assert_reported Harness.check(e), 'exit '
+    assert_equal ['exit'], differs(Harness.check(e))
   end
 
   def test_stdout_differing_by_one_byte_is_reported
@@ -44,7 +59,7 @@ class MetaTest < Minitest::Test
     File.write(tmp, text)
     begin
       e['out']['stdout'] = rel
-      assert_reported Harness.check(e), 'stdout differs'
+      assert_equal ['stdout'], differs(Harness.check(e))
     ensure
       File.delete(tmp)
     end
@@ -54,26 +69,28 @@ class MetaTest < Minitest::Test
     e = entry('secrets/remove')
     refute_nil e['out']['vault'], 'secrets/remove asserts no vault state'
     e['out']['vault']['names'] = %w[joplin.apikey notion.apikey]
-    assert_reported Harness.check(e), 'vault names '
+    assert_equal ['vault'], differs(Harness.check(e))
   end
 
   def test_a_vault_value_that_differs_is_reported
     e = entry('secrets/set-from-stdin')
     refute_nil e['out']['vault']['values'], 'secrets/set-from-stdin asserts no values'
     e['out']['vault']['values'] = { 'joplin.apikey' => "rotated-token\n" }
-    assert_reported Harness.check(e), 'vault value of '
+    want, got = sides(Harness.check(e))
+    assert_equal want['vault']['names'], got['vault']['names']
+    refute_equal want['vault']['values'], got['vault']['values']
   end
 
   def test_a_prompt_that_was_not_expected_is_reported
     e = entry('secrets/passphrase-typed')
     e['out']['prompts'] = []
-    assert_reported Harness.check(e), 'prompts '
+    assert_equal ['prompts'], differs(Harness.check(e))
   end
 
   def test_a_missing_call_is_reported
     e = entry('list/all')
     e['out']['calls'] = []
-    assert_reported Harness.check(e), 'calls '
+    assert_equal ['calls'], differs(Harness.check(e))
   end
 
   # A command producing the right answer by making more requests than it
@@ -81,38 +98,39 @@ class MetaTest < Minitest::Test
   def test_an_extra_call_is_reported
     e = entry('list/all')
     e['out']['calls'] << { 'instance' => 'joplin', 'method' => 'GET', 'path' => '/notes' }
-    assert_reported Harness.check(e), 'calls '
+    assert_equal ['calls'], differs(Harness.check(e))
   end
 
   def test_a_call_with_the_right_count_but_the_wrong_path_is_reported
     e = entry('list/all')
     e['out']['calls'] = [{ 'instance' => 'joplin', 'method' => 'GET', 'path' => '/folders' }]
-    assert_reported Harness.check(e), 'calls '
+    assert_equal ['calls'], differs(Harness.check(e))
   end
 
-  # The escurl exception admits the one spelling and nothing else.
-  def test_an_entry_excepted_for_the_sdks_spelling_still_reports_another_call
-    e = entry('obsidian/list-odd-values')
+  # A waiting entry's prediction admits the one spelling and nothing else.
+  def test_a_waiting_entry_as_predicted_still_reports_another_call
+    cause, predict = Harness::WAITING.fetch('obsidian/list-odd-values')
+    e = predict.call(entry('obsidian/list-odd-values'))
+    assert_equal [], Harness.check(e), cause
     e['out']['calls'][-1]['path'] = '/vault/odd%2Felsewhere.md'
-    assert_reported Harness.check(e), 'calls '
+    assert_equal ['calls'], differs(Harness.check(e))
   end
 
-  def test_the_sdks_spelling_is_reported_in_an_entry_not_excepted_for_it
-    e = entry('obsidian/list-odd-values')
-    e['id'] = 'obsidian/not-excepted'
-    assert_reported Harness.check(e), 'calls '
+  def test_a_waiting_entry_run_without_its_wait_reports_its_calls
+    assert_equal ['calls'], differs(Harness.check(entry('obsidian/list-odd-values')))
   end
 
-  def test_an_excepted_entry_whose_calls_match_outright_is_reported
-    e = entry('obsidian/list-odd-values')
-    e['out']['calls'] = e['out']['calls'].map { |c| c.merge('path' => Harness.escurl(c['path'])) }
-    assert_reported Harness.check(e), 'calls match the expectation outright'
+  def test_a_wait_on_an_entry_that_passes_is_reported
+    cause, predict = Harness::WAITING.fetch('obsidian/list-odd-values')
+    failures = Harness.check(predict.call(entry('obsidian/list-odd-values')), wait: { 'cause' => cause })
+    assert_equal 1, failures.length, failures.inspect
+    assert_includes failures[0].lines.first, "stale wait: #{cause}"
   end
 
   def test_unexpected_stderr_is_reported
     e = entry('list/all')
     e['out']['stderr'] = "something the command never printed\n"
-    assert_reported Harness.check(e), 'stderr '
+    assert_equal ['stderr'], differs(Harness.check(e))
   end
 
   def test_a_missing_expectation_file_is_an_error_not_a_pass
@@ -126,8 +144,7 @@ class MetaTest < Minitest::Test
     e['out']['exit'] = 3
     e['out']['calls'] = []
     e['out']['stderr'] = "no\n"
-    failures = Harness.check(e)
-    assert_equal 3, failures.length, "expected three failures, got #{failures.inspect}"
+    assert_equal %w[calls exit stderr], differs(Harness.check(e))
   end
 
   # The bytes are the contract: the right values in the wrong form.
@@ -167,19 +184,28 @@ class MetaTest < Minitest::Test
   def test_a_written_file_that_differs_is_reported
     e = entry('connections/add-joplin')
     e['out']['files'] = e['out']['files'].merge('station.json' => 'fixtures/config/several/station.json')
-    assert_reported Harness.check(e), 'station.json differs'
+    failures = Harness.check(e)
+    assert_equal ['files'], differs(failures)
+    want, got = sides(failures)
+    refute_equal want['files']['station.json'], got['files']['station.json']
   end
 
   def test_a_file_the_entry_says_is_not_there_written_is_reported
     e = entry('connections/add-joplin')
     e['out']['absent'] = ['likeness.json']
-    assert_reported Harness.check(e), 'likeness.json is there afterwards'
+    failures = Harness.check(e)
+    assert_equal ['absent'], differs(failures)
+    want, got = sides(failures)
+    assert_includes want['absent'], 'likeness.json'
+    refute_includes got['absent'], 'likeness.json'
   end
 
   def test_a_file_the_entry_names_never_written_is_reported
     e = entry('connections/add-joplin-needs-an-account')
     e['out']['files'] = { 'station.json' => 'spec/written/connections/add-joplin/station.json' }
-    assert_reported Harness.check(e), 'station.json is not there afterwards'
+    want, got = sides(Harness.check(e))
+    refute_nil want['files']['station.json']
+    assert_nil got['files']['station.json']
   end
 
   def test_net_options_reach_the_sdk

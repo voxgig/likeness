@@ -1,3 +1,5 @@
+OMNI: { version:1 requires: ["fn"] }
+
 primary: unit: {
   # ---------------------------------------------------------------- envelope
   envelope: set: [

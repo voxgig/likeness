@@ -29,3 +29,7 @@ ruby/vendor/
 # The C port's objects, test programs and binary. `make test-c` builds them.
 c/bin/
 c/build/
+
+# The checkout the C port's test programs compile omni from, linked by
+# `make c-deps` at the revision c/libs.json pins.
+c/vendor/

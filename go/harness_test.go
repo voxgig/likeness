@@ -1,7 +1,6 @@
 package likeness
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -11,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	omni "github.com/voxgig/omni/go"
 	"github.com/voxgig/sekreto/go/plugins/minivault"
 )
 
@@ -39,23 +39,56 @@ func Root(t *testing.T) string {
 	return ""
 }
 
-// corpusDoc reads spec/<name>.json with numbers kept EXACT. Decoding into
-// float64 would turn an int64 corpus value into an approximation and a
-// serialiser test into a coin toss.
+// decodeExact reads JSON with numbers kept EXACT. Decoding into float64 would
+// turn an int64 corpus value into an approximation and a serialiser test into
+// a coin toss.
+func decodeExact(text string) (any, error) {
+	dec := json.NewDecoder(strings.NewReader(text))
+	dec.UseNumber()
+	var v any
+	if err := dec.Decode(&v); nil != err {
+		return nil, err
+	}
+	return v, nil
+}
+
+func readExact(path string) (any, error) {
+	raw, err := os.ReadFile(path)
+	if nil != err {
+		return nil, err
+	}
+	return decodeExact(string(raw))
+}
+
+// cloneExact is a deep copy, numbers still exact.
+func cloneExact(v any) (any, error) {
+	raw, err := json.Marshal(v)
+	if nil != err {
+		return nil, err
+	}
+	return decodeExact(string(raw))
+}
+
+// corpusDoc is spec/<name>.json as omni is handed it. omni's Go port reads
+// OMNI.version only as a Go number, so that one value is converted.
 func corpusDoc(t *testing.T, root, name string) map[string]any {
 	t.Helper()
-	f, err := os.Open(filepath.Join(root, "spec", name+".json"))
+	v, err := readExact(filepath.Join(root, "spec", name+".json"))
 	if nil != err {
 		t.Fatal(err)
 	}
-	defer f.Close()
-	dec := json.NewDecoder(f)
-	dec.UseNumber()
-	var doc map[string]any
-	if err := dec.Decode(&doc); nil != err {
-		t.Fatal(err)
+	doc, _ := v.(map[string]any)
+	if meta, ok := doc["OMNI"].(map[string]any); ok {
+		if n, ok := num(meta["version"]); ok {
+			meta["version"] = n
+		}
 	}
-	primary, _ := doc["primary"].(map[string]any)
+	return doc
+}
+
+func corpusGroups(t *testing.T, root, name string) map[string]any {
+	t.Helper()
+	primary, _ := corpusDoc(t, root, name)["primary"].(map[string]any)
 	groups, _ := primary[name].(map[string]any)
 	if nil == groups {
 		t.Fatalf("spec/%s.json has no primary.%s", name, name)
@@ -63,18 +96,27 @@ func corpusDoc(t *testing.T, root, name string) map[string]any {
 	return groups
 }
 
+func sortedKeys(m map[string]any) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func groupSet(groups map[string]any, name string) []any {
+	group, _ := groups[name].(map[string]any)
+	set, _ := group["set"].([]any)
+	return set
+}
+
 func corpusEntries(t *testing.T, root, name string) []map[string]any {
 	t.Helper()
-	groups := corpusDoc(t, root, name)
-	names := make([]string, 0, len(groups))
-	for k := range groups {
-		names = append(names, k)
-	}
-	sort.Strings(names)
+	groups := corpusGroups(t, root, name)
 	out := []map[string]any{}
-	for _, g := range names {
-		set, _ := groups[g].(map[string]any)["set"].([]any)
-		for _, e := range set {
+	for _, g := range sortedKeys(groups) {
+		for _, e := range groupSet(groups, g) {
 			out = append(out, e.(map[string]any))
 		}
 	}
@@ -84,15 +126,6 @@ func corpusEntries(t *testing.T, root, name string) []map[string]any {
 func str(m map[string]any, k string) string {
 	s, _ := m[k].(string)
 	return s
-}
-
-func mustNum(t *testing.T, v any) int64 {
-	t.Helper()
-	n, ok := num(v)
-	if !ok {
-		t.Fatalf("not a number: %v (%T)", v, v)
-	}
-	return n
 }
 
 func canon(t *testing.T, v any) string {
@@ -115,28 +148,51 @@ func fmtCalls(cs []Call) string {
 	return out + "]"
 }
 
-// -- the transcript harness -------------------------------------------------
+func callValues(cs []Call) []any {
+	out := make([]any, 0, len(cs))
+	for _, c := range cs {
+		out = append(out, map[string]any{"instance": c.Instance, "method": c.Method, "path": c.Path})
+	}
+	return out
+}
 
-// seedOf reads one fixture's seed with numbers kept exact, as the corpus is.
+// -- the transcript corpus's subject ----------------------------------------
+
+// readSeed reads one fixture's seed with numbers kept exact, as the corpus is.
+func readSeed(root, name string) (map[string]any, error) {
+	v, err := readExact(filepath.Join(root, "fixtures", "sources", name, "seed.json"))
+	if nil != err {
+		return nil, err
+	}
+	seed, ok := v.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("the %s seed is not an object", name)
+	}
+	delete(seed, "_doc")
+	return seed, nil
+}
+
 func seedOf(t *testing.T, root, name string) map[string]any {
 	t.Helper()
-	f, err := os.Open(filepath.Join(root, "fixtures", "sources", name, "seed.json"))
+	seed, err := readSeed(root, name)
 	if nil != err {
 		t.Fatal(err)
 	}
-	defer f.Close()
-	dec := json.NewDecoder(f)
-	dec.UseNumber()
-	var seed map[string]any
-	if err := dec.Decode(&seed); nil != err {
-		t.Fatal(err)
-	}
-	delete(seed, "_doc")
 	return seed
 }
 
 func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 	t.Helper()
+	ctx, err := newCtx(root, t.TempDir(), e)
+	if nil != err {
+		t.Fatal(err)
+	}
+	return ctx
+}
+
+// newCtx is the run an entry describes, in a home of its own holding the
+// entry's files.
+func newCtx(root, home string, e map[string]any) (Ctx, error) {
 	ectx, _ := e["ctx"].(map[string]any)
 
 	ctx := Ctx{
@@ -182,7 +238,10 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 		if "" == fixture {
 			fixture = str(ectx, "fixture")
 		}
-		own := seedOf(t, root, fixture)
+		own, err := readSeed(root, fixture)
+		if nil != err {
+			return Ctx{}, err
+		}
 		if net, ok := cm["net"]; ok {
 			own["net"] = net
 		}
@@ -194,24 +253,23 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 	}
 	ctx.Station = map[string]any{"station": 1, "profiles": map[string]any{"default": profile}}
 
-	// Every run gets a home of its own, holding the entry's files.
-	ctx.Home = t.TempDir()
+	ctx.Home = home
 	ctx.Dir = filepath.Join(ctx.Home, ".config", "likeness")
 	if err := os.MkdirAll(ctx.Dir, 0o700); nil != err {
-		t.Fatal(err)
+		return Ctx{}, err
 	}
 	files, _ := ectx["files"].(map[string]any)
 	for name, src := range files {
 		dst := runPath(ctx, name)
 		raw, err := os.ReadFile(filepath.Join(root, src.(string)))
 		if nil != err {
-			t.Fatal(err)
+			return Ctx{}, err
 		}
 		if err := os.MkdirAll(filepath.Dir(dst), 0o700); nil != err {
-			t.Fatal(err)
+			return Ctx{}, err
 		}
 		if err := os.WriteFile(dst, raw, 0o600); nil != err {
-			t.Fatal(err)
+			return Ctx{}, err
 		}
 	}
 	// One that brings station.json or likeness.json is configured by them
@@ -221,11 +279,11 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 			continue
 		}
 		if _, given := ectx["secrets"]; 0 < len(conns) || given {
-			t.Fatalf("%s: an entry that brings its configuration declares no connections or secrets", str(e, "id"))
+			return Ctx{}, fmt.Errorf("%s: an entry that brings its configuration declares no connections or secrets", str(e, "id"))
 		}
 		var err error
 		if ctx.Station, ctx.Accounts, err = loadConfig(filepath.Join(ctx.Dir, "station.json"), profileOf(ctx.Env)); nil != err {
-			t.Fatalf("%s: %v", str(e, "id"), err)
+			return Ctx{}, fmt.Errorf("%s: %w", str(e, "id"), err)
 		}
 		break
 	}
@@ -271,7 +329,7 @@ func buildCtx(t *testing.T, root string, e map[string]any) Ctx {
 			return next, true
 		}
 	}
-	return ctx
+	return ctx, nil
 }
 
 func runPath(ctx Ctx, name string) string {
@@ -279,89 +337,6 @@ func runPath(ctx Ctx, name string) string {
 		return filepath.Join(ctx.Home, name[2:])
 	}
 	return filepath.Join(ctx.Dir, name)
-}
-
-func vaultFailures(ctx Ctx, want map[string]any, fail func(string)) {
-	file := str(want, "file")
-	if "" == file {
-		file = "likeness.skmv"
-	}
-	key := str(want, "key")
-	if "" == key {
-		key = "master"
-	}
-	vault, err := minivault.Open(&minivault.Options{File: runPath(ctx, file), Key: key, Passphrase: str(want, "passphrase")})
-	if nil != err {
-		fail("the vault does not open afterwards: " + err.Error())
-		return
-	}
-	defer vault.Close()
-	names, err := vault.List()
-	if nil != err {
-		fail("the vault does not open afterwards: " + err.Error())
-		return
-	}
-	if a, b := fmt.Sprint(names), fmt.Sprint(strs(want["names"])); a != b {
-		fail("vault names " + a + ", expected " + b)
-	}
-	if wk, ok := want["keys"].([]any); ok {
-		keys, err := vault.Keys()
-		if nil != err {
-			fail("the vault keys do not read: " + err.Error())
-			return
-		}
-		sort.Slice(keys, func(i, j int) bool { return keys[i].Key < keys[j].Key })
-		got := []string{}
-		for _, k := range keys {
-			got = append(got, fmt.Sprint(k.Key, k.Master, k.Write, k.Grants))
-		}
-		exp := []string{}
-		for _, k := range wk {
-			km := k.(map[string]any)
-			exp = append(exp, fmt.Sprint(str(km, "key"), km["master"], km["write"], strs(km["grants"])))
-		}
-		if a, b := strings.Join(got, "; "), strings.Join(exp, "; "); a != b {
-			fail("vault keys " + a + ", expected " + b)
-		}
-	}
-	values, _ := want["values"].(map[string]any)
-	for name, value := range values {
-		if got, _, _ := vault.Get(name); got != value {
-			fail("vault value of " + name + " is not the one expected")
-		}
-	}
-}
-
-// fileFailures checks the configuration directory afterwards: each named file
-// byte for byte, and the absent ones not there.
-func fileFailures(root string, ctx Ctx, out map[string]any, fail func(string)) {
-	files, _ := out["files"].(map[string]any)
-	names := make([]string, 0, len(files))
-	for name := range files {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		want := str(files, name)
-		got, err := os.ReadFile(runPath(ctx, name))
-		if nil != err {
-			fail(name + " is not there afterwards, and " + want + " says what it holds")
-			continue
-		}
-		expected, err := os.ReadFile(filepath.Join(root, want))
-		if nil != err {
-			fail("cannot read expectation " + want + ": " + err.Error())
-			continue
-		}
-		if !bytes.Equal(got, expected) {
-			fail(name + " differs from " + want)
-		}
-	}
-	for _, name := range strs(out["absent"]) {
-		if exists(runPath(ctx, name)) {
-			fail(name + " is there afterwards, and the entry says it is not")
-		}
-	}
 }
 
 func strs(v any) []string {
@@ -386,73 +361,101 @@ func cloneMap(m map[string]any) map[string]any {
 	return out
 }
 
-// checkStdout compares stdout with the expectation at path, as predict
-// rewrites it where one is given.
-func checkStdout(t *testing.T, root, path, actual string, predict func(string) string, fail func(string)) {
-	t.Helper()
-	// A MISSING EXPECTATION IS A FAILURE, NOT AN EMPTY COMPARISON. Reported
-	// rather than fatal, so that a meta-test can drive this path and see it
-	// reported - which is the only evidence the check is here at all.
-	raw, err := os.ReadFile(filepath.Join(root, path))
+// vaultSeen is the vault afterwards, as much of it as the entry asserts: its
+// names, its keys if the entry gives them, and the values it names.
+func vaultSeen(ctx Ctx, look map[string]any, fault func(string)) any {
+	file := str(look, "file")
+	if "" == file {
+		file = "likeness.skmv"
+	}
+	key := str(look, "key")
+	if "" == key {
+		key = "master"
+	}
+	vault, err := minivault.Open(&minivault.Options{File: runPath(ctx, file), Key: key, Passphrase: str(look, "passphrase")})
 	if nil != err {
-		fail("cannot read expectation " + path + ": " + err.Error())
-		return
+		fault("the vault does not open afterwards: " + err.Error())
+		return nil
 	}
-	want := string(raw)
-	if nil != predict {
-		want = predict(want)
+	defer vault.Close()
+	names, err := vault.List()
+	if nil != err {
+		fault("the vault does not open afterwards: " + err.Error())
+		return nil
 	}
-
-	if !strings.HasSuffix(path, ".json") {
-		if actual != want {
-			fail("stdout bytes differ from " + path)
+	seen := map[string]any{"names": strList(names)}
+	if asserted, _ := look["keys"].(bool); asserted {
+		keys, err := vault.Keys()
+		if nil != err {
+			fault("the vault keys do not read: " + err.Error())
+			return seen
 		}
-		return
+		sort.Slice(keys, func(i, j int) bool { return keys[i].Key < keys[j].Key })
+		list := []any{}
+		for _, k := range keys {
+			list = append(list, map[string]any{"key": k.Key, "master": k.Master, "write": k.Write, "grants": strList(k.Grants)})
+		}
+		seen["keys"] = list
+	}
+	if named, ok := look["values"].([]any); ok {
+		values := map[string]any{}
+		for _, name := range strs(named) {
+			values[name] = nil
+			if v, found, err := vault.Get(name); nil == err && found {
+				values[name] = v
+			}
+		}
+		seen["values"] = values
+	}
+	return seen
+}
+
+// seenStdout is the stdout to compare: as printed, or for JSON the canonical
+// bytes less the fields that may differ by port, each of those asserted here
+// instead.
+func seenStdout(asJSON bool, actual string, fault func(string)) string {
+	if !asJSON {
+		return actual
 	}
 
 	dec := json.NewDecoder(strings.NewReader(actual))
 	dec.UseNumber()
 	var parsed map[string]any
 	if err := dec.Decode(&parsed); nil != err {
-		fail("stdout is not JSON, and " + path + " says it should be")
-		return
+		fault("stdout is not JSON, and the entry says it should be")
+		return actual
 	}
 
 	// Raw bytes first: indented or CRLF output carries the right values in
 	// the wrong bytes, and a value comparison alone let that through.
 	canonical, err := Serialise(parsed)
 	if nil != err {
-		fail("stdout cannot be re-rendered: " + err.Error())
-		return
+		fault("stdout cannot be re-rendered: " + err.Error())
+		return actual
 	}
 	if actual != canonical {
-		fail(fmt.Sprintf("stdout is not in canonical form (sorted keys, one line, one trailing newline): %q", head(actual, 80)))
+		fault(fmt.Sprintf("stdout is not in canonical form (sorted keys, one line, one trailing newline): %q", head(actual, 80)))
 	}
 
-	// Removed from the comparison, so asserted here instead - otherwise a port
-	// could report someone else's name and no check would notice.
 	if p, _ := parsed["port"].(string); Port != p {
-		fail("envelope port is \"" + p + "\", expected \"" + Port + "\"")
+		fault("envelope port is \"" + p + "\", expected \"" + Port + "\"")
 	}
 	if data, ok := parsed["data"].(map[string]any); ok {
 		if p, has := data["port"]; has && Port != p {
-			fail(fmt.Sprintf("data.port is %v, expected %q", p, Port))
+			fault(fmt.Sprintf("data.port is %v, expected %q", p, Port))
 		}
 	}
 	meta, _ := parsed["meta"].(map[string]any)
 	if n, ok := meta["elapsed_ms"].(json.Number); !ok || !isNonNegativeInteger(n) {
-		fail(fmt.Sprintf("meta.elapsed_ms is %v, expected a non-negative integer", meta["elapsed_ms"]))
+		fault(fmt.Sprintf("meta.elapsed_ms is %v, expected a non-negative integer", meta["elapsed_ms"]))
 	}
 
 	got, err := Serialise(StripParityExceptions(parsed))
 	if nil != err {
-		fail("stdout cannot be re-rendered: " + err.Error())
-		return
+		fault("stdout cannot be re-rendered: " + err.Error())
+		return actual
 	}
-	if got != want {
-		fail("stdout differs from " + path + "\n  want " + strings.TrimRight(want, "\n") +
-			"\n  got  " + strings.TrimRight(got, "\n"))
-	}
+	return got
 }
 
 func head(s string, n int) string {
@@ -478,73 +481,203 @@ func isNonNegativeInteger(n json.Number) bool {
 	return true
 }
 
-func wantCalls(e map[string]any) []Call {
-	out, _ := e["out"].(map[string]any)
-	list, _ := out["calls"].([]any)
-	cs := make([]Call, 0, len(list))
-	for _, c := range list {
-		cm := c.(map[string]any)
-		cs = append(cs, Call{str(cm, "instance"), str(cm, "method"), str(cm, "path")})
+// expectation is a file an entry names by path. A MISSING EXPECTATION IS AN
+// ERROR, NOT AN EMPTY COMPARISON.
+func expectation(root, rel string) (string, error) {
+	raw, err := os.ReadFile(filepath.Join(root, rel))
+	if nil != err {
+		return "", fmt.Errorf("cannot read expectation %s: %w", rel, err)
 	}
-	return cs
+	return string(raw), nil
 }
 
-func sameCalls(want, got []Call) bool {
-	if len(want) != len(got) {
-		return false
+// resolved is the entry as omni runs it. What its out names by path becomes
+// the bytes, and what the subject must look at to answer it rides in ctx.
+func resolved(root string, e map[string]any) (map[string]any, error) {
+	o := outOf(e)
+	rel := str(o, "stdout")
+	stdout, err := expectation(root, rel)
+	if nil != err {
+		return nil, err
 	}
-	for i := range want {
-		if want[i] != got[i] {
-			return false
+	exit, ok := num(o["exit"])
+	if !ok {
+		return nil, fmt.Errorf("%s: exit %v is not an integer", str(e, "id"), o["exit"])
+	}
+	stderr, _ := o["stderr"].(string)
+	prompts, ok := o["prompts"].([]any)
+	if !ok {
+		prompts = []any{}
+	}
+	calls := []Call{}
+	listed, _ := o["calls"].([]any)
+	for _, c := range listed {
+		cm, _ := c.(map[string]any)
+		calls = append(calls, Call{str(cm, "instance"), str(cm, "method"), str(cm, "path")})
+	}
+
+	observe := map[string]any{"id": e["id"], "json": strings.HasSuffix(rel, ".json")}
+	want := map[string]any{
+		"exit":    exit,
+		"stdout":  stdout,
+		"stderr":  stderr,
+		"calls":   callValues(calls),
+		"prompts": prompts,
+		"faults":  []any{},
+	}
+	if v, ok := o["vault"].(map[string]any); ok {
+		_, keyed := v["keys"]
+		look := map[string]any{"keys": keyed}
+		for _, k := range []string{"file", "key", "passphrase"} {
+			if x, has := v[k]; has {
+				look[k] = x
+			}
 		}
+		held := map[string]any{"names": v["names"]}
+		if keys, ok := v["keys"].([]any); ok {
+			list := []any{}
+			for _, k := range keys {
+				km, _ := k.(map[string]any)
+				list = append(list, map[string]any{"key": km["key"], "master": km["master"], "write": km["write"], "grants": km["grants"]})
+			}
+			held["keys"] = list
+		}
+		if values, ok := v["values"].(map[string]any); ok {
+			look["values"] = strList(sortedKeys(values))
+			held["values"] = values
+		}
+		observe["vault"] = look
+		want["vault"] = held
 	}
-	return true
+	if files, ok := o["files"].(map[string]any); ok {
+		texts := map[string]any{}
+		for name, f := range files {
+			path, _ := f.(string)
+			text, err := expectation(root, path)
+			if nil != err {
+				return nil, err
+			}
+			texts[name] = text
+		}
+		observe["files"] = strList(sortedKeys(files))
+		want["files"] = texts
+	}
+	if absent, ok := o["absent"].([]any); ok {
+		observe["absent"] = absent
+		want["absent"] = absent
+	}
+
+	ctx := map[string]any{}
+	ectx, _ := e["ctx"].(map[string]any)
+	for k, v := range ectx {
+		ctx[k] = v
+	}
+	ctx["observe"] = observe
+	return map[string]any{"id": e["id"], "args": e["args"], "ctx": ctx, "out": want}, nil
+}
+
+// transcript is omni's subject for the transcript corpus: one command,
+// in-process, in a home under t.
+func transcript(t *testing.T, root string) omni.Subject {
+	return func(args ...any) (any, error) {
+		given, _ := args[0].(map[string]any)
+		observe, _ := given["observe"].(map[string]any)
+		ectx := map[string]any{}
+		for k, v := range given {
+			if "observe" != k && "client" != k {
+				ectx[k] = v
+			}
+		}
+		ctx, err := newCtx(root, t.TempDir(), map[string]any{"id": observe["id"], "args": args[1:], "ctx": ectx})
+		if nil != err {
+			return nil, err
+		}
+		r := Run(ctx)
+
+		faults := []any{}
+		fault := func(s string) { faults = append(faults, s) }
+		asJSON, _ := observe["json"].(bool)
+		seen := map[string]any{
+			"exit":    r.Exit,
+			"stdout":  seenStdout(asJSON, r.Stdout, fault),
+			"stderr":  r.Stderr,
+			"calls":   callValues(r.Calls),
+			"prompts": []any{},
+		}
+		if log, ok := promptLogs[ctx.Home]; ok {
+			seen["prompts"] = strList(*log)
+		}
+		if look, ok := observe["vault"].(map[string]any); ok {
+			seen["vault"] = vaultSeen(ctx, look, fault)
+		}
+		if names, ok := observe["files"].([]any); ok {
+			files := map[string]any{}
+			for _, name := range strs(names) {
+				files[name] = nil
+				if raw, err := os.ReadFile(runPath(ctx, name)); nil == err {
+					files[name] = string(raw)
+				}
+			}
+			seen["files"] = files
+		}
+		if names, ok := observe["absent"].([]any); ok {
+			gone := []any{}
+			for _, name := range strs(names) {
+				if !exists(runPath(ctx, name)) {
+					gone = append(gone, name)
+				}
+			}
+			seen["absent"] = gone
+		}
+		seen["faults"] = faults
+		return seen, nil
+	}
+}
+
+// cliOmni is the format header spec/cli.json carries.
+var cliOmni = map[string]any{"version": 1, "requires": []any{"ctxargs"}}
+
+// cliRun runs resolved transcript entries through omni as one group.
+func cliRun(t *testing.T, root, name string, set []any, flags omni.Flags) error {
+	t.Helper()
+	subject := transcript(t, root)
+	runner, err := omni.MakeRunner(
+		map[string]any{"OMNI": cliOmni, "cli": map[string]any{name: map[string]any{"set": set}}},
+		&omni.Provider{Subject: func(section string) omni.Subject {
+			if "cli" == section {
+				return subject
+			}
+			return nil
+		}})
+	if nil != err {
+		t.Fatal(err)
+	}
+	R, err := runner("cli", nil)
+	if nil != err {
+		t.Fatal(err)
+	}
+	return R.RunSetFlags(R.Set(name), flags, nil)
+}
+
+// checkFlags runs one resolved entry through omni: no failures, or the one
+// omni reports.
+func checkFlags(t *testing.T, root string, r map[string]any, flags omni.Flags) []string {
+	t.Helper()
+	err := cliRun(t, root, "one", []any{r}, flags)
+	if nil == err {
+		return []string{}
+	}
+	if !omni.IsOmniError(err) {
+		t.Fatal(err)
+	}
+	return []string{err.Error()}
 }
 
 func Check(t *testing.T, root string, e map[string]any) []string {
 	t.Helper()
-	return checkWith(t, root, e, nil)
-}
-
-// checkWith is Check with the expected stdout as predict rewrites it.
-func checkWith(t *testing.T, root string, e map[string]any, predict func(string) string) []string {
-	t.Helper()
-	failures := []string{}
-	fail := func(s string) { failures = append(failures, s) }
-
-	out, _ := e["out"].(map[string]any)
-	ctx := buildCtx(t, root, e)
-	r := Run(ctx)
-
-	if want := int(mustNum(t, out["exit"])); r.Exit != want {
-		fail(fmt.Sprintf("exit %d, expected %d", r.Exit, want))
+	r, err := resolved(root, e)
+	if nil != err {
+		return []string{err.Error()}
 	}
-
-	checkStdout(t, root, str(out, "stdout"), r.Stdout, predict, fail)
-
-	wantErr := ""
-	if s, ok := out["stderr"].(string); ok {
-		wantErr = s
-	}
-	if r.Stderr != wantErr {
-		fail(fmt.Sprintf("stderr %q, expected %q", r.Stderr, wantErr))
-	}
-
-	if wc := wantCalls(e); !sameCalls(wc, r.Calls) {
-		fail("calls " + fmtCalls(r.Calls) + ", expected " + fmtCalls(wc))
-	}
-
-	shown := []string{}
-	if log, ok := promptLogs[ctx.Home]; ok {
-		shown = *log
-	}
-	if a, b := fmt.Sprintf("%q", shown), fmt.Sprintf("%q", strs(out["prompts"])); a != b {
-		fail("prompts " + a + ", expected " + b)
-	}
-
-	if want, ok := out["vault"].(map[string]any); ok {
-		vaultFailures(ctx, want, fail)
-	}
-	fileFailures(root, ctx, out, fail)
-	return failures
+	return checkFlags(t, root, r, omni.Flags{"null": false})
 }

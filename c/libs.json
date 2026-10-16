@@ -1,0 +1,14 @@
+{
+  "_doc": [
+    "The voxgig library the C port's test programs compile from a checkout, pinned",
+    "by commit: omni publishes no C package. `make c-libs` clones it at its pin, and",
+    "`make c-deps` verifies the pin and links the checkout under c/vendor/, the one",
+    "place the test programs read it from. `home` names the variable that points at",
+    "an existing checkout instead. omni is the corpus runner, compiled into the test",
+    "programs alone and never into the library or the binary: main at the merge of",
+    "voxgig/omni#75, the first revision carrying fn, ctxargs, wait and all."
+  ],
+  "lib": {
+    "omni": { "repo": "voxgig/omni", "rev": "0a93a98765d06764d528bd43313041b9e52e4e12", "home": "OMNI_HOME" }
+  }
+}

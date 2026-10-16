@@ -5,6 +5,15 @@ install before `make`. It is the port that shows the stack is not secretly a
 JavaScript stack (SPEC §8.1), so it is held to `-std=c99 -Wall -Wextra -Werror
 -pedantic` and to a clean run under AddressSanitizer, UBSan and Valgrind.
 
+The corpus suites run on [omni](https://github.com/voxgig/omni), the runner
+every port shares, compiled from its C sources into those two test programs
+and nothing else. `make c-libs` at the repository root clones it at the
+revision `libs.json` pins, and `make c-deps` runs that, then verifies the pin
+and links the checkout at `vendor/omni`; `OMNI_HOME` names a checkout of the pin to use
+instead. omni's header declares one typedef twice, which C11 allows and C99
+does not, so its three sources build as C11 under the same warnings, and the
+test programs reach its header through `-isystem` and stay C99.
+
 ```sh
 make                  # bin/likeness-c
 make test             # the suites below, from this directory
@@ -13,7 +22,7 @@ make valgrind         # the same suites under Valgrind, every spawned binary inc
 ```
 
 From the repository root these are `make test-c`, `make test-c-asan` and
-`make test-c-valgrind`; `make check` runs `test-c`.
+`make test-c-valgrind`, each after `c-deps`; `make check` runs `test-c`.
 
 ## What it answers, and what waits
 
@@ -50,14 +59,15 @@ a directory, is refused as every port refuses it, and so is one nested more than
 
 | Program | Checks |
 |---|---|
-| `test/unit.c` | `spec/unit.json`, entry by entry. `connections` is declared waiting, and the run fails if that list names a function the port implements or one the corpus does not use, or if the corpus uses a function the port neither implements nor declares. A waiting entry is reported as a TAP `SKIP`, never as a pass. `unit ROOT --eval` answers `{"fn","in"}` lines on stdin, for comparing the port with another |
-| `test/transcript.c` | the 43 entries of `spec/cli.json` this port answers, against the committed bytes in `spec/expect/`. Every other entry is a `SKIP`, and the port's answer to it must be the refusal naming the three issues |
+| `test/unit.c` | `spec/unit.json`, one omni run per group, each entry's `fn` resolved from the registry and its answer the port's own serialisation read back, so `true` and `1` stay different. `connections` is declared waiting: omni's wait flag holds each of its entries to that cause while it fails, and each is also reported as a TAP `SKIP`, never as a pass. The run fails if the waiting list names a function the port implements or one the corpus does not use, or if the corpus uses a function the port neither implements nor declares. `unit ROOT --eval` answers `{"fn","in"}` lines on stdin, for comparing the port with another |
+| `test/transcript.c` | the 43 entries of `spec/cli.json` this port answers, one omni run per group, against the committed bytes in `spec/expect/`. An answered entry that also asserts the vault is held by omni's wait flag, and a further run requires it to pass with that assertion taken out. Every other entry is a `SKIP`, checked outside omni: the port's answer to it must be the refusal naming the three issues, and a count requires every entry to be one or the other |
 | `test/process.c` | the binary as a process: no checkout and an empty `HOME`, a malformed configuration through both flag forms, one that cannot be read, one nested past 64 levels, a broken pipe, `which` over a real `PATH`, an argument that is not UTF-8 |
 | `test/selftest.c` | the building blocks against the canonical runtime: Node's `Number` formatting, `JSON.parse`, its UTF-8 decoder, `String.prototype.slice` and `path.posix`, and the FIPS 180-4 SHA-256 examples |
 
 The unit and transcript suites prove they can go red: their meta checks mutate
 an entry, an expectation or a declaration and require the failure to be
-reported.
+reported, through omni where omni compares, naming the fields it finds
+differing.
 
 ## Layout
 

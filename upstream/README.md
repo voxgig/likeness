@@ -81,17 +81,19 @@ Found while building the Obsidian and Notion adapters.
 | [sdkgen#420](https://github.com/voxgig/sdkgen/issues/420) | `voxgig/sdkgen` | a Go operation's error keeps no cause, so the Go pinned transport holds its refusal for the adapter to collect |
 | [station#50](https://github.com/voxgig/station/issues/50) | `voxgig/station` | the Go and Java stations record an `http` event's path decoded, so the Go port's call lists for escaped Obsidian paths differ from every other port's |
 
-## Filed for the omni runner, 2026-10-15
+## Filed for the omni runner, 2026-10-15 — fixed
 
 SPEC.LIKENESS.md §22 Q9 in `metsitaba/project-specs` settles that the ports move onto omni's
-runner rather than keep their in-tree harnesses. These are the three gaps in the way. Each
-is proposed as an omni capability, so a port that lacks one refuses a spec that needs it.
+runner rather than keep their in-tree harnesses. These were the three gaps in the way. Each
+landed as an omni capability, so a port that lacks one refuses a spec that needs it, in every
+one of omni's ports through [omni#75](https://github.com/voxgig/omni/pull/75), merged at
+`0a93a98`. Both corpora declare what they need in their `OMNI` header.
 
-| Issue | Repository | What |
-|---|---|---|
-| [omni#72](https://github.com/voxgig/omni/issues/72) | `voxgig/omni` | an entry cannot carry both `ctx` and `args`, so a transcript's argv never reaches the subject, and it cannot name its function in `fn` |
-| [omni#73](https://github.com/voxgig/omni/issues/73) | `voxgig/omni` | a set stops at its first failure, where each harness here lists every failing entry |
-| [omni#74](https://github.com/voxgig/omni/issues/74) | `voxgig/omni` | no entry can be declared waiting on a named cause and held to fail until that cause is fixed (`tools/parity-waiting.json` and each port's waiting list) |
+| Issue | Repository | What | Now |
+|---|---|---|---|
+| [omni#72](https://github.com/voxgig/omni/issues/72) | `voxgig/omni` | an entry cannot carry both `ctx` and `args`, so a transcript's argv never reaches the subject, and it cannot name its function in `fn` | the `ctxargs` and `fn` capabilities |
+| [omni#73](https://github.com/voxgig/omni/issues/73) | `voxgig/omni` | a set stops at its first failure, where each harness here lists every failing entry | the `all` runner flag |
+| [omni#74](https://github.com/voxgig/omni/issues/74) | `voxgig/omni` | no entry can be declared waiting on a named cause and held to fail until that cause is fixed (`tools/parity-waiting.json` and each port's waiting list) | the `wait` capability and runner flag |
 
 ## A correction worth keeping
 

@@ -6,11 +6,14 @@
     "the one place the port loads them from. `home` names the variable that",
     "points at an existing checkout instead. station is the main revision",
     "go/go.mod binds; sekreto is the revision station's CI pins; plugin is the",
-    "revision station's CI resolves from voxgig/plugin's main."
+    "revision station's CI resolves from voxgig/plugin's main. omni is the corpus",
+    "runner, loaded by the tests alone: main at the merge of voxgig/omni#75, the",
+    "first revision carrying fn, ctxargs, wait and all."
   ],
   "lib": {
     "station": { "repo": "voxgig/station", "rev": "9021c99c225331f1b2db6e18693aee4ef45aadbf", "home": "STATION_HOME" },
     "sekreto": { "repo": "voxgig/sekreto", "rev": "32b83acba90a8e4199be96f56d0cdd5f636c5dfb", "home": "SEKRETO_HOME" },
-    "plugin": { "repo": "voxgig/plugin", "rev": "43acbf266b0dbcf52e5ab5463d85c822da9cd234", "home": "PLUGIN_HOME" }
+    "plugin": { "repo": "voxgig/plugin", "rev": "43acbf266b0dbcf52e5ab5463d85c822da9cd234", "home": "PLUGIN_HOME" },
+    "omni": { "repo": "voxgig/omni", "rev": "0a93a98765d06764d528bd43313041b9e52e4e12", "home": "OMNI_HOME" }
   }
 }

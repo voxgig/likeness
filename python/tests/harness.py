@@ -1,4 +1,4 @@
-"""The corpus runner: a whole command in-process, held to the committed bytes."""
+"""The transcript corpus's subject for omni: a whole command in-process, held to the committed bytes."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ from likeness.config import load_config
 from likeness.core import PORT, Ctx, run
 from likeness.envelope import SerialiseError, serialise, strip_parity_exceptions
 from likeness.station import profile_of
+from voxgig_omni import OmniError, makeRunner
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -148,133 +149,153 @@ def build_ctx(e: dict[str, Any]) -> Ctx:
     return ctx
 
 
-def _vault_failures(e: dict[str, Any], ctx: Ctx, fail: Callable[[str], None]) -> None:
-    want = e['out'].get('vault')
-    if want is None:
-        return
+def _vault_seen(want: dict[str, Any], ctx: Ctx, fault: Callable[[str], None]) -> Any:
+    """The vault afterwards, as much of it as the entry asserts: its names, its
+    keys if the entry gives them, and the values it names."""
     from voxgig_sekreto.plugins.minivault import openvault
 
     file = located(ctx, want.get('file', 'likeness.skmv'))
     try:
         vault = openvault({'file': file, 'key': want.get('key', 'master'), 'passphrase': want['passphrase']})
-        names = vault.list()
+        seen: dict[str, Any] = {'names': vault.list()}
     except Exception as err:
-        fail('the vault does not open afterwards: ' + str(err))
-        return
-    if names != want['names']:
-        fail('vault names ' + _compact(names) + ', expected ' + _compact(want['names']))
-    if 'keys' in want:
-        keys = sorted(vault.keys(), key=lambda k: k['key'])
-        expected = [{'key': k['key'], 'master': k['master'], 'write': k['write'], 'grants': k['grants']}
-                    for k in want['keys']]
-        # As canonical bytes, so `true` and `1` stay different answers.
-        if serialise(keys) != serialise(expected):
-            fail('vault keys ' + _compact(keys) + ', expected ' + _compact(want['keys']))
-    for name, value in want.get('values', {}).items():
-        if vault.get(name) != value:
-            fail('vault value of ' + name + ' is not the one expected')
+        fault('the vault does not open afterwards: ' + str(err))
+        return None
+    if want['keys']:
+        seen['keys'] = sorted(vault.keys(), key=lambda k: k['key'])
+    if want['values']:
+        seen['values'] = {name: vault.get(name) for name in want['values']}
+    return seen
 
 
-def _file_failures(e: dict[str, Any], ctx: Ctx, fail: Callable[[str], None]) -> None:
-    """The configuration directory afterwards: each named file byte for byte,
-    and the absent ones not there."""
-    for name, want in e['out'].get('files', {}).items():
-        at = located(ctx, name)
-        if not os.path.exists(at):
-            fail(name + ' is not there afterwards, and ' + want + ' says what it holds')
-        elif Path(at).read_bytes() != (ROOT / want).read_bytes():
-            fail(name + ' differs from ' + want)
-    for name in e['out'].get('absent', []):
-        if os.path.exists(located(ctx, name)):
-            fail(name + ' is there afterwards, and the entry says it is not')
-
-
-def _compact(v: Any) -> str:
-    return json.dumps(v, separators=(',', ':'))
+def _text(path: Path) -> str:
+    """Bytes as a string, losslessly, so the comparison stays byte for byte."""
+    return path.read_bytes().decode('utf-8', 'surrogateescape')
 
 
 def _refuse_constant(name: str) -> Any:
     raise ValueError('not JSON: ' + name)
 
 
-def check_stdout(e: dict[str, Any], actual: str, fail: Callable[[str], None]) -> None:
-    rel = e['out']['stdout']
-    want = (ROOT / rel).read_text(encoding='utf-8')
-
-    if not rel.endswith('.json'):
-        if actual != want:
-            fail('stdout bytes differ from ' + rel)
-        return
+def seen_stdout(json_wanted: bool, actual: str, fault: Callable[[str], None]) -> str:
+    """The stdout to compare: as printed, or for JSON the canonical bytes less
+    the fields that may differ by port, each of those asserted here instead."""
+    if not json_wanted:
+        return actual
 
     try:
         parsed = json.loads(actual, parse_constant=_refuse_constant)
     except ValueError:
-        fail('stdout is not JSON, and ' + rel + ' says it should be')
-        return
+        fault('stdout is not JSON, and the entry says it should be')
+        return actual
 
     # Raw bytes first: indented or CRLF output carries the right values in the
     # wrong bytes, and a value comparison alone would let that through.
     try:
         canonical = serialise(parsed)
     except SerialiseError as err:
-        fail('stdout cannot be re-rendered: ' + str(err))
-        return
+        fault('stdout cannot be re-rendered: ' + str(err))
+        return actual
     if actual != canonical:
-        fail('stdout is not in canonical form (sorted keys, one line, one trailing newline): ' +
-             json.dumps(actual[:80]))
+        fault('stdout is not in canonical form (sorted keys, one line, one trailing newline): ' +
+              json.dumps(actual[:80]))
 
-    # Removed from the comparison, so asserted here instead.
     if not isinstance(parsed, dict) or PORT != parsed.get('port'):
-        fail('envelope port is ' + json.dumps(parsed.get('port') if isinstance(parsed, dict) else None) +
-             ', expected "' + PORT + '"')
+        fault('envelope port is ' + json.dumps(parsed.get('port') if isinstance(parsed, dict) else None) +
+              ', expected "' + PORT + '"')
     data = parsed.get('data') if isinstance(parsed, dict) else None
     if isinstance(data, dict) and 'port' in data and PORT != data['port']:
-        fail('data.port is ' + json.dumps(data['port']) + ', expected "' + PORT + '"')
+        fault('data.port is ' + json.dumps(data['port']) + ', expected "' + PORT + '"')
     meta = parsed.get('meta') if isinstance(parsed, dict) else None
     elapsed = meta.get('elapsed_ms') if isinstance(meta, dict) else None
     if not isinstance(elapsed, int) or isinstance(elapsed, bool) or elapsed < 0:
-        fail('meta.elapsed_ms is ' + json.dumps(elapsed) + ', expected a non-negative integer')
+        fault('meta.elapsed_ms is ' + json.dumps(elapsed) + ', expected a non-negative integer')
 
-    got = serialise(strip_parity_exceptions(parsed))
-    if got != want:
-        fail('stdout differs from ' + rel +
-             '\n  want ' + want.rstrip('\n') + '\n  got  ' + got.rstrip('\n'))
+    return serialise(strip_parity_exceptions(parsed))
 
 
 def stdout_failures(e: dict[str, Any], actual: str) -> list[str]:
     """The stdout checks alone, over bytes no port produced, for the meta-tests."""
     out: list[str] = []
-    check_stdout(e, actual, out.append)
+    rel = e['out']['stdout']
+    if seen_stdout(rel.endswith('.json'), actual, out.append) != _text(ROOT / rel):
+        out.append('stdout differs from ' + rel)
     return out
 
 
+def resolved(e: dict[str, Any]) -> dict[str, Any]:
+    """The entry as omni runs it. What the entry's `out` names by path becomes
+    the bytes, and what the subject must look at to answer it rides in `ctx`."""
+    o = e['out']
+    observe: dict[str, Any] = {'id': e['id'], 'json': o['stdout'].endswith('.json')}
+    want: dict[str, Any] = {
+        'exit': o['exit'],
+        'stdout': _text(ROOT / o['stdout']),
+        'stderr': o.get('stderr', ''),
+        'calls': [Call(c['instance'], c['method'], c['path']).value() for c in o['calls']],
+        'prompts': o.get('prompts', []),
+        'faults': [],
+    }
+    if 'vault' in o:
+        v = o['vault']
+        observe['vault'] = {**{k: v[k] for k in ('file', 'key', 'passphrase') if k in v},
+                            'keys': 'keys' in v, 'values': sorted(v.get('values', {}))}
+        want['vault'] = {'names': v['names']}
+        if 'keys' in v:
+            want['vault']['keys'] = [{'key': k['key'], 'master': k['master'], 'write': k['write'],
+                                      'grants': k['grants']} for k in v['keys']]
+        if 'values' in v:
+            want['vault']['values'] = v['values']
+    if 'files' in o:
+        observe['files'] = sorted(o['files'])
+        want['files'] = {n: _text(ROOT / f) for n, f in o['files'].items()}
+    if 'absent' in o:
+        observe['absent'] = list(o['absent'])
+        want['absent'] = list(o['absent'])
+    return {'id': e['id'], 'args': e['args'], 'ctx': {**e['ctx'], 'observe': observe}, 'out': want}
+
+
+def transcript(ctx: dict[str, Any], *argv: str) -> dict[str, Any]:
+    """omni's subject for the transcript corpus: one command, in-process."""
+    observe = ctx['observe']
+    entry = {'id': observe['id'], 'args': list(argv),
+             'ctx': {k: v for k, v in ctx.items() if k not in ('observe', 'client')}}
+    c = build_ctx(entry)
+    r = run(c)
+    faults: list[str] = []
+    seen: dict[str, Any] = {
+        'exit': r.exit,
+        'stdout': seen_stdout(observe['json'], r.stdout, faults.append),
+        'stderr': r.stderr,
+        'calls': [call.value() for call in r.calls],
+        'prompts': c.prompt.shown if isinstance(c.prompt, Terminal) else [],
+        'faults': faults,
+    }
+    if 'vault' in observe:
+        seen['vault'] = _vault_seen(observe['vault'], c, faults.append)
+    if 'files' in observe:
+        seen['files'] = {n: _text(Path(located(c, n))) if os.path.exists(located(c, n)) else None
+                         for n in observe['files']}
+    if 'absent' in observe:
+        seen['absent'] = [n for n in observe['absent'] if not os.path.exists(located(c, n))]
+    return seen
+
+
+CLI_OMNI = {'version': 1, 'requires': ['ctxargs']}
+
+
+def cli_runner(spec: Any) -> Any:
+    return makeRunner(spec, {'subject': lambda name: transcript if 'cli' == name else None})('cli')
+
+
 def check(e: dict[str, Any]) -> list[str]:
-    failures: list[str] = []
-    fail = failures.append
-
-    ctx = build_ctx(e)
-    r = run(ctx)
-
-    if r.exit != e['out']['exit']:
-        fail('exit ' + str(r.exit) + ', expected ' + str(e['out']['exit']))
-    check_stdout(e, r.stdout, fail)
-
-    want_err = e['out'].get('stderr', '')
-    if r.stderr != want_err:
-        fail('stderr ' + json.dumps(r.stderr) + ', expected ' + json.dumps(want_err))
-
-    got = [c.value() for c in r.calls]
-    want = [Call(c['instance'], c['method'], c['path']).value() for c in e['out']['calls']]
-    if got != want:
-        fail('calls ' + _compact(got) + ', expected ' + _compact(want))
-
-    prompts = ctx.prompt.shown if isinstance(ctx.prompt, Terminal) else []
-    if prompts != e['out'].get('prompts', []):
-        fail('prompts ' + _compact(prompts) + ', expected ' + _compact(e['out'].get('prompts', [])))
-
-    _vault_failures(e, ctx, fail)
-    _file_failures(e, ctx, fail)
-    return failures
+    """One entry through omni: no failures, or the one omni reports."""
+    spec = {'OMNI': CLI_OMNI, 'cli': {'one': {'set': [resolved(e)]}}}
+    try:
+        cli_runner(spec)['runsetflags'](spec['cli']['one'], {'null': False})
+    except OmniError as err:
+        return [str(err)]
+    return []
 
 
 def parity_dir() -> str | None:

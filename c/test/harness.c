@@ -1,13 +1,9 @@
 #include "harness.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#include "envelope.h"
-#include "utf8.h"
 
 int read_file(arena *a, const char *path, str *out) {
   FILE *f = fopen(path, "rb");
@@ -21,17 +17,8 @@ int read_file(arena *a, const char *path, str *out) {
   failed = ferror(f);
   fclose(f);
   if (failed) return -1;
-  *out = u8_sanitize(a, b.p, b.n);
+  *out = sb_done(&b);
   return 0;
-}
-
-str read_file_or_die(arena *a, const char *path) {
-  str s;
-  if (0 != read_file(a, path, &s)) {
-    fprintf(stderr, "cannot read %s - run `make spec-build` from the repository root first\n", path);
-    exit(2);
-  }
-  return s;
 }
 
 const char *joinpath(arena *a, const char *dir, str rel) {
@@ -58,46 +45,6 @@ const char *repo_root(arena *a, int argc, char **argv) {
     *slash = '\0';
   }
   return ".";
-}
-
-static int by_key(const void *x, const void *y) {
-  return lk_compare_code_points(*(const str *)x, *(const str *)y);
-}
-
-jval *corpus_entries(arena *a, const char *root, const char *name) {
-  sbuf rel;
-  str text;
-  jval *doc = NULL;
-  const jval *groups;
-  const char *err;
-  jval *out = jv_arr(a);
-  str *names;
-  size_t i;
-
-  sb_init(&rel, a);
-  sb_puts(&rel, "spec/");
-  sb_puts(&rel, name);
-  sb_puts(&rel, ".json");
-  text = read_file_or_die(a, joinpath(a, root, sb_done(&rel)));
-  err = json_parse(a, text.p, text.n, &doc);
-  if (NULL != err) {
-    fprintf(stderr, "spec/%s.json is not JSON: %s\n", name, err);
-    exit(2);
-  }
-  groups = jv_getz(jv_getz(doc, "primary"), name);
-  if (!jv_is(groups, J_OBJECT)) {
-    fprintf(stderr, "spec/%s.json has no primary.%s\n", name, name);
-    exit(2);
-  }
-  names = ar_alloc(a, (groups->len + 1) * sizeof *names);
-  for (i = 0; i < groups->len; i++) names[i] = groups->key[i];
-  qsort(names, groups->len, sizeof *names, by_key);
-  for (i = 0; i < groups->len; i++) {
-    const jval *set = jv_getz(jv_get(groups, names[i]), "set");
-    size_t k;
-    for (k = 0; jv_is(set, J_ARRAY) && k < set->len; k++) jv_push(a, out, set->item[k]);
-  }
-  return out;
 }
 
 str field_str(const jval *obj, const char *key) {

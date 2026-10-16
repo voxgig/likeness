@@ -7,7 +7,7 @@ import unittest
 from collections.abc import Callable
 from typing import Any
 
-from tests.harness import ROOT, check, entries
+from tests.harness import CLI_OMNI, ROOT, cli_runner, corpus, entries, resolved
 
 ALL = entries('cli')
 
@@ -24,8 +24,8 @@ _ESCURL = ("voxgig/sdkgen#418: the Python obsidian-sdk's escurl percent-encodes 
            "where the canonical port's encodeURIComponent keeps them")
 
 # Entries this port cannot answer yet, each with the upstream cause it waits on.
-# Each is reported as skipped and must differ from its expectation only as that
-# cause predicts; one that passes outright fails until it is taken out of here.
+# omni holds each while it fails and fails the set once it passes; each must
+# also pass once its cause's prediction is applied.
 WAITING: dict[str, tuple[str, Callable[[dict[str, Any]], dict[str, Any]]]] = {
     'obsidian/list-odd-raw': (_ESCURL, _escaped_as_quote),
     'obsidian/list-odd-values': (_ESCURL, _escaped_as_quote),
@@ -53,24 +53,32 @@ class CliCorpus(unittest.TestCase):
         self.assertEqual([], sorted(set(WAITING) - {e['id'] for e in ALL}))
 
 
-def _case(e: dict[str, Any]) -> Callable[[CliCorpus], None]:
+SPEC = corpus('cli')
+
+
+def _group(name: str, entries: list[dict[str, Any]]) -> dict[str, Any]:
+    return {'OMNI': CLI_OMNI, 'cli': {name: {'set': [resolved(e) for e in entries]}}}
+
+
+def _group_case(name: str) -> Callable[[CliCorpus], None]:
     def test(self: CliCorpus) -> None:
-        failures = check(e)
-        self.assertEqual([], failures, e['id'] + ':\n  ' + '\n  '.join(failures))
+        spec = _group(name, SPEC[name]['set'])
+        ids = {e['id'] for e in SPEC[name]['set']}
+        waits = {i: {'cause': w[0]} for i, w in WAITING.items() if i in ids}
+        cli_runner(spec)['runsetflags'](spec['cli'][name], {'null': False, 'all': True, 'wait': waits})
     return test
 
 
-def _waiting(e: dict[str, Any], why: str,
-             predicted: Callable[[dict[str, Any]], dict[str, Any]]) -> Callable[[CliCorpus], None]:
-    def test(self: CliCorpus) -> None:
-        self.assertNotEqual([], check(e), e['id'] + ' now passes: take it out of WAITING')
-        failures = check(predicted(e))
-        self.assertEqual([], failures, e['id'] + ' differs other than because ' + why + ':\n  ' +
-                         '\n  '.join(failures))
-        self.skipTest(why)
-    return test
+def _predicted(self: CliCorpus) -> None:
+    # A wait holds an entry only while it fails; this holds it to failing for
+    # its declared cause alone, so the declaration cannot hide a second
+    # difference.
+    predicted = [w[1](e) for e in ALL for w in [WAITING.get(e['id'])] if w is not None]
+    spec = _group('predicted', predicted)
+    cli_runner(spec)['runsetflags'](spec['cli']['predicted'], {'null': False, 'all': True})
 
 
-for _e in ALL:
-    _waits = WAITING.get(_e['id'])
-    setattr(CliCorpus, 'test cli ' + _e['id'], _case(_e) if _waits is None else _waiting(_e, *_waits))
+for _g in sorted(SPEC):
+    setattr(CliCorpus, 'test cli ' + _g, _group_case(_g))
+if WAITING:
+    setattr(CliCorpus, 'test cli waiting entries differ only as their cause predicts', _predicted)

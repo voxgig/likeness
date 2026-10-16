@@ -66,24 +66,34 @@ there. The vault's bytes are never compared: they change on every write.
 
 The TypeScript, Go, Python and Ruby ports run both corpora in full, and `make
 parity` compares their transcript output byte for byte; C runs the `sources`
-group's two pure functions, `secretName` and `refFor`. Where a port's SDK or
-station still differs upstream, the port declares the entry waiting, with a reason
-naming the issue, and the declaration is held to its cause: the entry must still
-fail, and must pass once the cause's predicted change is applied. So a declaration
-fails the moment the fix lands, and cannot hide a second difference. Python and
-Ruby wait on two Obsidian entries
-([sdkgen#418](https://github.com/voxgig/sdkgen/issues/418)), and Go on eight
-([station#50](https://github.com/voxgig/station/issues/50), sdkgen#418).
-`tools/parity-waiting.json` sets aside Go's one differing answer in the comparison
-the same way. The C port runs the unit corpus but for
+group's two pure functions, `secretName` and `refFor`. Every port runs them on
+[omni](https://github.com/voxgig/omni)'s runner, each at a pinned revision. Each corpus's `OMNI` header names what it needs: `fn`, for a unit
+entry naming the function it calls, and `ctxargs`, for a transcript entry carrying
+both its argv and its context. Each group is one run that reports every entry that
+fails, and each port keeps only the subject: the home, fixtures, clock, stdin,
+terminal and vault an entry describes, and the command run in-process.
+
+Where a port's SDK or station still differs upstream, the port declares the entry
+waiting, with a reason naming the issue, and omni holds the declaration to its
+cause: the entry must still fail, and the port runs it again with the cause's
+predicted change applied, where it must pass. So a declaration fails the moment the
+fix lands, and cannot hide a second difference. Python and Ruby wait on two
+Obsidian entries ([sdkgen#418](https://github.com/voxgig/sdkgen/issues/418)), and
+Go on eight ([station#50](https://github.com/voxgig/station/issues/50),
+sdkgen#418). `tools/parity-waiting.json` sets aside Go's one differing answer in
+the comparison the same way. The C port runs the unit corpus but for
 `connections`, which waits on station's C library reading `station.json`
 ([station#23](https://github.com/voxgig/station/issues/23)), and the 43 transcript
 entries whose answer needs no source: `help`, `version`, `which`, a command not
-ready yet, and every command line the grammar refuses. The other transcript entries
-wait on a live transport in the C SDK ([sdkgen#403](https://github.com/voxgig/sdkgen/issues/403)),
-two C SDKs in one program ([sdkgen#405](https://github.com/voxgig/sdkgen/issues/405))
-and station#23; its harness reports each as skipped and checks that the port refuses
-it naming all three. Until those land, `make parity` does not include C.
+ready yet, and every command line the grammar refuses. A 44th, which also asserts
+the vault, waits on station#23 too, and runs again without that assertion. The
+other 215 wait on a live transport in the C SDK
+([sdkgen#403](https://github.com/voxgig/sdkgen/issues/403)), two C SDKs in one
+program ([sdkgen#405](https://github.com/voxgig/sdkgen/issues/405)) and station#23.
+No predicted change describes those, since the port refuses the whole command, so
+they stay outside omni: its suite reports each as skipped, checks that the port
+refuses it naming all three, and counts every entry as run or refused. Until those
+land, `make parity` does not include C.
 
 The corpora run offline, through each SDK's test mode. The live path, from each port's
 own CLI through its station and vault to a server, is `make matrix`'s
