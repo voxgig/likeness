@@ -1,0 +1,96 @@
+From 9a81b034fdff659b6d6640fd535fdab2f70dc47e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 17 Oct 2026 10:52:47 +0000
+Subject: [PATCH] deps(go): station's Go module at its go/v0.2.0 tag; python
+ and ruby at the release commit
+
+station 0.2.0 is released on every port from a570686: the npm packages
+from their tags, and go/v0.2.0 on the same commit. The Go port requires
+that tag; the generated SDKs still ask for v0.0.1, which was never tagged,
+so it maps to the tag until they are regenerated. The Python and Ruby
+pins move from 9021c99 to a570686, the release commit.
+
+Apply after go/v0.2.0 exists, then run `go mod tidy` in go/ so go.sum
+records the tag.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_014Va59RuFMjP54gQmU9cr14
+---
+ PROCESS.md       | 8 ++++----
+ go/go.mod        | 9 ++++-----
+ python/deps.json | 2 +-
+ ruby/libs.json   | 2 +-
+ 4 files changed, 10 insertions(+), 11 deletions(-)
+
+diff --git a/PROCESS.md b/PROCESS.md
+index 828de9a..b8c3f64 100644
+--- a/PROCESS.md
++++ b/PROCESS.md
+@@ -152,10 +152,10 @@ Every client is bound through [voxgig/station](https://github.com/voxgig/station
+ which is what likeness exists to demonstrate: `station.json` declares the
+ instances, station resolves their secrets, and the calls a command reports in
+ `meta.calls` and the corpus are the requests station observed at the transport.
+-Station's Go module cannot be required outside a go workspace yet
+-([voxgig/station#27](https://github.com/voxgig/station/issues/27)), so
+-`go/go.mod` maps its unresolvable versions to real revisions with `replace`
+-lines; move them with the station pin. station, sekreto and plugin are not
++Station's Go module is required at its release tag, the version every station
++port shares. The generated SDKs still require `v0.0.1`, which was never tagged,
++so `go/go.mod` maps it to the tag with a `replace` line until they are
++regenerated; move both with the station pin. station, sekreto and plugin are not
+ published as gems at all, so the Ruby port loads them from checkouts at the
+ revisions `ruby/libs.json` pins: `make rb-libs` clones them, and `make rb-deps`
+ refuses one off its pin or dirty, exactly as `sdk-check` does for an SDK.
+diff --git a/go/go.mod b/go/go.mod
+index b65d153..9564ad7 100644
+--- a/go/go.mod
++++ b/go/go.mod
+@@ -9,7 +9,7 @@ require (
+ 	// The corpus runner, for the tests alone.
+ 	github.com/voxgig/omni/go v0.2.0
+ 	github.com/voxgig/sekreto/go v0.0.0-20260916220330-32b83acba90a
+-	github.com/voxgig/station/go v0.0.1
++	github.com/voxgig/station/go v0.2.0
+ 	golang.org/x/term v0.33.0
+ )
+ 
+@@ -29,7 +29,6 @@ replace github.com/voxgig-sdk/notion-sdk/go => ../../voxgig-sdk/notion-sdk/go
+ 
+ replace github.com/voxgig-sdk/obsidian-sdk/go => ../../voxgig-sdk/obsidian-sdk/go
+ 
+-// station's Go module has no go/v0.0.1 tag yet (voxgig/station#27), so the
+-// version the SDKs require is mapped to the main revision its other ports are
+-// pinned at.
+-replace github.com/voxgig/station/go v0.0.1 => github.com/voxgig/station/go v0.0.0-20261015150408-9021c99c2253
++// The generated SDKs still require v0.0.1, which was never tagged, so it maps
++// to the release tag until they are regenerated.
++replace github.com/voxgig/station/go v0.0.1 => github.com/voxgig/station/go v0.2.0
+diff --git a/python/deps.json b/python/deps.json
+index 6f6f195..78b2a4c 100644
+--- a/python/deps.json
++++ b/python/deps.json
+@@ -27,7 +27,7 @@
+     },
+     "station": {
+       "repo": "voxgig/station",
+-      "rev": "9021c99c225331f1b2db6e18693aee4ef45aadbf",
++      "rev": "a570686fe886bc2d686c991ffee5c7e6a47b5f8a",
+       "dir": "python"
+     }
+   },
+diff --git a/ruby/libs.json b/ruby/libs.json
+index e4080c0..4c9360f 100644
+--- a/ruby/libs.json
++++ b/ruby/libs.json
+@@ -11,7 +11,7 @@
+     "was released from, which every port runs."
+   ],
+   "lib": {
+-    "station": { "repo": "voxgig/station", "rev": "9021c99c225331f1b2db6e18693aee4ef45aadbf", "home": "STATION_HOME" },
++    "station": { "repo": "voxgig/station", "rev": "a570686fe886bc2d686c991ffee5c7e6a47b5f8a", "home": "STATION_HOME" },
+     "sekreto": { "repo": "voxgig/sekreto", "rev": "32b83acba90a8e4199be96f56d0cdd5f636c5dfb", "home": "SEKRETO_HOME" },
+     "plugin": { "repo": "voxgig/plugin", "rev": "43acbf266b0dbcf52e5ab5463d85c822da9cd234", "home": "PLUGIN_HOME" },
+     "omni": { "repo": "voxgig/omni", "rev": "e9cb45a308a4da47ffdbc1b3149b9c59199190b2", "home": "OMNI_HOME" }
+-- 
+2.43.0
+

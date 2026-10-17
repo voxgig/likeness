@@ -9,6 +9,11 @@ revision it was observed at, the file and line, a reproduction that needs no
 credentials and no network, and what it costs likeness. The link at the top of
 each file is where it was filed.
 
+## Patches
+
+`patch/` holds changes a session could not push upstream itself, each ready for
+`git am`. [HANDOVER.md](../HANDOVER.md) says which to apply, and in what order.
+
 ## Status, 2026-10-14
 
 Every draft is filed. "Closed" for a `sdkgen`
