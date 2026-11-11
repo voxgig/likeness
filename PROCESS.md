@@ -152,10 +152,10 @@ Every client is bound through [voxgig/station](https://github.com/voxgig/station
 which is what likeness exists to demonstrate: `station.json` declares the
 instances, station resolves their secrets, and the calls a command reports in
 `meta.calls` and the corpus are the requests station observed at the transport.
-Station's Go module cannot be required outside a go workspace yet
-([voxgig/station#27](https://github.com/voxgig/station/issues/27)), so
-`go/go.mod` maps its unresolvable versions to real revisions with `replace`
-lines; move them with the station pin. station, sekreto and plugin are not
+Station's Go module is required at its release tag, the version every station
+port shares. The generated SDKs still require `v0.0.1`, which was never tagged,
+so `go/go.mod` maps it to the tag with a `replace` line until they are
+regenerated; move both with the station pin. station, sekreto and plugin are not
 published as gems at all, so the Ruby port loads them from checkouts at the
 revisions `ruby/libs.json` pins: `make rb-libs` clones them, and `make rb-deps`
 refuses one off its pin or dirty, exactly as `sdk-check` does for an SDK.
