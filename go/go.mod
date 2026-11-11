@@ -9,7 +9,7 @@ require (
 	// The corpus runner, for the tests alone.
 	github.com/voxgig/omni/go v0.2.0
 	github.com/voxgig/sekreto/go v0.0.0-20260916220330-32b83acba90a
-	github.com/voxgig/station/go v0.0.1
+	github.com/voxgig/station/go v0.2.0
 	golang.org/x/term v0.33.0
 )
 
@@ -29,7 +29,6 @@ replace github.com/voxgig-sdk/notion-sdk/go => ../../voxgig-sdk/notion-sdk/go
 
 replace github.com/voxgig-sdk/obsidian-sdk/go => ../../voxgig-sdk/obsidian-sdk/go
 
-// station's Go module has no go/v0.0.1 tag yet (voxgig/station#27), so the
-// version the SDKs require is mapped to the main revision its other ports are
-// pinned at.
-replace github.com/voxgig/station/go v0.0.1 => github.com/voxgig/station/go v0.0.0-20261015150408-9021c99c2253
+// The generated SDKs still require v0.0.1, which was never tagged, so it maps
+// to the release tag until they are regenerated.
+replace github.com/voxgig/station/go v0.0.1 => github.com/voxgig/station/go v0.2.0
